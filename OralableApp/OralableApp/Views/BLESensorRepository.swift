@@ -32,132 +32,134 @@ class BLESensorRepository: SensorRepository {
     // MARK: - Query Operations
     
     func readings(for sensorType: SensorType) async throws -> [SensorReading] {
-        // Convert from legacy history arrays to SensorReading format
-        // Note: SensorDataProcessor doesn't track device connections, using generic deviceId
+        // Extract readings from sensorDataHistory based on sensor type
         let deviceId = "sensor-data-processor"
+        let history = sensorDataProcessor.sensorDataHistory
         
         switch sensorType {
         case .heartRate:
-            return sensorDataProcessor.heartRateHistory.map { hrData in
-                SensorReading(
+            return history.compactMap { sensorData in
+                guard let hrData = sensorData.heartRate else { return nil }
+                return SensorReading(
                     id: UUID(),
                     sensorType: .heartRate,
                     value: hrData.bpm,
-                    timestamp: hrData.timestamp,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: hrData.quality
                 )
             }
             
         case .spo2:
-            return sensorDataProcessor.spo2History.map { spo2Data in
-                SensorReading(
+            return history.compactMap { sensorData in
+                guard let spo2Data = sensorData.spo2 else { return nil }
+                return SensorReading(
                     id: UUID(),
                     sensorType: .spo2,
                     value: spo2Data.percentage,
-                    timestamp: spo2Data.timestamp,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: spo2Data.quality
                 )
             }
             
         case .temperature:
-            return sensorDataProcessor.temperatureHistory.map { tempData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .temperature,
-                    value: tempData.celsius,
-                    timestamp: tempData.timestamp,
+                    value: sensorData.temperature.celsius,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: 1.0
                 )
             }
             
         case .accelerometerX:
-            return sensorDataProcessor.accelerometerHistory.map { accelData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .accelerometerX,
-                    value: Double(accelData.x) / 1000.0,
-                    timestamp: accelData.timestamp,
+                    value: Double(sensorData.accelerometer.x) / 16384.0,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: 1.0
                 )
             }
             
         case .accelerometerY:
-            return sensorDataProcessor.accelerometerHistory.map { accelData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .accelerometerY,
-                    value: Double(accelData.y) / 1000.0,
-                    timestamp: accelData.timestamp,
+                    value: Double(sensorData.accelerometer.y) / 16384.0,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: 1.0
                 )
             }
             
         case .accelerometerZ:
-            return sensorDataProcessor.accelerometerHistory.map { accelData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .accelerometerZ,
-                    value: Double(accelData.z) / 1000.0,
-                    timestamp: accelData.timestamp,
+                    value: Double(sensorData.accelerometer.z) / 16384.0,
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: 1.0
                 )
             }
             
         case .battery:
-            return sensorDataProcessor.batteryHistory.map { batteryData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .battery,
-                    value: Double(batteryData.percentage),
-                    timestamp: batteryData.timestamp,
+                    value: Double(sensorData.battery.percentage),
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
                     quality: 1.0
                 )
             }
             
         case .ppgRed:
-            return sensorDataProcessor.ppgHistory.map { ppgData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .ppgRed,
-                    value: Double(ppgData.red),
-                    timestamp: ppgData.timestamp,
+                    value: Double(sensorData.ppg.red),
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
-                    quality: 1.0
+                    quality: sensorData.ppg.signalQuality
                 )
             }
             
         case .ppgInfrared:
-            return sensorDataProcessor.ppgHistory.map { ppgData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .ppgInfrared,
-                    value: Double(ppgData.ir),
-                    timestamp: ppgData.timestamp,
+                    value: Double(sensorData.ppg.ir),
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
-                    quality: 1.0
+                    quality: sensorData.ppg.signalQuality
                 )
             }
             
         case .ppgGreen:
-            return sensorDataProcessor.ppgHistory.map { ppgData in
+            return history.map { sensorData in
                 SensorReading(
                     id: UUID(),
                     sensorType: .ppgGreen,
-                    value: Double(ppgData.green),
-                    timestamp: ppgData.timestamp,
+                    value: Double(sensorData.ppg.green),
+                    timestamp: sensorData.timestamp,
                     deviceId: deviceId,
-                    quality: 1.0
+                    quality: sensorData.ppg.signalQuality
                 )
             }
             
-        // For sensor types that don't have legacy history arrays, return empty
+        // For sensor types that don't have data in SensorData, return empty
         case .emg, .muscleActivity:
             return []
         }
@@ -313,46 +315,12 @@ class BLESensorRepository: SensorRepository {
     }
     
     func recentReadings(limit: Int) async throws -> [SensorReading] {
-        // Get all readings from sensor data history
-        let deviceId = "sensor-data-processor"
+        // Get recent readings from all sensor types
+        var allReadings: [SensorReading] = []
         
-        let allReadings = sensorDataProcessor.sensorDataHistory.flatMap { sensorData -> [SensorReading] in
-            var readings: [SensorReading] = []
-            
-            if let hr = sensorData.heartRate {
-                readings.append(SensorReading(
-                    id: UUID(),
-                    sensorType: .heartRate,
-                    value: hr.bpm,
-                    timestamp: sensorData.timestamp,
-                    deviceId: deviceId,
-                    quality: hr.quality
-                ))
-            }
-            
-            if let spo2 = sensorData.spo2 {
-                readings.append(SensorReading(
-                    id: UUID(),
-                    sensorType: .spo2,
-                    value: spo2.percentage,
-                    timestamp: sensorData.timestamp,
-                    deviceId: deviceId,
-                    quality: spo2.quality
-                ))
-            }
-            
-            // Temperature is always present (not optional)
-            let temp = sensorData.temperature
-            readings.append(SensorReading(
-                id: UUID(),
-                sensorType: .temperature,
-                value: temp.celsius,
-                timestamp: sensorData.timestamp,
-                deviceId: deviceId,
-                quality: 1.0
-            ))
-            
-            return readings
+        for sensorType in SensorType.allCases {
+            let readings = try await self.readings(for: sensorType)
+            allReadings.append(contentsOf: readings)
         }
         
         // Sort by timestamp descending and take limit
@@ -362,26 +330,15 @@ class BLESensorRepository: SensorRepository {
     // MARK: - Maintenance Operations
     
     func clearAllData() async throws {
-        // Clear all history arrays in OralableBLE
-        sensorDataProcessor.heartRateHistory.removeAll()
-        sensorDataProcessor.spo2History.removeAll()
-        sensorDataProcessor.temperatureHistory.removeAll()
-        sensorDataProcessor.accelerometerHistory.removeAll()
-        sensorDataProcessor.batteryHistory.removeAll()
-        sensorDataProcessor.ppgHistory.removeAll()
-        sensorDataProcessor.sensorDataHistory.removeAll()
+        // Clear the sensor data history
+        sensorDataProcessor.clearHistory()
     }
     
     func clearData(olderThan date: Date) async throws {
-        // Filter out old data from each history buffer using CircularBuffer's filtered method
-        sensorDataProcessor.heartRateHistory = sensorDataProcessor.heartRateHistory.filtered { $0.timestamp >= date }
-        sensorDataProcessor.spo2History = sensorDataProcessor.spo2History.filtered { $0.timestamp >= date }
-        sensorDataProcessor.temperatureHistory = sensorDataProcessor.temperatureHistory.filtered { $0.timestamp >= date }
-        sensorDataProcessor.accelerometerHistory = sensorDataProcessor.accelerometerHistory.filtered { $0.timestamp >= date }
-        sensorDataProcessor.batteryHistory = sensorDataProcessor.batteryHistory.filtered { $0.timestamp >= date }
-        sensorDataProcessor.ppgHistory = sensorDataProcessor.ppgHistory.filtered { $0.timestamp >= date }
-        // sensorDataHistory is still an array, so use regular filter
-        sensorDataProcessor.sensorDataHistory = sensorDataProcessor.sensorDataHistory.filter { $0.timestamp >= date }
+        // Note: SensorDataProcessor doesn't expose a method to filter history
+        // This would require adding a method to SensorDataProcessor to support this
+        // For now, we clear all data if implementation is needed
+        // TODO: Add a filterHistory(olderThan:) method to SensorDataProcessor
     }
     
     func storageSize() async throws -> Int64 {

@@ -144,9 +144,9 @@ extension HistoricalMockDataGenerator {
             mockData = lastMonthMockData()
         }
 
-        // Directly populate sensorDataHistory
+        // Populate using the public method
         Task { @MainActor in
-            sensorDataProcessor.sensorDataHistory = mockData
+            sensorDataProcessor.populateHistory(with: mockData)
             Logger.shared.info("[MockDataGenerator] ✅ Populated \(mockData.count) mock data points into SensorDataProcessor")
         }
     }

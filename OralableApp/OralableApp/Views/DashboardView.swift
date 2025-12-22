@@ -32,16 +32,23 @@ struct DashboardView: View {
 
     var body: some View {
         Group {
-            if let vm = viewModel {
-                dashboardContent(viewModel: vm)
+            if let viewModel = viewModel {
+                dashboardContent(viewModel: viewModel)
             } else {
                 ProgressView("Loading...")
                     .task {
                         if viewModel == nil {
-                            viewModel = dependencies.makeDashboardViewModel()
+                            let vm = dependencies.makeDashboardViewModel()
+                            await MainActor.run {
+                                self.viewModel = vm
+                                vm.startMonitoring()
+                            }
                         }
                     }
             }
+        }
+        .onDisappear {
+            viewModel?.stopMonitoring()
         }
     }
 
@@ -144,22 +151,10 @@ struct DashboardView: View {
 
                     // Heart Rate card - CONDITIONAL
                     if featureFlags.showHeartRateCard {
-                        NavigationLink(destination: LazyView(
-                            HistoricalView(metricType: "Heart Rate")
-                                .environmentObject(designSystem)
-                                .environmentObject(dependencies.recordingSessionManager)
-                        )) {
-                            HealthMetricCard(
-                                icon: "heart.fill",
-                                title: "Heart Rate",
-                                value: viewModel.heartRate > 0 ? "\(viewModel.heartRate)" : "N/A",
-                                unit: viewModel.heartRate > 0 ? "BPM" : "",
-                                color: .red,
-                                sparklineData: [],
-                                showChevron: true
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        HeartRateView(
+                            wornStatus: Binding(get: { viewModel.wornStatus }, set: { viewModel.wornStatus = $0 }),
+                            heartRateResult: Binding(get: { viewModel.currentHRResult }, set: { viewModel.currentHRResult = $0 })
+                        )
                     }
 
                     // SpO2 card - CONDITIONAL
@@ -238,8 +233,6 @@ struct DashboardView: View {
             }
         }
         .navigationViewStyle(.stack)
-        .onAppear { viewModel.startMonitoring() }
-        .onDisappear { viewModel.stopMonitoring() }
     }
 
     // MARK: - Device Status Indicator (Simplified - matches Devices screen)

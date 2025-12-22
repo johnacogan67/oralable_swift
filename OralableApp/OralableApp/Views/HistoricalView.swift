@@ -122,21 +122,18 @@ struct HistoricalView: View {
 
     /// Date format for x-axis labels
     private var xAxisDateFormat: Date.FormatStyle {
-        guard let exportFile = loadedExportFile else {
-            return .dateTime.hour().minute().second()
-        }
-        
-        // Check data span to determine format
-        if let first = dataPoints.first?.timestamp, let last = dataPoints.last?.timestamp {
-            let duration = last.timeIntervalSince(first)
-            if duration < 60 {
-                return .dateTime.hour().minute().second()
-            } else if duration < 3600 {
-                return .dateTime.hour().minute()
+        if loadedExportFile != nil {
+            // Check data span to determine format
+            if let first = dataPoints.first?.timestamp, let last = dataPoints.last?.timestamp {
+                let duration = last.timeIntervalSince(first)
+                if duration > 3600 * 24 { // More than a day
+                    return .dateTime.month().day()
+                } else if duration > 3600 { // More than an hour
+                    return .dateTime.hour().minute()
+                }
             }
         }
-        
-        return .dateTime.hour().minute()
+        return .dateTime.hour().minute().second()
     }
 
     var body: some View {

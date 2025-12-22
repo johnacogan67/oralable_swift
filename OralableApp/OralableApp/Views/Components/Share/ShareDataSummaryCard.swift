@@ -5,6 +5,39 @@ struct ShareDataSummaryCard: View {
     @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
 
+    // MARK: - Computed Properties
+    
+    private var durationValue: String {
+        guard !sensorDataProcessor.sensorDataHistory.isEmpty,
+              let first = sensorDataProcessor.sensorDataHistory.first,
+              let last = sensorDataProcessor.sensorDataHistory.last else {
+            return "0"
+        }
+        
+        let duration = last.timestamp.timeIntervalSince(first.timestamp)
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        
+        if hours > 0 {
+            return "\(hours)"
+        } else {
+            return "\(minutes)"
+        }
+    }
+    
+    private var durationSubtitle: String {
+        guard !sensorDataProcessor.sensorDataHistory.isEmpty,
+              let first = sensorDataProcessor.sensorDataHistory.first,
+              let last = sensorDataProcessor.sensorDataHistory.last else {
+            return "minutes"
+        }
+        
+        let duration = last.timestamp.timeIntervalSince(first.timestamp)
+        let hours = Int(duration) / 3600
+        
+        return hours > 0 ? "hours" : "minutes"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: designSystem.spacing.md) {
             Text("Data Summary")
@@ -24,10 +57,10 @@ struct ShareDataSummaryCard: View {
                 )
 
                 ShareMetricBox(
-                    title: "Log Entries",
-                    value: "\(sensorDataProcessor.logMessages.count)",
-                    subtitle: "messages",
-                    icon: "doc.text",
+                    title: "Duration",
+                    value: durationValue,
+                    subtitle: durationSubtitle,
+                    icon: "clock",
                     color: .green
                 )
             }

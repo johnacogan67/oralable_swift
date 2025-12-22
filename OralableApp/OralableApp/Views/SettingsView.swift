@@ -28,7 +28,7 @@ struct SettingsView: View {
                 // Demo Mode Section - ALWAYS VISIBLE
                 Section {
                     Toggle("Demo Mode", isOn: $featureFlags.demoModeEnabled)
-                        .onChange(of: featureFlags.demoModeEnabled) { newValue in
+                        .onChange(of: featureFlags.demoModeEnabled) { _, newValue in
                             if !newValue {
                                 // Disconnect demo device when demo mode disabled
                                 dependencies.deviceManager.disconnectDemoDevice()
@@ -252,10 +252,14 @@ struct SettingsView: View {
 #Preview("Settings View") {
     let designSystem = DesignSystem()
 
+    // Build the processing stack
+    let calculator = BioMetricCalculator()
+    let sensorDataProcessor = SensorDataProcessor(calculator: calculator)
+
     let authManager = AuthenticationManager()
     let healthKitManager = HealthKitManager()
     let recordingSessionManager = RecordingSessionManager()
-    let historicalDataManager = HistoricalDataManager(sensorDataProcessor: SensorDataProcessor.shared)
+    let historicalDataManager = HistoricalDataManager(sensorDataProcessor: sensorDataProcessor)
     let sensorDataStore = SensorDataStore()
     let subscriptionManager = SubscriptionManager()
     let deviceManager = DeviceManager()
@@ -263,7 +267,7 @@ struct SettingsView: View {
     let sharedDataManager = SharedDataManager(
         authenticationManager: authManager,
         healthKitManager: healthKitManager,
-        sensorDataProcessor: SensorDataProcessor.shared
+        sensorDataProcessor: sensorDataProcessor
     )
 
     let dependencies = AppDependencies(
@@ -274,7 +278,7 @@ struct SettingsView: View {
         sensorDataStore: sensorDataStore,
         subscriptionManager: subscriptionManager,
         deviceManager: deviceManager,
-        sensorDataProcessor: SensorDataProcessor.shared,
+        sensorDataProcessor: sensorDataProcessor,
         appStateManager: appStateManager,
         sharedDataManager: sharedDataManager,
         designSystem: designSystem

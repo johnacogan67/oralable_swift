@@ -159,16 +159,16 @@ class HistoricalDataAggregator {
         let avgGreen = bucket.map { Double($0.ppg.green) }.reduce(0, +) / count
         
         // Accelerometer averages
-        let avgAccelX = bucket.map { Double($0.accelerometer.x) }.reduce(0, +) / count
-        let avgAccelY = bucket.map { Double($0.accelerometer.y) }.reduce(0, +) / count
-        let avgAccelZ = bucket.map { Double($0.accelerometer.z) }.reduce(0, +) / count
-        let avgMagnitude = bucket.map { $0.accelerometer.magnitude }.reduce(0, +) / count
+        // let avgAccelX = bucket.map { Double($0.accelerometer.x) }.reduce(0, +) / count
+        // let avgAccelY = bucket.map { Double($0.accelerometer.y) }.reduce(0, +) / count
+        // let avgAccelZ = bucket.map { Double($0.accelerometer.z) }.reduce(0, +) / count
+        // let avgMagnitude = bucket.map { $0.accelerometer.magnitude }.reduce(0, +) / count
         
         // Temperature statistics
         let temperatures = bucket.map { $0.temperature.celsius }
         let avgTemperature = temperatures.reduce(0, +) / count
-        let minTemperature = temperatures.min() ?? 0
-        let maxTemperature = temperatures.max() ?? 0
+        // let minTemperature = temperatures.min() ?? 0
+        // let maxTemperature = temperatures.max() ?? 0
         
         // Battery average
         let avgBatteryLevel = bucket.map { Double($0.battery.percentage) }.reduce(0, +) / count
@@ -184,8 +184,8 @@ class HistoricalDataAggregator {
 
         // Note: Grinding metrics would need to be implemented in SensorData
         let grindingCount = 0 // bucket.filter { $0.grinding.isActive }.count
-        let totalGrindingDuration: TimeInterval = 0 // bucket.map { $0.grinding.duration }.reduce(0, +)
-        let avgGrindingIntensity = 0.0 // placeholder
+        // let totalGrindingDuration: TimeInterval = 0 // bucket.map { $0.grinding.duration }.reduce(0, +)
+        // let avgGrindingIntensity = 0.0 // placeholder
 
         return HistoricalDataPoint(
             timestamp: timestamp,

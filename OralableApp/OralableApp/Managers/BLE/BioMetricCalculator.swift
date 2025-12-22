@@ -1,205 +1,102 @@
-//
-//  BioMetricCalculator.swift
-//  OralableApp
-//
-//  Created: November 19, 2025
-//  Responsibility: Calculate derived biometric metrics from sensor data
-//  - Heart rate calculation from PPG (using HeartRateCalculator)
-//  - SpO2 calculation from Red/IR ratio
-//  - Signal quality assessment
-//  - Throttled calculation (500ms intervals) to prevent UI freezes
-//
-
 import Foundation
 import Combine
 
-/// Calculates biometric metrics from sensor data with throttling to prevent performance issues
-@MainActor
+/// Enhanced BioMetricCalculator that coordinates Green/Red/IR signals
+/// and Accelerometer data to extract accurate vitals from muscle sites.
 class BioMetricCalculator: ObservableObject {
-
-    // MARK: - Published Properties
-
+    // Services & Utilities
+    private let hrService = HeartRateService()
+    private let spo2Calculator = SpO2Calculator()
+    private let motionCompensator = MotionCompensator()
+    
+    // Published Outputs for UI integration
     @Published var heartRate: Int = 0
-    @Published var spO2: Int = 0
-    @Published var heartRateQuality: Double = 0.0
+    @Published var spo2: Int = 0
+    @Published var isWorn: Bool = false
+    @Published var signalQuality: Double = 0.0 // 0.0 to 1.0 confidence score
 
-    // MARK: - Private Properties
+    // MARK: - Internal buffers for SpO2 calculation (expects arrays)
+    private var redBuffer: [Int32] = []
+    private var irBuffer: [Int32] = []
+    // Cap buffers to a reasonable size (e.g., ~10 seconds at 50-200 Hz)
+    private let maxSpo2BufferCount: Int = 2000
 
-    private let heartRateCalculator = HeartRateCalculator()
-    private var lastHRCalculation: Date = Date.distantPast
-    private var lastSpO2Calculation: Date = Date.distantPast
-    private let calculationInterval: TimeInterval = 0.5  // Only calculate every 500ms
-
-    #if DEBUG
-    private var hrLogCounter = 0  // Counter for heart rate logging
-    private var spo2LogCounter = 0  // Counter for SpO2 logging
-    #endif
-
-    // MARK: - Initialization
-
-    init() {
-        Logger.shared.info("[BioMetricCalculator] Initialized")
-    }
-
-    // MARK: - Heart Rate Calculation
-
-    /// Calculate heart rate from PPG IR samples
+    /// Main entry point for processing synchronized multi-channel sensor data.
+    /// This is called by the SensorDataProcessor for every received BLE frame.
+    ///
     /// - Parameters:
-    ///   - irSamples: Array of IR PPG values
-    ///   - processor: SensorDataProcessor to update history
-    ///   - healthKitWriter: Optional closure to write to HealthKit
-    /// - Returns: Heart rate result if calculation was performed, nil if throttled
-    func calculateHeartRate(
-        irSamples: [UInt32],
-        processor: SensorDataProcessor,
-        healthKitWriter: ((Double) -> Void)? = nil
-    ) -> HeartRateResult? {
-        // Throttle calculation to prevent UI freeze
-        let now = Date()
-        guard now.timeIntervalSince(lastHRCalculation) >= calculationInterval else {
-            return nil
+    ///   - red: Raw Red LED value (used for SpO2)
+    ///   - ir: Raw Infrared LED value (used for clench detection and SpO2)
+    ///   - green: Raw Green LED value (primary source for Heart Rate)
+    ///   - accelerometer: Combined magnitude (vector sum) of X, Y, Z motion
+    func processFrame(red: Double, ir: Double, green: Double, accelerometer: Double) {
+        
+        // 1. Motion Artifact Cancellation
+        // We use the accelerometer magnitude as the 'noise reference' to clean the Green PPG signal.
+        // This effectively subtracts mechanical clench noise from the heartbeat waveform.
+        let cleanedGreen = motionCompensator.filter(signal: green, noiseReference: accelerometer)
+        
+        // 2. Heart Rate Extraction
+        // We feed the cleaned green signal to the HeartRateService which handles
+        // bandpass filtering, peak detection, and BPM calculation.
+        let hrResult = hrService.process(samples: [cleanedGreen])
+        
+        // 3. Update Vitals on the Main Thread for UI binding
+        DispatchQueue.main.async {
+            // Update HR and Worn Status
+            if hrResult.bpm > 0 {
+                self.heartRate = hrResult.bpm
+                self.signalQuality = hrResult.confidence
+                self.isWorn = hrResult.isWorn
+            } else {
+                // If the signal is too noisy or the device is off, signal quality drops
+                self.signalQuality = 0.0
+            }
+            
+            // 4. SpO2 Calculation (Motion Gating + Buffering)
+            // SpO2 logic is highly sensitive to the DC baseline of Red and IR.
+            // Clenching shifts the DC baseline rapidly, so we "gate" the calculation:
+            // Only update SpO2 when the accelerometer magnitude is stable (near 1.0g).
+            let motionThreshold = 1.05
+
+            // Always append latest samples to buffers; we will only compute when motion is low.
+            // Convert Double to Int32 as expected by SpO2Calculator.
+            let redSample = Int32(clamping: Int(red))
+            let irSample = Int32(clamping: Int(ir))
+            self.redBuffer.append(redSample)
+            self.irBuffer.append(irSample)
+
+            // Trim buffers to avoid unbounded growth
+            if self.redBuffer.count > self.maxSpo2BufferCount {
+                self.redBuffer.removeFirst(self.redBuffer.count - self.maxSpo2BufferCount)
+            }
+            if self.irBuffer.count > self.maxSpo2BufferCount {
+                self.irBuffer.removeFirst(self.irBuffer.count - self.maxSpo2BufferCount)
+            }
+
+            // Only attempt calculation when motion is below threshold
+            if accelerometer < motionThreshold {
+                // Use the existing API that expects arrays
+                if let result = self.spo2Calculator.calculateSpO2WithQuality(redSamples: self.redBuffer, irSamples: self.irBuffer) {
+                    // Round to Int for UI
+                    self.spo2 = Int(result.spo2.rounded())
+                    // Optionally, blend signalQuality with SpO2 quality, or keep separate
+                    // For now, we could keep HR signalQuality unchanged or combine if desired.
+                }
+            } else {
+                // Optional: We keep the last known stable SpO2 during the clench
+                // to prevent the UI from flickering to zero.
+            }
         }
-
-        guard !irSamples.isEmpty else {
-            return nil
-        }
-
-        // Perform FFT-based heart rate calculation
-        guard let hrResult = heartRateCalculator.calculateHeartRate(irSamples: irSamples) else {
-            return nil
-        }
-
-        // Update published properties
-        heartRate = Int(hrResult.bpm)
-        heartRateQuality = hrResult.quality
-        lastHRCalculation = now
-
-        // Log periodically (every 50th calculation)
-        #if DEBUG
-        hrLogCounter += 1
-        if hrLogCounter >= 50 {
-            Logger.shared.info("[BioMetricCalculator] ❤️ Heart Rate: \(heartRate) bpm | Quality: \(String(format: "%.2f", hrResult.quality)) | \(hrResult.qualityLevel.description)")
-            hrLogCounter = 0
-        }
-        #endif
-
-        // Add to history
-        let hrData = HeartRateData(bpm: hrResult.bpm, quality: hrResult.quality, timestamp: now)
-        processor.heartRateHistory.append(hrData)
-
-        // Write to HealthKit if authorized
-        healthKitWriter?(hrResult.bpm)
-
-        return hrResult
     }
-
-    // MARK: - SpO2 Calculation
-
-    /// Calculate SpO2 from Red/IR PPG ratio
-    /// - Parameters:
-    ///   - red: Red PPG value
-    ///   - ir: Infrared PPG value
-    ///   - processor: SensorDataProcessor to update history
-    ///   - healthKitWriter: Optional closure to write to HealthKit
-    /// - Returns: SpO2 percentage if calculation was performed, nil if throttled or invalid data
-    func calculateSpO2(
-        red: Int32,
-        ir: Int32,
-        processor: SensorDataProcessor,
-        healthKitWriter: ((Double) -> Void)? = nil
-    ) -> Double? {
-        // Throttle calculation to prevent UI freeze
-        let now = Date()
-        guard now.timeIntervalSince(lastSpO2Calculation) >= calculationInterval else {
-            return nil
-        }
-
-        // Validate inputs
-        guard red > 1000 && ir > 1000 else {
-            return nil
-        }
-
-        // Calculate SpO2 using simplified ratio method
-        // SpO2 = 110 - 25 * (Red/IR ratio)
-        let ratio = Double(red) / Double(ir)
-        let calculatedSpO2 = max(70, min(100, 110 - 25 * ratio))
-
-        // Update published properties
-        spO2 = Int(calculatedSpO2)
-        lastSpO2Calculation = now
-
-        // Log periodically (every 50th calculation)
-        #if DEBUG
-        spo2LogCounter += 1
-        if spo2LogCounter >= 50 {
-            Logger.shared.info("[BioMetricCalculator] 🫁 SpO2: \(spO2)% | Ratio: \(String(format: "%.3f", ratio))")
-            spo2LogCounter = 0
-        }
-        #endif
-
-        // Add to history
-        let spo2Data = SpO2Data(percentage: calculatedSpO2, quality: 0.8, timestamp: now)
-        processor.spo2History.append(spo2Data)
-
-        // Write to HealthKit if authorized
-        healthKitWriter?(calculatedSpO2)
-
-        return calculatedSpO2
-    }
-
-    /// Calculate SpO2 from grouped PPG values
-    /// - Parameters:
-    ///   - groupedValues: Dictionary of PPG values grouped by timestamp
-    ///   - processor: SensorDataProcessor to update history
-    ///   - healthKitWriter: Optional closure to write to HealthKit
-    /// - Returns: SpO2 percentage if calculation was performed
-    func calculateSpO2FromGrouped(
-        groupedValues: [Date: (red: Int32, ir: Int32, green: Int32)],
-        processor: SensorDataProcessor,
-        healthKitWriter: ((Double) -> Void)? = nil
-    ) -> Double? {
-        guard let latest = groupedValues.values.first else {
-            return nil
-        }
-
-        return calculateSpO2(
-            red: latest.red,
-            ir: latest.ir,
-            processor: processor,
-            healthKitWriter: healthKitWriter
-        )
-    }
-
-    // MARK: - Signal Quality Assessment
-
-    /// Assess signal quality from PPG data
-    /// - Parameter ppgValues: Array of PPG values
-    /// - Returns: Quality score between 0 and 1
-    func assessSignalQuality(_ ppgValues: [Double]) -> Double {
-        guard !ppgValues.isEmpty else {
-            return 0.0
-        }
-
-        // Calculate signal-to-noise ratio (simplified)
-        let mean = ppgValues.reduce(0, +) / Double(ppgValues.count)
-        let variance = ppgValues.map { pow($0 - mean, 2) }.reduce(0, +) / Double(ppgValues.count)
-        let stdDev = sqrt(variance)
-
-        // Normalize to 0-1 range (higher std dev = better signal in PPG)
-        let quality = min(1.0, stdDev / mean)
-
-        return quality
-    }
-
-    // MARK: - Reset Methods
-
-    /// Reset all biometric calculations
+    
+    /// Resets the internal filters and state. Use this when the sensor is re-attached.
     func reset() {
-        heartRate = 0
-        spO2 = 0
-        heartRateQuality = 0.0
-        lastHRCalculation = Date.distantPast
-        lastSpO2Calculation = Date.distantPast
-        Logger.shared.info("[BioMetricCalculator] Reset all metrics")
+        motionCompensator.reset()
+        // Clear SpO2 buffers to force re-accumulation
+        redBuffer.removeAll(keepingCapacity: false)
+        irBuffer.removeAll(keepingCapacity: false)
+        // Add other reset logic if services maintain state
     }
 }
+

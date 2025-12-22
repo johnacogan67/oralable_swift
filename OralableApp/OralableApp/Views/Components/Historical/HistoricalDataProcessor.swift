@@ -11,7 +11,7 @@ class HistoricalDataProcessor: ObservableObject {
     private let normalizationService: PPGNormalizationService
     private var cachedData: [String: ProcessedHistoricalData] = [:]
 
-    init(normalizationService: PPGNormalizationService = .shared) {
+    init(normalizationService: PPGNormalizationService) {
         self.normalizationService = normalizationService
     }
 

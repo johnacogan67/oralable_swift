@@ -3,10 +3,10 @@ import SwiftUI
 // MARK: - Recent Logs Component
 struct ShareRecentLogsView: View {
     @EnvironmentObject var designSystem: DesignSystem
-    @ObservedObject var sensorDataProcessor: SensorDataProcessor
+    @ObservedObject var loggingService: AppLoggingService
 
-    private var recentLogs: [LogMessage] {
-        Array(sensorDataProcessor.logMessages.suffix(10).reversed())
+    private var recentLogs: [LogEntry] {
+        Array(loggingService.recentLogs.suffix(10).reversed())
     }
 
     var body: some View {
@@ -18,14 +18,14 @@ struct ShareRecentLogsView: View {
 
                 Spacer()
 
-                Text("Last \(min(10, sensorDataProcessor.logMessages.count))")
+                Text("Last \(min(10, loggingService.recentLogs.count))")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textTertiary)
             }
 
             Divider()
 
-            if sensorDataProcessor.logMessages.isEmpty {
+            if loggingService.recentLogs.isEmpty {
                 VStack(spacing: designSystem.spacing.sm) {
                     Image(systemName: "tray")
                         .font(.system(size: 40))

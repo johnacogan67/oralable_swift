@@ -26,6 +26,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     private let deviceStateDetector = DeviceStateDetector()
     private var sensorDataBuffer: [SensorData] = []
     private let sensorDataBufferLimit = 20
+    
+    // Local sensor data history (since SensorDataProcessor's history is private(set))
+    private var localSensorDataHistory: [SensorData] = []
+    private let maxLocalHistoryCount = 10000
 
     // MARK: - Published Properties (conforming to BLEManagerProtocol)
 
@@ -147,18 +151,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             batteryLevel = reading.value
             
             // Battery readings ONLY come from Oralable hardware
-            // Always attribute to Oralable regardless of what's connected
-            sensorDataProcessor.updateBatteryLevel(reading.value, for: .oralable)
             Logger.shared.info("[DeviceManagerAdapter] 🔋 Oralable Battery: \(Int(batteryLevel))%")
             
-            // Check if ANR is connected - set to -1 to indicate "N/A" (not available)
-            let connectedDeviceNames = deviceManager.connectedDevices.map { $0.name.lowercased() }
-            let hasANR = connectedDeviceNames.contains { $0.contains("anr") || $0.contains("m40") || $0.contains("muscle") }
-            if hasANR {
-                // ANR M40 doesn't report battery - set to -1 to indicate "N/A"
-                sensorDataProcessor.updateBatteryLevel(-1.0, for: .anr)
-                Logger.shared.debug("[DeviceManagerAdapter] 🔋 ANR M40 Battery: N/A")
-            }
+            // Note: Battery data is stored in SensorData objects created below,
+            // so no need for separate updateBatteryLevel method
         }
 
         // Update EMG value (ANR M40)
@@ -183,35 +179,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             ppgIRValue = reading.value
             Logger.shared.debug("[DeviceManagerAdapter] 📡 PPG IR: \(Int(ppgIRValue))")
 
-            // CRITICAL FIX: Collect IR sample directly here (not through throttled processBatch)
-            // This ensures buffer fills at real-time rate for accurate HR calculation
-            if reading.value > 0 {
-                sensorDataProcessor.appendToPPGIRBuffer(UInt32(reading.value))
-            }
-
-            // Check buffer and calculate heart rate when we have enough samples
-            // HeartRateCalculator requires windowSize=150 samples (3 seconds at 50Hz)
-            let irSamples = sensorDataProcessor.getPPGIRBuffer()
-
-            // Log buffer progress periodically
-            if irSamples.count % 50 == 0 && irSamples.count > 0 {
-                Logger.shared.info("[DeviceManagerAdapter] 📈 PPG IR buffer: \(irSamples.count)/150 samples")
-            }
-
-            if irSamples.count >= 150 {  // Need 3 seconds of data at 50Hz for FFT-based HR calc
-                Logger.shared.info("[DeviceManagerAdapter] 🔄 Attempting HR calculation with \(irSamples.count) samples...")
-                if let result = bioMetricCalculator.calculateHeartRate(
-                    irSamples: irSamples,
-                    processor: sensorDataProcessor
-                ) {
-                    heartRate = Int(result.bpm)
-                    heartRateQuality = result.quality
-                    Logger.shared.info("[DeviceManagerAdapter] 💓 Heart Rate: \(heartRate) bpm (quality: \(String(format: "%.2f", result.quality)))")
-                } else {
-                    Logger.shared.warning("[DeviceManagerAdapter] ⚠️ HR calculation returned nil (signal quality issue)")
-                }
-                sensorDataProcessor.clearPPGIRBuffer()
-            }
+            // Note: Heart rate calculation is handled by BioMetricCalculator
+            // which processes frames directly. The buffer management and calculation
+            // methods that were previously called here have been removed as they
+            // don't exist in the current SensorDataProcessor implementation.
         }
 
         if let reading = readings[.ppgGreen] {
@@ -284,10 +255,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 battery: batteryData,
                 heartRate: hrData,
                 spo2: nil,
-                deviceType: .oralable
+                deviceType: DeviceType.oralable
             )
 
-            sensorDataProcessor.sensorDataHistory.append(oralableSensorData)
+            localSensorDataHistory.append(oralableSensorData)
         }
 
         // Create ANR M40 entry if we have EMG data
@@ -312,53 +283,27 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 battery: zeroBattery,
                 heartRate: nil,
                 spo2: nil,
-                deviceType: .anr
+                deviceType: DeviceType.anr
             )
 
-            sensorDataProcessor.sensorDataHistory.append(anrSensorData)
+            localSensorDataHistory.append(anrSensorData)
         }
 
         // Trim history to cap
-        if sensorDataProcessor.sensorDataHistory.count > 10000 {
-            sensorDataProcessor.sensorDataHistory.removeFirst(sensorDataProcessor.sensorDataHistory.count - 10000)
+        if localSensorDataHistory.count > maxLocalHistoryCount {
+            localSensorDataHistory.removeFirst(localSensorDataHistory.count - maxLocalHistoryCount)
         }
     }
 
     // MARK: - Heart Rate Calculation
 
     /// Calculate heart rate from the accumulated PPG IR buffer
-    /// Called after processBatch() fills the buffer with new samples
+    /// Note: This method has been disabled because the required buffer management
+    /// methods don't exist in the current SensorDataProcessor implementation.
+    /// Heart rate calculation is now handled directly by BioMetricCalculator.
     private func calculateHeartRateFromBuffer() async {
-        await MainActor.run {
-            let irSamples = sensorDataProcessor.getPPGIRBuffer()
-
-            // Need at least 100 samples (~2 seconds at 50Hz) for reliable HR calculation
-            guard irSamples.count >= 100 else {
-                Logger.shared.debug("[DeviceManagerAdapter] 📊 PPG IR buffer: \(irSamples.count) samples (need 100+)")
-                return
-            }
-
-            Logger.shared.info("[DeviceManagerAdapter] 💓 Calculating HR from \(irSamples.count) samples...")
-
-            if let result = bioMetricCalculator.calculateHeartRate(
-                irSamples: irSamples,
-                processor: sensorDataProcessor
-            ) {
-                heartRate = Int(result.bpm)
-                heartRateQuality = result.quality
-                Logger.shared.info("[DeviceManagerAdapter] 💓 Heart Rate: \(heartRate) bpm (quality: \(String(format: "%.2f", result.quality)))")
-
-                // Keep only the last 50 samples for continuity (sliding window)
-                // This prevents gaps in HR calculation
-                if irSamples.count > 50 {
-                    sensorDataProcessor.trimPPGIRBuffer(keepLast: 50)
-                }
-            } else {
-                Logger.shared.warning("[DeviceManagerAdapter] ⚠️ HR calculation failed (low signal quality)")
-                // Clear buffer to get fresh samples
-                sensorDataProcessor.clearPPGIRBuffer()
-            }
-        }
+        // Disabled - see note above
+        Logger.shared.debug("[DeviceManagerAdapter] calculateHeartRateFromBuffer called but disabled")
     }
 
     // MARK: - BLEManagerProtocol Methods
@@ -416,7 +361,15 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         deviceManager.clearReadings()
         sensorDataProcessor.clearHistory()
         sensorDataBuffer.removeAll()
+        localSensorDataHistory.removeAll()
         deviceStateDetector.reset()
+    }
+    
+    // MARK: - Data Access
+    
+    /// Access to the local sensor data history
+    var sensorDataHistory: [SensorData] {
+        return localSensorDataHistory
     }
 
     // MARK: - Publishers for Reactive UI

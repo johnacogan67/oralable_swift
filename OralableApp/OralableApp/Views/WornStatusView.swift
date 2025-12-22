@@ -8,23 +8,37 @@
 
 import SwiftUI
 
+import SwiftUI
+
 /// An Apple-inspired UI component to indicate sensor coupling and HR.
 struct WornStatusView: View {
-    let result: HeartRateService.HRResult
+    let result: HeartRateService.HRResult?
     
+    private var isWorn: Bool {
+        (result?.confidence ?? 0) > 0.5
+    }
+    
+    private var bpm: Int {
+        Int(result?.bpm ?? 0)
+    }
+    
+    private var confidence: Double {
+        result?.confidence ?? 0
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             // Pulse Circle
             ZStack {
                 Circle()
-                    .stroke(result.isWorn ? Color.green.opacity(0.2) : Color.gray.opacity(0.1), lineWidth: 4)
+                    .stroke(isWorn ? Color.green.opacity(0.2) : Color.gray.opacity(0.1), lineWidth: 4)
                     .frame(width: 44, height: 44)
                 
-                if result.isWorn {
+                if isWorn {
                     Image(systemName: "heart.fill")
                         .foregroundColor(.red)
-                        .scaleEffect(result.isWorn ? 1.1 : 1.0)
-                        .animation(Animation.easeInOut(duration: 0.6).repeatForever(), value: result.isWorn)
+                        .scaleEffect(isWorn ? 1.1 : 1.0)
+                        .animation(Animation.easeInOut(duration: 0.6).repeatForever(), value: isWorn)
                 } else {
                     Image(systemName: "person.fill.viewfinder")
                         .foregroundColor(.gray)
@@ -32,12 +46,12 @@ struct WornStatusView: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(result.isWorn ? "Sensor Coupled" : "Reposition Sensor")
+                Text(isWorn ? "Sensor Coupled" : "Reposition Sensor")
                     .font(.custom("OpenSans-Bold", size: 14))
                     .foregroundColor(.primary)
                 
-                if result.isWorn {
-                    Text("\(result.bpm) BPM")
+                if isWorn {
+                    Text(bpm > 0 ? "\(bpm) BPM" : "Measuring...")
                         .font(.custom("OpenSans-Regular", size: 12))
                         .foregroundColor(.secondary)
                 } else {
@@ -65,9 +79,9 @@ struct WornStatusView: View {
     }
     
     private func qualityColor(for index: Int) -> Color {
-        let barsToFill = Int(result.confidence * 4)
+        let barsToFill = Int(confidence * 4)
         if index < barsToFill {
-            return result.isWorn ? .green : .orange
+            return isWorn ? .green : .orange
         }
         return Color.gray.opacity(0.2)
     }

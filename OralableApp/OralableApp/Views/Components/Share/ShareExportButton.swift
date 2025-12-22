@@ -12,7 +12,7 @@ struct ShareExportButton: View {
     @State private var isExporting = false
 
     private var hasData: Bool {
-        !sensorDataProcessor.logMessages.isEmpty || !sensorDataProcessor.sensorDataHistory.isEmpty
+        !Logger.shared.service.recentLogs.isEmpty || !sensorDataProcessor.sensorDataHistory.isEmpty
     }
 
     var body: some View {
@@ -60,7 +60,7 @@ struct ShareExportButton: View {
 
             let exportResult = csvExportManager.exportData(
                 sensorData: sensorDataProcessor.sensorDataHistory,
-                logs: sensorDataProcessor.logMessages.map { $0.message }
+                logs: Logger.shared.service.recentLogs.map { $0.message }
             )
 
             DispatchQueue.main.async {

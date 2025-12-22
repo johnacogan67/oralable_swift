@@ -265,6 +265,9 @@ extension UserDefaults {
 
 extension SettingsViewModel {
     static func mock() -> SettingsViewModel {
-        return SettingsViewModel(sensorDataProcessor: SensorDataProcessor())
+        // FIX: SensorDataProcessor requires a BioMetricCalculator
+        let calculator = BioMetricCalculator()
+        let processor = SensorDataProcessor(calculator: calculator)
+        return SettingsViewModel(sensorDataProcessor: processor)
     }
 }

@@ -7,7 +7,7 @@ struct ShareClearDataButton: View {
     @EnvironmentObject var designSystem: DesignSystem
 
     private var hasData: Bool {
-        !sensorDataProcessor.logMessages.isEmpty || !sensorDataProcessor.sensorDataHistory.isEmpty
+        !sensorDataProcessor.sensorDataHistory.isEmpty
     }
 
     var body: some View {

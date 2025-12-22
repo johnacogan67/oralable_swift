@@ -15,6 +15,7 @@ struct SubscriptionSettingsView: View {
     @Binding var selectedMode: HistoricalAppMode?
     @StateObject private var authManager = AuthenticationManager()
     @StateObject private var subscriptionManager = SubscriptionManager()
+    @StateObject private var loggingService = AppLoggingService()
     @State private var showSignOutAlert = false
     @State private var showLogs = false
     @State private var showSubscriptionInfo = false
@@ -170,7 +171,7 @@ struct SubscriptionSettingsView: View {
                         Image(systemName: "doc.text.magnifyingglass")
                         Text("View Logs")
                         Spacer()
-                        Text("\(sensorDataProcessor.logMessages.count)")
+                        Text("\(loggingService.recentLogs.count)")
                             .foregroundColor(.secondary)
                             .font(.caption)
                         Image(systemName: "chevron.right")
@@ -190,7 +191,7 @@ struct SubscriptionSettingsView: View {
                     }
                 }
                 
-                Button(action: { sensorDataProcessor.logMessages.removeAll() }) {
+                Button(action: { loggingService.clearLogs() }) {
                     HStack {
                         Image(systemName: "trash")
                         Text("Clear Logs")
@@ -268,7 +269,7 @@ struct SubscriptionSettingsView: View {
         }
         .navigationTitle("Settings")
         .sheet(isPresented: $showLogs) {
-            BLELogsView(logs: sensorDataProcessor.logMessages)
+            BLELogsView(logs: loggingService.recentLogs)
         }
         .sheet(isPresented: $showSubscriptionInfo) {
             SubscriptionInfoView()
@@ -543,10 +544,10 @@ struct FeatureBullet: View {
 
 struct BLELogsView: View {
     @Environment(\.dismiss) private var dismiss
-    let logs: [LogMessage]
+    let logs: [LogEntry]
     @State private var searchText = ""
     
-    var filteredLogs: [LogMessage] {
+    var filteredLogs: [LogEntry] {
         if searchText.isEmpty {
             return logs
         }
@@ -573,6 +574,16 @@ struct BLELogsView: View {
                     List {
                         ForEach(Array(filteredLogs.enumerated().reversed()), id: \.offset) { index, log in
                             VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Image(systemName: log.level.icon)
+                                        .foregroundColor(log.level.color)
+                                        .font(.caption)
+                                    
+                                    Text(log.category)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                }
+                                
                                 Text(log.message)
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.primary)

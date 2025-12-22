@@ -1,3 +1,11 @@
+//
+//  MotionCompensator.swift
+//  OralableApp
+//
+//  Created by John A Cogan on 22/12/2025.
+//
+
+
 import Foundation
 
 /// An Adaptive LMS (Least Mean Squares) Filter for motion artifact cancellation.

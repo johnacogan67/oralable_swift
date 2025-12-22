@@ -9,6 +9,7 @@
 import SwiftUI
 import Combine
 import CoreBluetooth
+import Foundation
 
 @MainActor
 class DashboardViewModel: ObservableObject {
@@ -87,6 +88,10 @@ class DashboardViewModel: ObservableObject {
         sessionDuration
     }
 
+    // MARK: - Heart Rate & Worn Status
+    @Published var currentHRResult: HeartRateService.HRResult?
+    @Published var wornStatus: WornStatus = .initializing
+
     // MARK: - Device-Specific Display Labels
 
     /// Label for the muscle activity card based on connected device type
@@ -131,6 +136,7 @@ class DashboardViewModel: ObservableObject {
     private let appStateManager: AppStateManager
     private let recordingStateCoordinator: RecordingStateCoordinator
     private var cancellables = Set<AnyCancellable>()
+    private let heartRateService = HeartRateService()
 
     // MARK: - Demo Mode Properties
     private let featureFlags = FeatureFlags.shared
@@ -349,6 +355,30 @@ class DashboardViewModel: ObservableObject {
             .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] quality in
                 self?.signalQuality = Int(quality * 100)
+            }
+            .store(in: &cancellables)
+
+        // Create a publisher for accelerometer magnitude in G's
+        let accelMagnitudePublisher = deviceManagerAdapter.accelXPublisher
+            .combineLatest(deviceManagerAdapter.accelYPublisher, deviceManagerAdapter.accelZPublisher)
+            .map { x, y, z -> Double in
+                // Convert raw accelerometer values to G's before calculating magnitude
+                let xG = AccelerometerConversion.toG(Int16(clamping: Int(x)))
+                let yG = AccelerometerConversion.toG(Int16(clamping: Int(y)))
+                let zG = AccelerometerConversion.toG(Int16(clamping: Int(z)))
+                return sqrt(xG*xG + yG*yG + zG*zG)
+            }
+            .eraseToAnyPublisher()
+
+        // Zip PPG IR stream with accelerometer magnitude stream, collect 100 samples, and process
+        deviceManagerAdapter.ppgIRValuePublisher
+            .zip(accelMagnitudePublisher)
+            .collect(100)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] samples in
+                let irSamples = samples.map { $0.0 }
+                let accelMagnitudes = samples.map { $0.1 }
+                self?.updateHeartRate(with: irSamples, accelMagnitudes: accelMagnitudes)
             }
             .store(in: &cancellables)
     }
@@ -613,9 +643,25 @@ class DashboardViewModel: ObservableObject {
     }
 }
 
-// MARK: - Extensions
+/// Extension to handle real-time HR integration in the Dashboard.
 extension DashboardViewModel {
+    
     func toggleRecording() {
         recordingStateCoordinator.toggleRecording()
+    }
+    
+    // Call this inside your SensorDataProcessor subscription
+    func updateHeartRate(with rawIRSamples: [Double], accelMagnitudes: [Double]) {
+        let result = heartRateService.process(samples: rawIRSamples)
+        self.currentHRResult = result
+        
+        // Map boolean isWorn to WornStatus enum
+        if result.confidence < 0.3 {
+            self.wornStatus = .initializing
+        } else if result.isWorn {
+            self.wornStatus = .active
+        } else {
+            self.wornStatus = .repositioning
+        }
     }
 }
