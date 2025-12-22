@@ -1,62 +1,87 @@
 import Foundation
 
-/// Refined service to extract Heart Rate from cleaned PPG signals.
+/// A dedicated service to extract Heart Rate from cleaned PPG signals (Green Channel).
+/// This service expects signal data that has already been processed by the MotionCompensator.
 class HeartRateService {
+    
+    // Constants
+    private let minBPM = 40.0
+    private let maxBPM = 180.0
     private let sampleRate = 200.0
-    private let windowSize = 1000 // 5 seconds
+    private let windowSize = 1000   // 5 seconds buffer size
+    
+    // Internal Buffer
     private var buffer: [Double] = []
     
     struct HRResult {
         let bpm: Int
-        let confidence: Double
+        let confidence: Double // 0.0 to 1.0
         let isWorn: Bool
     }
     
+    /// Processes a batch of cleaned samples (typically Green channel)
     func process(samples: [Double]) -> HRResult {
         buffer.append(contentsOf: samples)
-        if buffer.count > windowSize { buffer.removeFirst(buffer.count - windowSize) }
         
+        // Maintain fixed window size
+        if buffer.count > windowSize {
+            buffer.removeFirst(buffer.count - windowSize)
+        }
+        
+        // Wait for buffer to fill before processing
         guard buffer.count >= windowSize else {
             return HRResult(bpm: 0, confidence: 0, isWorn: false)
         }
         
-        // 1. Adaptive Filtering
-        // We use a band-pass (0.7Hz to 3.5Hz) for human HR (40-210 BPM)
-        let filtered = applyBandpass(buffer)
+        // 1. Bandpass Filter (0.5Hz - 4Hz)
+        // Focuses on the frequency band where human heart rates exist.
+        let filtered = applyBandpassFilter(buffer)
         
-        // 2. Local Peak Detection
-        let peaks = detectPeaks(in: filtered)
+        // 2. Peak Detection
+        // Identifies the systolic peaks in the pulse wave.
+        let peaks = findPeaks(in: filtered)
         
-        // 3. Calculate Metrics
-        return calculateMetrics(from: peaks, raw: buffer, filtered: filtered)
+        // 3. Calculate BPM & Confidence
+        let (bpm, confidence) = calculateBPM(from: peaks)
+        
+        // 4. Perfusion Check (Worn Status)
+        // Checks the AC/DC ratio to ensure the sensor is actually on skin.
+        let dc = buffer.reduce(0, +) / Double(buffer.count)
+        let ac = filtered.map { abs($0) }.reduce(0, +) / Double(filtered.count)
+        
+        // AC/DC ratio > 0.001 usually indicates pulsatile blood flow
+        let isWorn = bpm > 0 && confidence > 0.5 && (ac/dc > 0.001)
+        
+        return HRResult(bpm: bpm, confidence: confidence, isWorn: isWorn)
     }
     
-    private func applyBandpass(_ data: [Double]) -> [Double] {
+    private func applyBandpassFilter(_ data: [Double]) -> [Double] {
         let mean = data.reduce(0, +) / Double(data.count)
         let centered = data.map { $0 - mean }
-        // Simple 3-point average smoothing
-        var result = centered
-        for i in 1..<centered.count-1 {
-            result[i] = (centered[i-1] + centered[i] + centered[i+1]) / 3.0
+        // Simple 5-point Moving Average for smoothing
+        var smoothed = centered
+        for i in 2..<centered.count-2 {
+            smoothed[i] = (centered[i-2] + centered[i-1] + centered[i] + centered[i+1] + centered[i+2]) / 5.0
         }
-        return result
+        return smoothed
     }
     
-    private func detectPeaks(in data: [Double]) -> [Int] {
+    private func findPeaks(in data: [Double]) -> [Int] {
         var peaks: [Int] = []
-        let threshold = (data.max() ?? 0) * 0.3
+        let threshold = (data.max() ?? 0) * 0.4
         
         for i in 1..<data.count-1 {
             if data[i] > data[i-1] && data[i] > data[i+1] && data[i] > threshold {
-                if let last = peaks.last, (i - last) < Int(sampleRate * 0.4) { continue }
-                peaks.append(i)
+                 // Ensure peaks are at least 300ms apart (max 200 BPM)
+                 if let last = peaks.last, (i - last) < Int(sampleRate * 0.3) { continue }
+                 peaks.append(i)
             }
         }
         return peaks
     }
     
-    private func calculateMetrics(from peaks: [Int], raw: [Double], filtered: [Double]) -> HRResult {
-        guard peaks.count >= 3 else { return HRResult(bpm: 0, confidence: 0, isWorn: false) }
+    private func calculateBPM(from peaks: [Int]) -> (Int, Double) {
+        guard peaks.count >= 4 else { return (0, 0.0) }
         
         var intervals: [Double] = []
         for i in 1..<peaks.count {
@@ -64,17 +89,13 @@ class HeartRateService {
         }
         
         let avgInterval = intervals.reduce(0, +) / Double(intervals.count)
-        let bpm = Int(60.0 / (avgInterval / sampleRate))
+        let bpm = 60.0 / (avgInterval / sampleRate)
         
-        // Signal Stability Check
-        let stdDev = sqrt(intervals.map { pow($0 - avgInterval, 2) }.reduce(0, +) / Double(intervals.count))
+        // Calculate regularity (confidence)
+        let variance = intervals.map { pow($0 - avgInterval, 2) }.reduce(0, +) / Double(intervals.count)
+        let stdDev = sqrt(variance)
         let confidence = max(0, 1.0 - (stdDev / avgInterval))
         
-        // Perfusion check (AC/DC ratio)
-        let dc = raw.reduce(0, +) / Double(raw.count)
-        let ac = filtered.map { abs($0) }.reduce(0, +) / Double(filtered.count)
-        let isWorn = (ac/dc) > 0.001 && confidence > 0.5
-        
-        return HRResult(bpm: bpm, confidence: confidence, isWorn: isWorn)
+        return (Int(bpm), confidence)
     }
 }
