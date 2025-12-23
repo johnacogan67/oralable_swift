@@ -31,9 +31,16 @@ actor SignalProcessingPipeline {
     /// - Parameters:
     ///   - ir: The infrared signal value.
     ///   - red: The red signal value.
-    ///   - accMagnitude: The magnitude of the accelerometer vector.
+    ///   - green: The green signal value.
+    ///   - accelerometer: The accelerometer data.
     /// - Returns: A `ProcessingResult` containing calculated biometrics.
-    func process(ir: Double, red: Double, accMagnitude: Double) -> ProcessingResult {
+    func process(ir: Double, red: Double, green: Double, accelerometer: AccelerometerData) -> ProcessingResult {
+        // Calculate magnitude from raw accelerometer data (assuming 16384.0 = 1g)
+        let normX = Double(accelerometer.x) / 16384.0
+        let normY = Double(accelerometer.y) / 16384.0
+        let normZ = Double(accelerometer.z) / 16384.0
+        let accMagnitude = sqrt(normX * normX + normY * normY + normZ * normZ)
+
         // 1. Classify activity to understand the context of the signal.
         let activity = activityClassifier.classify(ir: ir, accMagnitude: accMagnitude)
 
@@ -72,4 +79,3 @@ actor SignalProcessingPipeline {
         return ProcessingResult(heartRate: calculatedHR, spo2: calculatedSpO2, activity: activity)
     }
 }
-
