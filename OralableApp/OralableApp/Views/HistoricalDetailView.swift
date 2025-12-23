@@ -18,6 +18,18 @@ class DataSharingService: ObservableObject {
         case pdf = "PDF Report"
         case healthKit = "Apple Health"
 
+        /// Returns only export formats enabled via feature flags
+        static var availableCases: [ShareFormat] {
+            var cases: [ShareFormat] = [.csv, .json]
+            if FeatureFlags.shared.showPDFExport {
+                cases.append(.pdf)
+            }
+            if FeatureFlags.shared.showHealthKitExport {
+                cases.append(.healthKit)
+            }
+            return cases
+        }
+
         var fileExtension: String {
             switch self {
             case .csv: return "csv"

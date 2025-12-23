@@ -16,6 +16,15 @@ class ShareViewModel: ObservableObject {
         case csv = "CSV"
         case pdf = "PDF"
         case json = "JSON"
+
+        /// Returns only export formats enabled via feature flags
+        static var availableCases: [ExportFormat] {
+            var cases: [ExportFormat] = [.csv, .json]
+            if FeatureFlags.shared.showPDFExport {
+                cases.append(.pdf)
+            }
+            return cases
+        }
     }
     
     // MARK: - Published Properties

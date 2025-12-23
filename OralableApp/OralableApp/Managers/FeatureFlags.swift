@@ -130,6 +130,15 @@ class FeatureFlags: ObservableObject {
         didSet { defaults.set(showPilotStudy, forKey: Keys.showPilotStudy) }
     }
 
+    // MARK: - Post-Launch Features (v1.1)
+    // TODO: Enable these when implementations are complete
+
+    /// Whether to show PDF export option (not yet implemented)
+    @Published var showPDFExport: Bool = false
+
+    /// Whether to show HealthKit export option (not yet implemented)
+    @Published var showHealthKitExport: Bool = false
+
     // MARK: - Initialization
     init() {
         // Load saved values or use pre-launch defaults
