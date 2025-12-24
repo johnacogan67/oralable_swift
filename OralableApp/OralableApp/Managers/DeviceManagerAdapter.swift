@@ -22,6 +22,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     private let deviceManager: DeviceManager
     private let sensorDataProcessor: SensorDataProcessor
     private let bioMetricCalculator = BioMetricCalculator()
+    private let heartRateCalculator = HeartRateCalculator(sampleRate: 50.0)
     private var cancellables = Set<AnyCancellable>()
     private let deviceStateDetector = DeviceStateDetector()
     private var sensorDataBuffer: [SensorData] = []
@@ -179,10 +180,16 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             ppgIRValue = reading.value
             Logger.shared.debug("[DeviceManagerAdapter] 📡 PPG IR: \(Int(ppgIRValue))")
 
-            // Note: Heart rate calculation is handled by BioMetricCalculator
-            // which processes frames directly. The buffer management and calculation
-            // methods that were previously called here have been removed as they
-            // don't exist in the current SensorDataProcessor implementation.
+            // Calculate heart rate from IR signal using HeartRateCalculator
+            if ppgIRValue > 100 {
+                if let calculatedHR = heartRateCalculator.process(irValue: ppgIRValue) {
+                    if calculatedHR > 30 && calculatedHR < 200 {
+                        heartRate = calculatedHR
+                        heartRateQuality = 0.8
+                        Logger.shared.info("[DeviceManagerAdapter] ❤️ Calculated HR: \(heartRate) bpm")
+                    }
+                }
+            }
         }
 
         if let reading = readings[.ppgGreen] {
@@ -266,6 +273,12 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             // Log every 500 samples to verify storage
             if sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
                 Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
+                // Log HR storage status
+                if let hr = hrData {
+                    Logger.shared.info("[DeviceManagerAdapter] 💓 HR in SensorData: \(hr.bpm) bpm")
+                } else {
+                    Logger.shared.debug("[DeviceManagerAdapter] 💔 HR nil (heartRate=\(heartRate))")
+                }
             }
         }
 

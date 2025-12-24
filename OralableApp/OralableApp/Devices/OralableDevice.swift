@@ -80,6 +80,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     private let sensorDataCharUUID = CBUUID(string: "3A0FF001-98C4-46B2-94AF-1AEE0FD4C48E")      // PPG data (244 bytes)
     private let accelerometerCharUUID = CBUUID(string: "3A0FF002-98C4-46B2-94AF-1AEE0FD4C48E")  // Accelerometer (154 bytes)
     private let commandCharUUID = CBUUID(string: "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")        // Temperature (8 bytes)
+    private let tgmBatteryCharUUID = CBUUID(string: "3A0FF004-98C4-46B2-94AF-1AEE0FD4C48E")     // TGM Battery (millivolts)
 
     // MARK: - Standard BLE Battery Service (0x180F)
     
@@ -91,6 +92,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     private var commandCharacteristic: CBCharacteristic?
     private var accelerometerCharacteristic: CBCharacteristic?  // Fix 1: Renamed from ppgWaveformCharacteristic
     private var batteryLevelCharacteristic: CBCharacteristic?
+    private var tgmBatteryCharacteristic: CBCharacteristic?
     
     // MARK: - Connection Readiness State (Fix 3)
     
@@ -1050,13 +1052,19 @@ extension OralableDevice: CBPeripheralDelegate {
                 Logger.shared.info("[OralableDevice] ✅ Accelerometer characteristic found (3A0FF002)")
                 foundCount += 1
 
+            case tgmBatteryCharUUID:
+                tgmBatteryCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] 🔋 TGM Battery characteristic found (3A0FF004)")
+                peripheral.setNotifyValue(true, for: characteristic)
+                foundCount += 1
+
             default:
                 Logger.shared.debug("[OralableDevice] Other characteristic: \(characteristic.uuid.uuidString)")
             }
         }
 
         if foundCount >= 1 {  // At minimum need sensor data characteristic
-            Logger.shared.info("[OralableDevice] ✅ Found \(foundCount)/3 expected characteristics")
+            Logger.shared.info("[OralableDevice] ✅ Found \(foundCount)/4 expected characteristics")
             characteristicDiscoveryContinuation?.resume()
             characteristicDiscoveryContinuation = nil
         } else {
@@ -1173,6 +1181,10 @@ extension OralableDevice: CBPeripheralDelegate {
         case batteryLevelCharUUID:
             // Standard battery level (1 byte, 0-100%)
             parseStandardBatteryLevel(data)
+
+        case tgmBatteryCharUUID:
+            // TGM Battery (4 bytes, millivolts)
+            parseBatteryData(data)
 
         default:
             Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on unknown characteristic: \(characteristic.uuid.uuidString)")
