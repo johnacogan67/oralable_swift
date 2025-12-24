@@ -22,10 +22,20 @@ class SensorDataProcessor: ObservableObject {
     /// Populate history with external data (e.g. mock data)
     func populateHistory(with data: [SensorData]) {
         sensorDataHistory.append(contentsOf: data)
-        
+
         // Trim history if needed
         if sensorDataHistory.count > maxHistoryCount {
             sensorDataHistory.removeFirst(sensorDataHistory.count - maxHistoryCount)
+        }
+    }
+
+    /// Append a single SensorData reading to history (called from DeviceManagerAdapter)
+    func appendToHistory(_ data: SensorData) {
+        sensorDataHistory.append(data)
+
+        // Trim history if needed
+        if sensorDataHistory.count > maxHistoryCount {
+            sensorDataHistory.removeFirst()
         }
     }
 

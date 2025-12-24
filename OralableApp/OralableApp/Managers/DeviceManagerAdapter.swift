@@ -259,6 +259,14 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             )
 
             localSensorDataHistory.append(oralableSensorData)
+
+            // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
+            sensorDataProcessor.appendToHistory(oralableSensorData)
+
+            // Log every 500 samples to verify storage
+            if sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
+                Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
+            }
         }
 
         // Create ANR M40 entry if we have EMG data
@@ -287,6 +295,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             )
 
             localSensorDataHistory.append(anrSensorData)
+
+            // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
+            sensorDataProcessor.appendToHistory(anrSensorData)
         }
 
         // Trim history to cap
