@@ -20,19 +20,28 @@ struct HeartRateResult {
 /// Uses a combination of bandpass filtering, derivative analysis, and adaptive thresholding.
 class HeartRateCalculator {
     private var irValues: [Double] = []
-    private let windowSize = 150 // Approx 3-5 seconds depending on sampling rate
-    private let sampleRate: Double = 30.0 // Adjust based on your actual BLE frequency
-    
+    private let windowSize: Int
+    private let sampleRate: Double
+
     // Filter State
     private var lowPassValue: Double = 0
     private var highPassValue: Double = 0
     private let alphaLP: Double = 0.15 // Smoothing
     private let alphaHP: Double = 0.05 // Baseline tracking
-    
+
     // Peak Detection State
     private var lastPeakTime = Date()
     private var minPeakInterval: TimeInterval = 0.4 // Max HR ~150bpm
-    
+
+    // MARK: - Initialization
+
+    /// Initialize with configurable sample rate
+    /// - Parameter sampleRate: PPG sample rate in Hz. Default 50.0 for Oralable device.
+    init(sampleRate: Double = 50.0) {
+        self.sampleRate = sampleRate
+        self.windowSize = Int(sampleRate * 3.0)  // ~3 seconds of data
+    }
+
     func process(irValue: Double) -> Int? {
         // 1. DC Offset Removal & Bandpass Filter
         // We use a simple Recursive High-Pass to remove baseline and Low-Pass to remove noise
