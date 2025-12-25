@@ -3,7 +3,7 @@
 //  OralableApp
 //
 //  Created: November 2024
-//  UPDATED: December 10, 2025
+//  UPDATED: December 25, 2025
 //
 //  Fixes Applied:
 //  - Fix 1: Renamed ppgWaveform references to accelerometer (code clarity)
@@ -11,6 +11,7 @@
 //  - Fix 3: Added BLE connection readiness state machine (reliability)
 //  - Fix 4: Added AccelerometerConversion utility struct (convenience)
 //  - Fix 6: CORRECTED PPG channel order mapping (IR at offset 0, Red at offset 1)
+//  - Fix 7: Added tgmBatteryCharUUID to characteristic discovery (battery reporting)
 //
 //  Previous Updates:
 //  - November 29, 2025 (Day 4): Batch updates to prevent performance flooding
@@ -271,7 +272,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             peripheral?.discoverCharacteristics([
                 sensorDataCharUUID,
                 commandCharUUID,
-                accelerometerCharUUID  // Fix 1: Renamed
+                accelerometerCharUUID,  // Fix 1: Renamed
+                tgmBatteryCharUUID      // Fix 7: TGM Battery for battery updates
             ], for: service)
         }
     }
