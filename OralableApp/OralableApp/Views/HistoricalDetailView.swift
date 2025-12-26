@@ -16,16 +16,12 @@ class DataSharingService: ObservableObject {
         case csv = "CSV"
         case json = "JSON"
         case pdf = "PDF Report"
-        case healthKit = "Apple Health"
 
         /// Returns only export formats enabled via feature flags
         static var availableCases: [ShareFormat] {
             var cases: [ShareFormat] = [.csv, .json]
             if FeatureFlags.shared.showPDFExport {
                 cases.append(.pdf)
-            }
-            if FeatureFlags.shared.showHealthKitExport {
-                cases.append(.healthKit)
             }
             return cases
         }
@@ -35,7 +31,6 @@ class DataSharingService: ObservableObject {
             case .csv: return "csv"
             case .json: return "json"
             case .pdf: return "pdf"
-            case .healthKit: return ""
             }
         }
     }
@@ -53,9 +48,6 @@ class DataSharingService: ObservableObject {
             return createJSONFile(data, metricType: metricType, timeRange: timeRange)
         case .pdf:
             return createPDFReport(data, metricType: metricType, timeRange: timeRange)
-        case .healthKit:
-            exportToHealthKit(data, metricType: metricType)
-            return nil
         }
     }
 
@@ -92,10 +84,6 @@ class DataSharingService: ObservableObject {
     private func createPDFReport(_ data: [SensorData], metricType: MetricType, timeRange: TimeRange) -> URL? {
         Logger.shared.info("[HistoricalDetailView] PDF report creation not implemented yet")
         return nil
-    }
-
-    private func exportToHealthKit(_ data: [SensorData], metricType: MetricType) {
-        Logger.shared.info("[HistoricalDetailView] HealthKit export not implemented yet")
     }
 
     private func saveToFile(content: String, filename: String) -> URL? {

@@ -107,10 +107,9 @@ class SharedDataManager: ObservableObject {
     private let container: CKContainer
     private let publicDatabase: CKDatabase
     private let authenticationManager: AuthenticationManager
-    private let healthKitManager: HealthKitManager
     private weak var sensorDataProcessor: SensorDataProcessor?
 
-    init(authenticationManager: AuthenticationManager, healthKitManager: HealthKitManager, sensorDataProcessor: SensorDataProcessor? = nil) {
+    init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
         self.container = CKContainer(identifier: "iCloud.com.jacdental.oralable.shared")
 
@@ -119,9 +118,6 @@ class SharedDataManager: ObservableObject {
 
         // Store reference to authentication manager
         self.authenticationManager = authenticationManager
-
-        // Store reference to HealthKit manager
-        self.healthKitManager = healthKitManager
 
         // Store reference to sensor data processor for sensor data access
         self.sensorDataProcessor = sensorDataProcessor
@@ -452,37 +448,6 @@ class SharedDataManager: ObservableObject {
     // MARK: - Get Patient Health Data for Sharing
 
     func getPatientHealthDataForSharing(from startDate: Date, to endDate: Date) async throws -> [HealthDataRecord] {
-        // Fetch HealthKit data if authorized
-        var healthKitData: HealthKitDataForSharing? = nil
-
-        if healthKitManager.isAuthorized {
-            do {
-                // Fetch heart rate data
-                let heartRateReadings = try await healthKitManager.readHeartRateSamples(
-                    from: startDate,
-                    to: endDate
-                )
-
-                // Fetch SpO2 data
-                let spo2Readings = try await healthKitManager.readBloodOxygenSamples(
-                    from: startDate,
-                    to: endDate
-                )
-
-                // Create HealthKit data structure
-                healthKitData = HealthKitDataForSharing(
-                    heartRateReadings: heartRateReadings,
-                    spo2Readings: spo2Readings,
-                    sleepData: nil  // TODO: Add sleep data fetching
-                )
-
-                Logger.shared.info("[SharedDataManager] Fetched HealthKit data: \(heartRateReadings.count) HR, \(spo2Readings.count) SpO2")
-            } catch {
-                Logger.shared.warning("[SharedDataManager] Failed to fetch HealthKit data: \(error)")
-                // Continue without HealthKit data
-            }
-        }
-
         // Get sensor data from processor
         var sensorRecords: [HealthDataRecord] = []
 
@@ -501,8 +466,7 @@ class SharedDataManager: ObservableObject {
                         recordingDate: startDate,
                         dataType: "bruxism_session",
                         measurements: encodedData,
-                        sessionDuration: endDate.timeIntervalSince(startDate),
-                        healthKitData: healthKitData
+                        sessionDuration: endDate.timeIntervalSince(startDate)
                     )
                     sensorRecords.append(record)
                 }
@@ -735,31 +699,6 @@ struct HealthDataRecord: Codable {
     let dataType: String
     let measurements: Data
     let sessionDuration: TimeInterval
-    let healthKitData: HealthKitDataForSharing?
-}
-
-// MARK: - HealthKit Data for Sharing
-
-struct HealthKitDataForSharing: Codable {
-    let heartRateReadings: [HealthDataReading]
-    let spo2Readings: [HealthDataReading]
-    let sleepData: [SleepDataPoint]?
-
-    var averageHeartRate: Double? {
-        guard !heartRateReadings.isEmpty else { return nil }
-        return heartRateReadings.reduce(0.0) { $0 + $1.value } / Double(heartRateReadings.count)
-    }
-
-    var averageSpO2: Double? {
-        guard !spo2Readings.isEmpty else { return nil }
-        return spo2Readings.reduce(0.0) { $0 + $1.value } / Double(spo2Readings.count)
-    }
-}
-
-struct SleepDataPoint: Codable {
-    let startDate: Date
-    let endDate: Date
-    let sleepStage: String  // "deep", "light", "rem", "awake"
 }
 
 // MARK: - Bruxism Session Data (for sharing sensor data)

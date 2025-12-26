@@ -11,7 +11,6 @@ import AuthenticationServices
 
 struct AuthenticationView: View {
     @EnvironmentObject var designSystem: DesignSystem
-    @EnvironmentObject var healthKitManager: HealthKitManager
     @Environment(\.dismiss) private var dismiss
 
     // Use the SHARED AuthenticationManager passed from parent
@@ -19,7 +18,6 @@ struct AuthenticationView: View {
 
     @State private var showingProfileDetails = false
     @State private var showingSignOutConfirmation = false
-    @State private var showingHealthKitPermission = false
 
     init(sharedAuthManager: AuthenticationManager) {
         // Use the SHARED authManager, not a new instance
@@ -104,18 +102,6 @@ struct AuthenticationView: View {
         }
         .sheet(isPresented: $showingProfileDetails) {
             ProfileDetailView(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showingHealthKitPermission) {
-            HealthKitPermissionView()
-        }
-        .onChange(of: viewModel.isAuthenticated) { oldValue, newValue in
-            // Show HealthKit permission after successful sign in
-            if !oldValue && newValue {
-                // Check if HealthKit hasn't been authorized yet
-                if !healthKitManager.isAuthorized {
-                    showingHealthKitPermission = true
-                }
-            }
         }
     }
     
@@ -543,6 +529,5 @@ struct AuthenticationView_Previews: PreviewProvider {
     static var previews: some View {
         AuthenticationView(sharedAuthManager: AuthenticationManager())
             .environmentObject(DesignSystem())
-            .environmentObject(HealthKitManager())
     }
 }

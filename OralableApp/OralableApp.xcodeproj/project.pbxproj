@@ -40,7 +40,6 @@
 		26FE17CE2EE6D9B300026648 /* DeveloperSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17852EE6D0D200026648 /* DeveloperSettingsView.swift */; };
 		26FE17CF2EE6D9B300026648 /* PatientDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17872EE6D0D200026648 /* PatientDetailView.swift */; };
 		26FE17D02EE6D9B300026648 /* UpgradePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE178B2EE6D0D200026648 /* UpgradePromptView.swift */; };
-		26FE17D12EE6D9B300026648 /* PatientHealthDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17882EE6D0D200026648 /* PatientHealthDataView.swift */; };
 		26FE17D22EE6D9CC00026648 /* PatientListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17812EE6D0D200026648 /* PatientListViewModel.swift */; };
 		26FE17D32EE6D9CC00026648 /* PatientDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE177F2EE6D0D200026648 /* PatientDashboardViewModel.swift */; };
 		26FE17D42EE6D9CC00026648 /* ProfessionalSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE177E2EE6D0D200026648 /* ProfessionalSettingsViewModel.swift */; };
@@ -120,7 +119,6 @@
 		26FE17852EE6D0D200026648 /* DeveloperSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperSettingsView.swift; sourceTree = "<group>"; };
 		26FE17862EE6D0D200026648 /* PatientDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientDashboardView.swift; sourceTree = "<group>"; };
 		26FE17872EE6D0D200026648 /* PatientDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientDetailView.swift; sourceTree = "<group>"; };
-		26FE17882EE6D0D200026648 /* PatientHealthDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientHealthDataView.swift; sourceTree = "<group>"; };
 		26FE17892EE6D0D200026648 /* PatientHistoricalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientHistoricalView.swift; sourceTree = "<group>"; };
 		26FE178A2EE6D0D200026648 /* PatientListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientListView.swift; sourceTree = "<group>"; };
 		26FE178B2EE6D0D200026648 /* UpgradePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpgradePromptView.swift; sourceTree = "<group>"; };
@@ -329,7 +327,6 @@
 				26FE17852EE6D0D200026648 /* DeveloperSettingsView.swift */,
 				26FE17862EE6D0D200026648 /* PatientDashboardView.swift */,
 				26FE17872EE6D0D200026648 /* PatientDetailView.swift */,
-				26FE17882EE6D0D200026648 /* PatientHealthDataView.swift */,
 				26FE17892EE6D0D200026648 /* PatientHistoricalView.swift */,
 				26FE178A2EE6D0D200026648 /* PatientListView.swift */,
 				26FE178B2EE6D0D200026648 /* UpgradePromptView.swift */,
@@ -676,7 +673,6 @@
 				26FE17CF2EE6D9B300026648 /* PatientDetailView.swift in Sources */,
 				26FE17D02EE6D9B300026648 /* UpgradePromptView.swift in Sources */,
 				26917C382EED554000B25687 /* DemoParticipantDetailView.swift in Sources */,
-				26FE17D12EE6D9B300026648 /* PatientHealthDataView.swift in Sources */,
 				26FE17C62EE6D99300026648 /* DesignSystem.swift in Sources */,
 				26FE17C72EE6D99300026648 /* ProfessionaltAppDependencies.swift in Sources */,
 				26FE17C82EE6D99300026648 /* FeatureFlags.swift in Sources */,
@@ -742,8 +738,6 @@
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Oralable would like to share your sleep and heart rate data with HealthKit for comprehensive health tracking.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Oralable would like to save your sleep and heart rate data to HealthKit for health tracking.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "armv7 bluetooth-le";
@@ -779,8 +773,6 @@
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Oralable would like to share your sleep and heart rate data with HealthKit for comprehensive health tracking.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Oralable would like to save your sleep and heart rate data to HealthKit for health tracking.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "armv7 bluetooth-le";

@@ -333,9 +333,7 @@ final class MetadataValidationTests: XCTestCase {
         // These keys should have user-facing strings
         let usageKeys = [
             "NSBluetoothAlwaysUsageDescription",
-            "NSBluetoothPeripheralUsageDescription",
-            "NSHealthUpdateUsageDescription",
-            "NSHealthShareUsageDescription"
+            "NSBluetoothPeripheralUsageDescription"
         ]
 
         for key in usageKeys {
@@ -353,12 +351,6 @@ final class MetadataValidationTests: XCTestCase {
         XCTAssertNotNil(
             infoPlist["NSBluetoothAlwaysUsageDescription"],
             "App should have Bluetooth always usage description"
-        )
-
-        // Health is required
-        XCTAssertNotNil(
-            infoPlist["NSHealthShareUsageDescription"],
-            "App should have HealthKit share usage description"
         )
     }
 

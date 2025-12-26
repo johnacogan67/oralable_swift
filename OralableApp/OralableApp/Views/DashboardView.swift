@@ -567,7 +567,6 @@ struct DashboardView_Previews: PreviewProvider {
     static var previews: some View {
         let designSystem = DesignSystem()
         let appState = AppStateManager()
-        let healthKit = HealthKitManager()
         let sensorStore = SensorDataStore()
         let recordingSession = RecordingSessionManager()
         let historicalData = HistoricalDataManager(sensorDataProcessor: SensorDataProcessor.shared)
@@ -576,13 +575,11 @@ struct DashboardView_Previews: PreviewProvider {
         let device = DeviceManager()
         let sharedData = SharedDataManager(
             authenticationManager: authManager,
-            healthKitManager: healthKit,
             sensorDataProcessor: SensorDataProcessor.shared
         )
 
         let dependencies = AppDependencies(
             authenticationManager: authManager,
-            healthKitManager: healthKit,
             recordingSessionManager: recordingSession,
             historicalDataManager: historicalData,
             sensorDataStore: sensorStore,

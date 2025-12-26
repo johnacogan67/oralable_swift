@@ -416,7 +416,6 @@ struct DeviceRow: View {
 struct DevicesView_Previews: PreviewProvider {
     static var previews: some View {
         let appState = AppStateManager()
-        let healthKit = HealthKitManager()
         let sensorStore = SensorDataStore()
         let recordingSession = RecordingSessionManager()
         let historicalData = HistoricalDataManager(sensorDataProcessor: SensorDataProcessor.shared)
@@ -425,14 +424,12 @@ struct DevicesView_Previews: PreviewProvider {
         let device = DeviceManager()
         let sharedData = SharedDataManager(
             authenticationManager: authManager,
-            healthKitManager: healthKit,
             sensorDataProcessor: SensorDataProcessor.shared
         )
         let designSystem = DesignSystem()
 
         let dependencies = AppDependencies(
             authenticationManager: authManager,
-            healthKitManager: healthKit,
             recordingSessionManager: recordingSession,
             historicalDataManager: historicalData,
             sensorDataStore: sensorStore,

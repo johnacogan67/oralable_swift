@@ -28,7 +28,6 @@ class FeatureFlags: ObservableObject {
         static let showShareWithProfessional = "feature.share.showProfessional"
         static let showShareWithResearcher = "feature.share.showResearcher"
         static let showSubscription = "feature.settings.showSubscription"
-        static let showHealthIntegration = "feature.settings.showHealthIntegration"
         static let showAdvancedMetrics = "feature.dashboard.showAdvancedMetrics"
         static let showDetectionSettings = "feature.settings.showDetectionSettings"
         static let showCloudKitShare = "feature.share.showCloudKitShare"
@@ -53,7 +52,6 @@ class FeatureFlags: ObservableObject {
 
         // Settings Features
         static let showSubscription = false  // Hidden by default for pre-launch
-        static let showHealthIntegration = false
         static let showAdvancedMetrics = false
         static let showDetectionSettings = false
         static let showCloudKitShare = false
@@ -108,10 +106,6 @@ class FeatureFlags: ObservableObject {
         didSet { defaults.set(showSubscription, forKey: Keys.showSubscription) }
     }
 
-    @Published var showHealthIntegration: Bool {
-        didSet { defaults.set(showHealthIntegration, forKey: Keys.showHealthIntegration) }
-    }
-
     @Published var showDetectionSettings: Bool {
         didSet { defaults.set(showDetectionSettings, forKey: Keys.showDetectionSettings) }
     }
@@ -136,9 +130,6 @@ class FeatureFlags: ObservableObject {
     /// Whether to show PDF export option (not yet implemented)
     @Published var showPDFExport: Bool = false
 
-    /// Whether to show HealthKit export option (not yet implemented)
-    @Published var showHealthKitExport: Bool = false
-
     // MARK: - Initialization
     init() {
         // Load saved values or use pre-launch defaults
@@ -152,7 +143,6 @@ class FeatureFlags: ObservableObject {
         self.showShareWithProfessional = defaults.object(forKey: Keys.showShareWithProfessional) as? Bool ?? Defaults.showShareWithProfessional
         self.showShareWithResearcher = defaults.object(forKey: Keys.showShareWithResearcher) as? Bool ?? Defaults.showShareWithResearcher
         self.showSubscription = defaults.object(forKey: Keys.showSubscription) as? Bool ?? Defaults.showSubscription
-        self.showHealthIntegration = defaults.object(forKey: Keys.showHealthIntegration) as? Bool ?? Defaults.showHealthIntegration
         self.showDetectionSettings = defaults.object(forKey: Keys.showDetectionSettings) as? Bool ?? Defaults.showDetectionSettings
         self.showCloudKitShare = defaults.object(forKey: Keys.showCloudKitShare) as? Bool ?? Defaults.showCloudKitShare
         self.demoModeEnabled = defaults.object(forKey: Keys.demoModeEnabled) as? Bool ?? Defaults.demoModeEnabled
@@ -181,7 +171,6 @@ class FeatureFlags: ObservableObject {
 
         // Settings Features
         showSubscription = false  // Hidden for pre-launch
-        showHealthIntegration = false
         showDetectionSettings = false
         Logger.shared.info("[FeatureFlags] Applied pre-launch config (PPG IR only)")
     }
@@ -198,7 +187,6 @@ class FeatureFlags: ObservableObject {
         showShareWithProfessional = true
         showShareWithResearcher = true
         showSubscription = true
-        showHealthIntegration = true
         showDetectionSettings = true
         showCloudKitShare = true
         Logger.shared.info("[FeatureFlags] Applied full config")
@@ -216,7 +204,6 @@ class FeatureFlags: ObservableObject {
         showShareWithProfessional = true
         showShareWithResearcher = false
         showSubscription = true
-        showHealthIntegration = true
         showDetectionSettings = true
         showCloudKitShare = true
         Logger.shared.info("[FeatureFlags] Applied wellness config")
@@ -240,7 +227,6 @@ class FeatureFlags: ObservableObject {
 
         // Settings Features
         showSubscription = false  // Hidden for App Store submission
-        showHealthIntegration = false
         showDetectionSettings = false
         Logger.shared.info("[FeatureFlags] Applied App Store Minimal config (PPG IR only, CSV export)")
     }
@@ -257,7 +243,6 @@ class FeatureFlags: ObservableObject {
         showShareWithProfessional = true
         showShareWithResearcher = true
         showSubscription = true
-        showHealthIntegration = true
         showDetectionSettings = true
         showCloudKitShare = true
         Logger.shared.info("[FeatureFlags] Applied research config")
@@ -283,7 +268,6 @@ class FeatureFlags: ObservableObject {
         - Share with Professional: \(showShareWithProfessional)
         - Share with Researcher: \(showShareWithResearcher)
         - Subscription: \(showSubscription)
-        - Health Integration: \(showHealthIntegration)
         - Detection Settings: \(showDetectionSettings)
         - CloudKit Share: \(showCloudKitShare)
         - Demo Mode: \(demoModeEnabled)

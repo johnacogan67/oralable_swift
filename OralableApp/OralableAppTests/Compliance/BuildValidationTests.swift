@@ -130,32 +130,6 @@ final class BuildValidationTests: XCTestCase {
         }
     }
 
-    // MARK: - HealthKit Permission Tests
-
-    func testHealthKitShareUsageDescriptionPresent() throws {
-        let infoPlist = try loadInfoPlist()
-
-        guard let description = infoPlist["NSHealthShareUsageDescription"] as? String else {
-            XCTFail("NSHealthShareUsageDescription must be present for HealthKit read access")
-            return
-        }
-
-        XCTAssertFalse(description.isEmpty, "Health share usage description should not be empty")
-        XCTAssertGreaterThan(description.count, 20, "Health share usage description should be meaningful")
-    }
-
-    func testHealthKitUpdateUsageDescriptionPresent() throws {
-        let infoPlist = try loadInfoPlist()
-
-        guard let description = infoPlist["NSHealthUpdateUsageDescription"] as? String else {
-            XCTFail("NSHealthUpdateUsageDescription must be present for HealthKit write access")
-            return
-        }
-
-        XCTAssertFalse(description.isEmpty, "Health update usage description should not be empty")
-        XCTAssertGreaterThan(description.count, 20, "Health update usage description should be meaningful")
-    }
-
     // MARK: - Device Capability Tests
 
     func testBluetoothLECapabilityRequired() throws {

@@ -4,7 +4,6 @@ import SwiftUI
 struct OralableApp: App {
     // Core managers - no legacy OralableBLE
     @StateObject private var authenticationManager: AuthenticationManager
-    @StateObject private var healthKitManager: HealthKitManager
     @StateObject private var sensorDataStore: SensorDataStore
     @StateObject private var recordingSessionManager: RecordingSessionManager
     @StateObject private var historicalDataManager: HistoricalDataManager
@@ -19,7 +18,6 @@ struct OralableApp: App {
 
     init() {
         let authenticationManager = AuthenticationManager()
-        let healthKitManager = HealthKitManager()
         let sensorDataStore = SensorDataStore()
         let recordingSessionManager = RecordingSessionManager()
         let sensorDataProcessor = SensorDataProcessor.shared
@@ -31,7 +29,6 @@ struct OralableApp: App {
         let appStateManager = AppStateManager()
         let sharedDataManager = SharedDataManager(
             authenticationManager: authenticationManager,
-            healthKitManager: healthKitManager,
             sensorDataProcessor: sensorDataProcessor
         )
         let designSystem = DesignSystem()
@@ -43,7 +40,6 @@ struct OralableApp: App {
         // Create AppDependencies without legacy OralableBLE
         let dependencies = AppDependencies(
             authenticationManager: authenticationManager,
-            healthKitManager: healthKitManager,
             recordingSessionManager: recordingSessionManager,
             historicalDataManager: historicalDataManager,
             sensorDataStore: sensorDataStore,
@@ -56,7 +52,6 @@ struct OralableApp: App {
         )
 
         _authenticationManager = StateObject(wrappedValue: authenticationManager)
-        _healthKitManager = StateObject(wrappedValue: healthKitManager)
         _sensorDataStore = StateObject(wrappedValue: sensorDataStore)
         _recordingSessionManager = StateObject(wrappedValue: recordingSessionManager)
         _historicalDataManager = StateObject(wrappedValue: historicalDataManager)

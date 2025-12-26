@@ -37,7 +37,6 @@ struct DeveloperSettingsView: View {
 
             // Other Features Section
             Section("Other Features") {
-                Toggle("Health Integration", isOn: $featureFlags.showHealthIntegration)
                 Toggle("Detection Settings", isOn: $featureFlags.showDetectionSettings)
             }
 

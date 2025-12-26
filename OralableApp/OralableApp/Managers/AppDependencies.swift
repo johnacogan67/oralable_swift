@@ -4,7 +4,6 @@ import SwiftUI
 final class AppDependencies: ObservableObject {
     // Core managers - no legacy OralableBLE
     let authenticationManager: AuthenticationManager
-    let healthKitManager: HealthKitManager
     let recordingSessionManager: RecordingSessionManager
     let historicalDataManager: HistoricalDataManager
     let sensorDataStore: SensorDataStore
@@ -18,7 +17,6 @@ final class AppDependencies: ObservableObject {
     let recordingStateCoordinator: RecordingStateCoordinator
 
     init(authenticationManager: AuthenticationManager,
-         healthKitManager: HealthKitManager,
          recordingSessionManager: RecordingSessionManager,
          historicalDataManager: HistoricalDataManager,
          sensorDataStore: SensorDataStore,
@@ -29,7 +27,6 @@ final class AppDependencies: ObservableObject {
          sharedDataManager: SharedDataManager,
          designSystem: DesignSystem) {
         self.authenticationManager = authenticationManager
-        self.healthKitManager = healthKitManager
         self.recordingSessionManager = recordingSessionManager
         self.historicalDataManager = historicalDataManager
         self.sensorDataStore = sensorDataStore
@@ -69,7 +66,6 @@ struct DependenciesModifier: ViewModifier {
         content
             .environmentObject(dependencies)
             .environmentObject(dependencies.authenticationManager)
-            .environmentObject(dependencies.healthKitManager)
             .environmentObject(dependencies.recordingSessionManager)
             .environmentObject(dependencies.historicalDataManager)
             .environmentObject(dependencies.deviceManager)

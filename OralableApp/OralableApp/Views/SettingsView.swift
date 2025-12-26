@@ -11,7 +11,6 @@ struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @EnvironmentObject var dependencies: AppDependencies
     @EnvironmentObject var designSystem: DesignSystem
-    @EnvironmentObject var healthKitManager: HealthKitManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     @State private var showSubscriptionInfo = false
@@ -58,15 +57,6 @@ struct SettingsView: View {
                         subscriptionRow
                     } header: {
                         Text("Subscription")
-                    }
-                }
-
-                // Health Integration Section - CONDITIONAL
-                if featureFlags.showHealthIntegration {
-                    Section {
-                        healthKitRow
-                    } header: {
-                        Text("Health Integration")
                     }
                 }
 
@@ -188,38 +178,6 @@ struct SettingsView: View {
         .padding(.vertical, 4)
     }
 
-    private var healthKitRow: some View {
-        HStack {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.red)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Apple Health")
-                    .font(.system(size: 17))
-                    .foregroundColor(.primary)
-
-                Text(healthKitManager.isAuthorized ? "Connected" : "Not Connected")
-                    .font(.system(size: 15))
-                    .foregroundColor(healthKitManager.isAuthorized ? .green : .secondary)
-            }
-
-            Spacer()
-
-            if !healthKitManager.isAuthorized {
-                Button("Enable") {
-                    Task {
-                        try? await healthKitManager.requestAuthorization()
-                    }
-                }
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.blue)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
     private var thresholdsRow: some View {
         NavigationLink {
             ThresholdsSettingsView()
@@ -257,7 +215,6 @@ struct SettingsView: View {
     let sensorDataProcessor = SensorDataProcessor(calculator: calculator)
 
     let authManager = AuthenticationManager()
-    let healthKitManager = HealthKitManager()
     let recordingSessionManager = RecordingSessionManager()
     let historicalDataManager = HistoricalDataManager(sensorDataProcessor: sensorDataProcessor)
     let sensorDataStore = SensorDataStore()
@@ -266,13 +223,11 @@ struct SettingsView: View {
     let appStateManager = AppStateManager()
     let sharedDataManager = SharedDataManager(
         authenticationManager: authManager,
-        healthKitManager: healthKitManager,
         sensorDataProcessor: sensorDataProcessor
     )
 
     let dependencies = AppDependencies(
         authenticationManager: authManager,
-        healthKitManager: healthKitManager,
         recordingSessionManager: recordingSessionManager,
         historicalDataManager: historicalDataManager,
         sensorDataStore: sensorDataStore,
