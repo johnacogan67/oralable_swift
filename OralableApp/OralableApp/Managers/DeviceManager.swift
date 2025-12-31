@@ -14,6 +14,7 @@
 import Foundation
 import CoreBluetooth
 import Combine
+import OralableCore
 
 // MARK: - Connection Readiness State Machine (Day 1)
 

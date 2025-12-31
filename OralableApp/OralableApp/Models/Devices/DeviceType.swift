@@ -11,6 +11,7 @@
 
 import Foundation
 import CoreBluetooth
+import OralableCore
 
 enum DeviceType: String, CaseIterable, Codable {
     case oralable = "Oralable"

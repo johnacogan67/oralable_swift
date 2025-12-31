@@ -7,6 +7,7 @@
 
 
 import Foundation
+import OralableCore
 
 /// A data structure to hold the results from the processing pipeline.
 struct ProcessingResult {

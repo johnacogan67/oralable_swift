@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OralableCore
 
 /// Unified sensor reading structure for all devices
 struct SensorReading: Codable, Identifiable, Equatable {

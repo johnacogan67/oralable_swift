@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 /// Protocol for providing device status and diagnostic information
 /// Extracts status/logging responsibilities from OralableBLE

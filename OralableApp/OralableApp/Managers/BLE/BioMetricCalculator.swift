@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OralableCore
 
 /// An ObservableObject that serves as the view model for biometric data.
 ///

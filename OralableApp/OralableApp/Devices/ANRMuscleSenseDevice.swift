@@ -9,6 +9,7 @@
 import Foundation
 import CoreBluetooth
 import Combine
+import OralableCore
 
 /// ANR Muscle Sense device implementation
 @MainActor

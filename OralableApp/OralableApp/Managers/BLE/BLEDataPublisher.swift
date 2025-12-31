@@ -14,6 +14,7 @@
 import Foundation
 import Combine
 import CoreBluetooth
+import OralableCore
 
 /// Manages all published properties and UI state for BLE operations
 @MainActor

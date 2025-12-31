@@ -22,6 +22,7 @@
 import Foundation
 import CoreBluetooth
 import Combine
+import OralableCore
 
 /// Oralable-specific BLE device implementation
 class OralableDevice: NSObject, BLEDeviceProtocol {

@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 // MARK: - SensorDataProvider Protocol
 

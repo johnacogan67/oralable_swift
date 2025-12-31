@@ -10,6 +10,7 @@
 import Foundation
 import CoreBluetooth
 import Combine
+import OralableCore
 
 /// Protocol that all BLE devices must implement
 protocol BLEDeviceProtocol: AnyObject {

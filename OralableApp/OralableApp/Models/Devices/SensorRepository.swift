@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OralableCore
 
 /// Protocol for sensor data repository operations
 protocol SensorRepository {

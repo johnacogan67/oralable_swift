@@ -10,6 +10,7 @@
 
 import Foundation
 import CoreBluetooth
+import OralableCore
 
 /// Complete device information
 struct DeviceInfo: Identifiable, Codable, Equatable {

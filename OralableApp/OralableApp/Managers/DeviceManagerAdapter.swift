@@ -11,6 +11,7 @@
 import Foundation
 import Combine
 import CoreBluetooth
+import OralableCore
 
 /// Adapter that wraps DeviceManager and conforms to BLEManagerProtocol
 /// This allows existing ViewModels (like DashboardViewModel) to work with DeviceManager

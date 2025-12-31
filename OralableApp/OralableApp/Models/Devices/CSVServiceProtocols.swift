@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OralableCore
 
 // MARK: - CSV Export Protocol
 

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OralableCore
 
 /// Repository implementation that wraps SensorDataProcessor
 @MainActor
