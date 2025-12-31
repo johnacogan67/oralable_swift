@@ -1,14 +1,40 @@
 import Foundation
+import OralableCore
 
 // MARK: - CSV Export Manager
 
 /// Manager for exporting sensor data and logs to CSV format
 /// Only exports columns for metrics that have visible dashboard cards
+/// Uses OralableCore.CSVExporter for core CSV generation
 class CSVExportManager: ObservableObject {
     static let shared = CSVExportManager()
     private let featureFlags = FeatureFlags.shared
 
     init() {}
+
+    /// Build export configuration based on current feature flags
+    private func buildConfiguration() -> CSVExportConfiguration {
+        var columns: [CSVColumn] = [.timestamp, .ppgIR, .ppgRed, .ppgGreen]
+
+        if featureFlags.showMovementCard {
+            columns.append(contentsOf: [.accelX, .accelY, .accelZ])
+        }
+        if featureFlags.showTemperatureCard {
+            columns.append(.temperature)
+        }
+        if featureFlags.showBatteryCard {
+            columns.append(.battery)
+        }
+        if featureFlags.showHeartRateCard {
+            columns.append(contentsOf: [.heartRateBPM, .heartRateQuality])
+        }
+        if featureFlags.showSpO2Card {
+            columns.append(contentsOf: [.spo2Percentage, .spo2Quality])
+        }
+        columns.append(.message)
+
+        return CSVExportConfiguration(columns: columns)
+    }
     
     /// Export sensor data and logs to CSV file
     /// - Parameters:
@@ -16,7 +42,10 @@ class CSVExportManager: ObservableObject {
     ///   - logs: Array of log messages
     /// - Returns: URL of the exported CSV file, or nil if export fails
     func exportData(sensorData: [SensorData], logs: [String]) -> URL? {
-        let csvContent = generateCSVContent(sensorData: sensorData, logs: logs)
+        // Use OralableCore's CSVExporter with dynamic configuration
+        let configuration = buildConfiguration()
+        let exporter = CSVExporter(configuration: configuration)
+        let csvContent = exporter.generateCSV(from: sensorData, logs: logs)
         
         // Create filename with current timestamp and user identifier
         let dateFormatter = DateFormatter()
@@ -66,156 +95,8 @@ class CSVExportManager: ObservableObject {
         }
     }
     
-    /// Generate CSV content from sensor data and logs
-    /// Only includes columns for metrics that have visible dashboard cards
-    private func generateCSVContent(sensorData: [SensorData], logs: [String]) -> String {
-        var csvLines: [String] = []
+    // CSV generation is now handled by OralableCore.CSVExporter
 
-        // Get current feature flag settings for conditional columns
-        let includeMovement = featureFlags.showMovementCard
-        let includeTemperature = featureFlags.showTemperatureCard
-        let includeHeartRate = featureFlags.showHeartRateCard
-        let includeBattery = featureFlags.showBatteryCard
-        let includeSpO2 = featureFlags.showSpO2Card
-
-        // Build CSV Header based on enabled features
-        var headerParts = ["Timestamp", "PPG_IR", "PPG_Red", "PPG_Green"]
-        if includeMovement {
-            headerParts.append(contentsOf: ["Accel_X", "Accel_Y", "Accel_Z"])
-        }
-        if includeTemperature {
-            headerParts.append("Temp_C")
-        }
-        if includeBattery {
-            headerParts.append("Battery_%")
-        }
-        if includeHeartRate {
-            headerParts.append(contentsOf: ["HeartRate_BPM", "HeartRate_Quality"])
-        }
-        if includeSpO2 {
-            headerParts.append(contentsOf: ["SpO2_%", "SpO2_Quality"])
-        }
-        headerParts.append("Message")
-
-        csvLines.append(headerParts.joined(separator: ","))
-
-        // Date formatter for timestamps
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-
-        // Create a map of timestamps to log messages for efficient lookup
-        var logMessagesByTimestamp: [String: String] = [:]
-        for log in logs {
-            let timestamp = dateFormatter.string(from: Date()) // In real scenario, logs would have timestamps
-            logMessagesByTimestamp[timestamp] = log
-        }
-
-        // Export each sensor data point
-        for data in sensorData {
-            let timestampString = dateFormatter.string(from: data.timestamp)
-
-            var row: [String] = []
-
-            // Timestamp (always included)
-            row.append(timestampString)
-
-            // PPG Data (always included - core metric)
-            row.append(String(data.ppg.ir))
-            row.append(String(data.ppg.red))
-            row.append(String(data.ppg.green))
-
-            // Accelerometer Data (conditional)
-            if includeMovement {
-                row.append(String(data.accelerometer.x))
-                row.append(String(data.accelerometer.y))
-                row.append(String(data.accelerometer.z))
-            }
-
-            // Temperature Data (conditional)
-            if includeTemperature {
-                row.append(String(format: "%.2f", data.temperature.celsius))
-            }
-
-            // Battery Data (conditional)
-            if includeBattery {
-                row.append(String(data.battery.percentage))
-            }
-
-            // Heart Rate Data (conditional)
-            if includeHeartRate {
-                if let heartRate = data.heartRate {
-                    row.append(String(format: "%.1f", heartRate.bpm))
-                    row.append(String(format: "%.3f", heartRate.quality))
-                } else {
-                    row.append("")
-                    row.append("")
-                }
-            }
-
-            // SpO2 Data (conditional)
-            if includeSpO2 {
-                if let spo2 = data.spo2 {
-                    row.append(String(format: "%.1f", spo2.percentage))
-                    row.append(String(format: "%.3f", spo2.quality))
-                } else {
-                    row.append("")
-                    row.append("")
-                }
-            }
-
-            // Message (log entry for this timestamp if available)
-            let message = logMessagesByTimestamp[timestampString] ?? ""
-            row.append(escapeCSVField(message))
-
-            csvLines.append(row.joined(separator: ","))
-        }
-
-        // If there are logs without corresponding sensor data, add them as separate rows
-        let sensorTimestamps = Set(sensorData.map { dateFormatter.string(from: $0.timestamp) })
-
-        // Calculate number of empty columns needed for log-only rows
-        var emptyColumnCount = 3 // PPG columns
-        if includeMovement { emptyColumnCount += 3 }
-        if includeTemperature { emptyColumnCount += 1 }
-        if includeBattery { emptyColumnCount += 1 }
-        if includeHeartRate { emptyColumnCount += 2 }
-        if includeSpO2 { emptyColumnCount += 2 }
-
-        for log in logs {
-            // For now, we'll add logs at the end with current timestamp
-            // In a real implementation, logs would have their own timestamps
-            let timestampString = dateFormatter.string(from: Date())
-
-            if !sensorTimestamps.contains(timestampString) {
-                var row: [String] = []
-
-                // Timestamp
-                row.append(timestampString)
-
-                // Empty sensor data fields
-                for _ in 0..<emptyColumnCount {
-                    row.append("")
-                }
-
-                // Message
-                row.append(escapeCSVField(log))
-
-                csvLines.append(row.joined(separator: ","))
-            }
-        }
-
-        return csvLines.joined(separator: "\n")
-    }
-    
-    /// Escape CSV field by wrapping in quotes if it contains commas or quotes
-    private func escapeCSVField(_ field: String) -> String {
-        if field.contains(",") || field.contains("\"") || field.contains("\n") {
-            let escaped = field.replacingOccurrences(of: "\"", with: "\"\"")
-            return "\"\(escaped)\""
-        }
-        return field
-    }
-    
     /// Get estimated file size for export
     func estimateExportSize(sensorDataCount: Int, logCount: Int) -> String {
         // Rough estimation: each sensor data row is about 150 characters
