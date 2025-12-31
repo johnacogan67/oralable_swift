@@ -3,7 +3,10 @@
 //  OralableForProfessionals
 //
 //  Created: December 10, 2025
+//  Updated: December 31, 2025 - Now uses OralableCore.CSVParser
+//
 //  Purpose: Parse CSV files exported from Oralable app
+//  Uses OralableCore.CSVParser for parsing to ensure consistency
 //
 
 import Foundation
@@ -12,6 +15,7 @@ import OralableCore
 // MARK: - Imported Sensor Data Model
 
 /// Represents a single row of imported sensor data from CSV
+/// This is a view-friendly wrapper around OralableCore.SensorData
 struct ImportedSensorData: Identifiable {
     let id = UUID()
     let timestamp: Date
@@ -26,17 +30,112 @@ struct ImportedSensorData: Identifiable {
     let temperature: Double?
     let battery: Double?
     let heartRate: Double?
+
+    /// Initialize from OralableCore.SensorData
+    init(from sensorData: SensorData) {
+        self.timestamp = sensorData.timestamp
+        self.deviceType = "Oralable"
+        self.emg = nil  // EMG not currently supported in SensorData
+        self.ppgIR = Double(sensorData.ppg.ir)
+        self.ppgRed = Double(sensorData.ppg.red)
+        self.ppgGreen = Double(sensorData.ppg.green)
+        self.accelX = Double(sensorData.accelerometer.x)
+        self.accelY = Double(sensorData.accelerometer.y)
+        self.accelZ = Double(sensorData.accelerometer.z)
+        self.temperature = sensorData.temperature.celsius
+        self.battery = Double(sensorData.battery.percentage)
+        self.heartRate = sensorData.heartRate?.bpm
+    }
+
+    /// Initialize with explicit values (for legacy compatibility)
+    init(
+        timestamp: Date,
+        deviceType: String,
+        emg: Double?,
+        ppgIR: Double?,
+        ppgRed: Double?,
+        ppgGreen: Double?,
+        accelX: Double?,
+        accelY: Double?,
+        accelZ: Double?,
+        temperature: Double?,
+        battery: Double?,
+        heartRate: Double?
+    ) {
+        self.timestamp = timestamp
+        self.deviceType = deviceType
+        self.emg = emg
+        self.ppgIR = ppgIR
+        self.ppgRed = ppgRed
+        self.ppgGreen = ppgGreen
+        self.accelX = accelX
+        self.accelY = accelY
+        self.accelZ = accelZ
+        self.temperature = temperature
+        self.battery = battery
+        self.heartRate = heartRate
+    }
 }
 
-// MARK: - CSV Parser
+// MARK: - CSV Parser Wrapper
 
-/// Utility for parsing Oralable CSV export files
+/// Wrapper around OralableCore.CSVParser for Professional app use
+/// Converts OralableCore types to view-friendly ImportedSensorData
 struct CSVParser {
 
     /// Parse CSV content into ImportedSensorData array
+    /// Uses OralableCore.CSVParser with lenient configuration
     /// - Parameter content: Raw CSV string content
     /// - Returns: Array of parsed sensor data points
     static func parse(_ content: String) -> [ImportedSensorData] {
+        // Use OralableCore's CSVParser with lenient configuration
+        let coreParser = OralableCore.CSVParser(configuration: .lenient)
+
+        do {
+            let result = try coreParser.parse(content)
+
+            Logger.shared.info("[CSVParser] Parsed \(result.statistics.importedRows) of \(result.statistics.totalRows) rows using OralableCore")
+
+            if !result.warnings.isEmpty {
+                Logger.shared.info("[CSVParser] Import had \(result.warnings.count) warnings")
+                for warning in result.warnings.prefix(5) {
+                    Logger.shared.warning("[CSVParser] Row \(warning.row): \(warning.message)")
+                }
+                if result.warnings.count > 5 {
+                    Logger.shared.warning("[CSVParser] ... and \(result.warnings.count - 5) more warnings")
+                }
+            }
+
+            // Convert OralableCore.SensorData to ImportedSensorData
+            return result.sensorData.map { ImportedSensorData(from: $0) }
+        } catch {
+            Logger.shared.error("[CSVParser] OralableCore parser failed: \(error.localizedDescription)")
+            Logger.shared.info("[CSVParser] Falling back to legacy parser")
+
+            // Fallback to legacy parsing for non-standard CSV formats
+            return parseLegacy(content)
+        }
+    }
+
+    /// Parse CSV content directly to SensorData array (for direct OralableCore use)
+    /// - Parameter content: Raw CSV string content
+    /// - Returns: Array of OralableCore.SensorData
+    static func parseToSensorData(_ content: String) -> [SensorData] {
+        let coreParser = OralableCore.CSVParser(configuration: .lenient)
+        do {
+            let result = try coreParser.parse(content)
+            return result.sensorData
+        } catch {
+            Logger.shared.error("[CSVParser] Failed to parse to SensorData: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    // MARK: - Legacy Parser (Fallback)
+
+    /// Legacy parsing for CSV files that don't match OralableCore format
+    /// (e.g., files with Device_Type, EMG, or different column names)
+    private static func parseLegacy(_ content: String) -> [ImportedSensorData] {
         var result: [ImportedSensorData] = []
         let lines = content.components(separatedBy: .newlines)
 
@@ -46,8 +145,7 @@ struct CSVParser {
         let header = parseCSVLine(lines[0])
         let columnMap = Dictionary(uniqueKeysWithValues: header.enumerated().map { ($1.trimmingCharacters(in: .whitespaces), $0) })
 
-        Logger.shared.info("[CSVParser] Parsing CSV with \(lines.count - 1) data rows")
-        Logger.shared.info("[CSVParser] Columns found: \(header.joined(separator: ", "))")
+        Logger.shared.info("[CSVParser] Legacy parser: \(lines.count - 1) rows, columns: \(header.joined(separator: ", "))")
 
         // Parse data rows
         for i in 1..<lines.count {
@@ -74,9 +172,11 @@ struct CSVParser {
             result.append(data)
         }
 
-        Logger.shared.info("[CSVParser] Successfully parsed \(result.count) data points")
+        Logger.shared.info("[CSVParser] Legacy parser completed: \(result.count) data points")
         return result
     }
+
+    // MARK: - Legacy Parsing Helpers
 
     /// Parse a CSV line handling quoted fields
     private static func parseCSVLine(_ line: String) -> [String] {
@@ -123,13 +223,13 @@ struct CSVParser {
 
         let timestampString = values[index].trimmingCharacters(in: .whitespaces)
 
-        // Try ISO8601 format first (from ShareView export)
+        // Try ISO8601 format first
         let iso8601Formatter = ISO8601DateFormatter()
         if let date = iso8601Formatter.date(from: timestampString) {
             return date
         }
 
-        // Try standard date-time format
+        // Try standard date-time format with milliseconds
         let dateTimeFormatter = DateFormatter()
         dateTimeFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
         if let date = dateTimeFormatter.date(from: timestampString) {
@@ -146,7 +246,6 @@ struct CSVParser {
         let timeOnlyFormatter = DateFormatter()
         timeOnlyFormatter.dateFormat = "HH:mm:ss"
         if let date = timeOnlyFormatter.date(from: timestampString) {
-            // Set to today's date with parsed time
             let calendar = Calendar.current
             let components = calendar.dateComponents([.hour, .minute, .second], from: date)
             return calendar.date(bySettingHour: components.hour ?? 0,
@@ -171,9 +270,9 @@ struct CSVParser {
     }
 }
 
-// MARK: - CSV Import Result
+// MARK: - CSV Import Preview
 
-/// Result of a CSV import operation
+/// Preview information for CSV import
 struct CSVImportPreview {
     let fileName: String
     let dataPoints: [ImportedSensorData]
