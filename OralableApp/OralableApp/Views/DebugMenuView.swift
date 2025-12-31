@@ -22,9 +22,10 @@ struct DebugMenuView: View {
             Section(header: Text("Sensor Data")) {
                 Button("Inject Mock Sensor Data") {
                     let mockDataBatch = SensorData.mockBatch()
-                    // Store each mock data point
+                    // Store each mock data point as dictionary
                     for mockData in mockDataBatch {
-                        sensorDataStore.storeSensorData(mockData)
+                        let dict = mockData.toDictionary()
+                        sensorDataStore.storeSensorData(dict)
                     }
                 }
 

@@ -1,6 +1,53 @@
 import Foundation
+import OralableCore
 
 extension SensorData {
+    /// Convert SensorData to dictionary format for legacy compatibility
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id.uuidString,
+            "timestamp": timestamp,
+            "ppg": [
+                "red": ppg.red,
+                "ir": ppg.ir,
+                "green": ppg.green,
+                "timestamp": ppg.timestamp
+            ],
+            "accelerometer": [
+                "x": accelerometer.x,
+                "y": accelerometer.y,
+                "z": accelerometer.z,
+                "timestamp": accelerometer.timestamp
+            ],
+            "temperature": [
+                "celsius": temperature.celsius,
+                "timestamp": temperature.timestamp
+            ],
+            "battery": [
+                "percentage": battery.percentage,
+                "timestamp": battery.timestamp
+            ]
+        ]
+
+        if let hr = heartRate {
+            dict["heartRate"] = [
+                "bpm": hr.bpm,
+                "quality": hr.quality,
+                "timestamp": hr.timestamp
+            ]
+        }
+
+        if let sp = spo2 {
+            dict["spo2"] = [
+                "percentage": sp.percentage,
+                "quality": sp.quality,
+                "timestamp": sp.timestamp
+            ]
+        }
+
+        return dict
+    }
+
     static func mockBatch(count: Int = 10) -> [SensorData] {
         let now = Date()
         return (0..<count).map { i in
