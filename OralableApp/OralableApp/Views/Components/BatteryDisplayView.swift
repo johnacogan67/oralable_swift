@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct BatteryDisplayView: View {
     let millivolts: Int32
@@ -20,7 +21,7 @@ struct BatteryDisplayView: View {
         BatteryConversion.voltageToPercentage(millivolts: millivolts)
     }
 
-    private var status: BatteryConversion.BatteryStatus {
+    private var status: BatteryStatus {
         BatteryConversion.batteryStatus(percentage: percentage)
     }
 
@@ -28,7 +29,7 @@ struct BatteryDisplayView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: status.systemImageName)
-                    .foregroundColor(status.swiftUIColor)
+                    .foregroundColor(status.color)
                     .font(.title2)
 
                 Text("Battery")
@@ -41,8 +42,8 @@ struct BatteryDisplayView: View {
                     .fontWeight(.medium)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(status.swiftUIColor.opacity(0.2))
-                    .foregroundColor(status.swiftUIColor)
+                    .background(status.color.opacity(0.2))
+                    .foregroundColor(status.color)
                     .cornerRadius(8)
             }
 
@@ -85,7 +86,7 @@ struct BatteryDisplayView: View {
 
 struct BatteryBarView: View {
     let percentage: Double
-    let status: BatteryConversion.BatteryStatus
+    let status: BatteryStatus
 
     var body: some View {
         GeometryReader { geometry in
@@ -94,7 +95,7 @@ struct BatteryBarView: View {
                     .fill(Color.gray.opacity(0.2))
 
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(status.swiftUIColor)
+                    .fill(status.color)
                     .frame(width: max(0, geometry.size.width * CGFloat(percentage / 100.0)))
             }
         }
@@ -109,14 +110,14 @@ struct BatteryCompactView: View {
         BatteryConversion.voltageToPercentage(millivolts: millivolts)
     }
 
-    private var status: BatteryConversion.BatteryStatus {
+    private var status: BatteryStatus {
         BatteryConversion.batteryStatus(percentage: percentage)
     }
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: status.systemImageName)
-                .foregroundColor(status.swiftUIColor)
+                .foregroundColor(status.color)
 
             Text(BatteryConversion.formatPercentage(percentage))
                 .font(.system(.caption, design: .monospaced))
@@ -138,7 +139,7 @@ struct BatteryCardView: View {
         BatteryConversion.voltageToPercentage(millivolts: millivolts)
     }
 
-    private var status: BatteryConversion.BatteryStatus {
+    private var status: BatteryStatus {
         BatteryConversion.batteryStatus(percentage: percentage)
     }
 
@@ -147,11 +148,11 @@ struct BatteryCardView: View {
             HStack {
                 ZStack {
                     Circle()
-                        .fill(status.swiftUIColor.opacity(0.1))
+                        .fill(status.color.opacity(0.1))
                         .frame(width: 40, height: 40)
 
                     Image(systemName: isCharging ? "battery.100.bolt" : status.systemImageName)
-                        .foregroundColor(status.swiftUIColor)
+                        .foregroundColor(status.color)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -159,7 +160,7 @@ struct BatteryCardView: View {
                         .font(.headline)
                     Text(isCharging ? "Charging" : status.rawValue)
                         .font(.caption)
-                        .foregroundColor(isCharging ? .green : status.swiftUIColor)
+                        .foregroundColor(isCharging ? .green : status.color)
                 }
 
                 Spacer()

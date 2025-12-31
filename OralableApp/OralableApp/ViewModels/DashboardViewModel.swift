@@ -10,6 +10,7 @@ import SwiftUI
 import Combine
 import CoreBluetooth
 import Foundation
+import OralableCore
 
 @MainActor
 class DashboardViewModel: ObservableObject {
@@ -363,9 +364,9 @@ class DashboardViewModel: ObservableObject {
             .combineLatest(deviceManagerAdapter.accelYPublisher, deviceManagerAdapter.accelZPublisher)
             .map { x, y, z -> Double in
                 // Convert raw accelerometer values to G's before calculating magnitude
-                let xG = AccelerometerConversion.toG(Int16(clamping: Int(x)))
-                let yG = AccelerometerConversion.toG(Int16(clamping: Int(y)))
-                let zG = AccelerometerConversion.toG(Int16(clamping: Int(z)))
+                let xG = AccelerometerConversion.toG(rawValue: Int16(clamping: Int(x)))
+                let yG = AccelerometerConversion.toG(rawValue: Int16(clamping: Int(y)))
+                let zG = AccelerometerConversion.toG(rawValue: Int16(clamping: Int(z)))
                 return sqrt(xG*xG + yG*yG + zG*zG)
             }
             .eraseToAnyPublisher()
