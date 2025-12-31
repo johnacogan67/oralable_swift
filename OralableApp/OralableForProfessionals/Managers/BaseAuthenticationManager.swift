@@ -10,6 +10,7 @@ import Foundation
 import AuthenticationServices
 import SwiftUI
 import Combine
+import OralableCore
 
 /// Base authentication manager with common Apple Sign In functionality
 /// Subclasses should override `keychainKeys` to use app-specific storage keys

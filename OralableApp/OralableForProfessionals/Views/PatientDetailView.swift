@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct PatientDetailView: View {
     let patient: ProfessionalPatient

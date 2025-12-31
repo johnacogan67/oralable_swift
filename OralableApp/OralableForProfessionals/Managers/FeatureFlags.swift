@@ -9,6 +9,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 // MARK: - Notification Names
 extension Notification.Name {

@@ -9,6 +9,7 @@
 import Foundation
 import AuthenticationServices
 import SwiftUI
+import OralableCore
 
 /// Professional app authentication manager
 /// Inherits common Apple Sign In functionality from BaseAuthenticationManager

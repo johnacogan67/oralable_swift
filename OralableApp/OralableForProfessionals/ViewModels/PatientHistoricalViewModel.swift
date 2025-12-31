@@ -9,6 +9,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 @MainActor
 class PatientHistoricalViewModel: ObservableObject {

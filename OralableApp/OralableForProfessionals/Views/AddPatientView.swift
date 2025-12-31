@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import OralableCore
 
 struct AddPatientView: View {
     @Environment(\.dismiss) var dismiss

@@ -1,6 +1,7 @@
 import Foundation
 import CloudKit
 import Combine
+import OralableCore
 
 // MARK: - Patient Models
 

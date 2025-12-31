@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OralableCore
 
 // MARK: - Imported Sensor Data Model
 

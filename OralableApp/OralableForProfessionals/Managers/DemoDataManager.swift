@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 class DemoDataManager: ObservableObject {
     static let shared = DemoDataManager()

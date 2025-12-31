@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		265393712F04BD5600856E5E /* OralableCore in Frameworks */ = {isa = PBXBuildFile; productRef = 260RALC022EFF000000000002 /* OralableCore */; };
+		265393722F04BD5600856E5E /* OralableCore in Frameworks */ = {isa = PBXBuildFile; productRef = 260RALC032EFF000000000003 /* OralableCore */; };
 		2671AFEA2EE7BDE700A5D229 /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 2671AFE92EE7BDE700A5D229 /* AsyncAlgorithms */; };
 		26785D372ED6C96A004BA1A3 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 26785D362ED6C96A004BA1A3 /* Algorithms */; };
 		26917C362EED552800B25687 /* DemoDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26917C352EED552800B25687 /* DemoDataManager.swift */; };
@@ -26,7 +28,6 @@
 		26FE17C02EE6D97500026648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 26FE178D2EE6D0D200026648 /* Assets.xcassets */; };
 		26FE17C12EE6D99300026648 /* ProfessionalDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17742EE6D0D200026648 /* ProfessionalDataManager.swift */; };
 		26FE17C22EE6D99300026648 /* ProfessionalAuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17732EE6D0D200026648 /* ProfessionalAuthenticationManager.swift */; };
-		26FE17C32EE6D99300026648 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17782EE6D0D200026648 /* Logger.swift */; };
 		26FE17C42EE6D99300026648 /* ProfessionalSubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17752EE6D0D200026648 /* ProfessionalSubscriptionManager.swift */; };
 		26FE17C52EE6D99300026648 /* BaseAuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17712EE6D0D200026648 /* BaseAuthenticationManager.swift */; };
 		26FE17C62EE6D99300026648 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17762EE6D0D200026648 /* DesignSystem.swift */; };
@@ -106,7 +107,6 @@
 		26FE17752EE6D0D200026648 /* ProfessionalSubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalSubscriptionManager.swift; sourceTree = "<group>"; };
 		26FE17762EE6D0D200026648 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		26FE17772EE6D0D200026648 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
-		26FE17782EE6D0D200026648 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		26FE177A2EE6D0D200026648 /* ProfessionalHistoricalDataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalHistoricalDataModels.swift; sourceTree = "<group>"; };
 		26FE177B2EE6D0D200026648 /* SharedSensorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSensorModels.swift; sourceTree = "<group>"; };
 		26FE177D2EE6D0D200026648 /* AddPatientViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPatientViewModel.swift; sourceTree = "<group>"; };
@@ -185,6 +185,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				265393712F04BD5600856E5E /* OralableCore in Frameworks */,
 				26785D372ED6C96A004BA1A3 /* Algorithms in Frameworks */,
 				26FE17BD2EE6D77F00026648 /* AsyncBluetooth in Frameworks */,
 				26A0F47C2EBAE8C00054C5FC /* AsyncAlgorithms in Frameworks */,
@@ -211,6 +212,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				265393722F04BD5600856E5E /* OralableCore in Frameworks */,
 				26992C5F2ED6C28A00D9993D /* AsyncAlgorithms in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -291,7 +293,6 @@
 				26FE17752EE6D0D200026648 /* ProfessionalSubscriptionManager.swift */,
 				26FE17762EE6D0D200026648 /* DesignSystem.swift */,
 				26FE17772EE6D0D200026648 /* FeatureFlags.swift */,
-				26FE17782EE6D0D200026648 /* Logger.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -556,7 +557,7 @@
 				268E58EC2EBADD940064E2BB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
 				26785D352ED6C850004BA1A3 /* XCRemoteSwiftPackageReference "swift-algorithms" */,
 				26FE17BB2EE6D77F00026648 /* XCRemoteSwiftPackageReference "AsyncBluetooth" */,
-				260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "OralableCore" */,
+				260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "../../OralableCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26CAF25F2E781EFB003FE378 /* Products */;
@@ -655,7 +656,6 @@
 				26FE17C12EE6D99300026648 /* ProfessionalDataManager.swift in Sources */,
 				26917C362EED552800B25687 /* DemoDataManager.swift in Sources */,
 				26FE17C22EE6D99300026648 /* ProfessionalAuthenticationManager.swift in Sources */,
-				26FE17C32EE6D99300026648 /* Logger.swift in Sources */,
 				26FE17C42EE6D99300026648 /* ProfessionalSubscriptionManager.swift in Sources */,
 				26FE17C52EE6D99300026648 /* BaseAuthenticationManager.swift in Sources */,
 				26FE17D22EE6D9CC00026648 /* PatientListViewModel.swift in Sources */,
@@ -1231,6 +1231,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "../../OralableCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../OralableCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		26785D352ED6C850004BA1A3 /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -1257,13 +1264,6 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "OralableCore" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../OralableCore;
-		};
-/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		260RALC022EFF000000000002 /* OralableCore */ = {

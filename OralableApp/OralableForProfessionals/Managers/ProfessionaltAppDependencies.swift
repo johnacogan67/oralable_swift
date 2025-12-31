@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import OralableCore
 
 /// Central dependency injection container for the professional app
 /// Manages all core services and provides factory methods for ViewModels
