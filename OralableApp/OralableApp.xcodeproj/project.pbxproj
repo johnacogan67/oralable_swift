@@ -387,6 +387,7 @@
 				26A0F47B2EBAE8C00054C5FC /* AsyncAlgorithms */,
 				26785D362ED6C96A004BA1A3 /* Algorithms */,
 				26FE17BC2EE6D77F00026648 /* AsyncBluetooth */,
+				260RALC022EFF000000000002 /* OralableCore */,
 			);
 			productName = OralableApp;
 			productReference = 26CAF25E2E781EFB003FE378 /* OralableApp.app */;
@@ -460,6 +461,7 @@
 			name = OralableForProfessionals;
 			packageProductDependencies = (
 				26992C5E2ED6C28A00D9993D /* AsyncAlgorithms */,
+				260RALC032EFF000000000003 /* OralableCore */,
 			);
 			productName = OralableForDentists;
 			productReference = 26D6C3EC2ECD181900C60C3D /* OralableForProfessionals.app */;
@@ -554,6 +556,7 @@
 				268E58EC2EBADD940064E2BB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
 				26785D352ED6C850004BA1A3 /* XCRemoteSwiftPackageReference "swift-algorithms" */,
 				26FE17BB2EE6D77F00026648 /* XCRemoteSwiftPackageReference "AsyncBluetooth" */,
+				260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "OralableCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26CAF25F2E781EFB003FE378 /* Products */;
@@ -728,7 +731,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OralableApp/OralableApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = THKF822TTP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -763,7 +766,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = OralableApp/OralableApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = THKF822TTP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1255,7 +1258,22 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		260RALC012EFF000000000001 /* XCLocalSwiftPackageReference "OralableCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../OralableCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		260RALC022EFF000000000002 /* OralableCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OralableCore;
+		};
+		260RALC032EFF000000000003 /* OralableCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OralableCore;
+		};
 		2671AFE92EE7BDE700A5D229 /* AsyncAlgorithms */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 268E58EC2EBADD940064E2BB /* XCRemoteSwiftPackageReference "swift-async-algorithms" */;

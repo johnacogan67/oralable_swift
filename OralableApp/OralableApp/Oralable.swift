@@ -1,4 +1,5 @@
 import SwiftUI
+import OralableCore
 
 @main
 struct OralableApp: App {
