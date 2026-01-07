@@ -4,193 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thank You - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .disclaimer-banner {
-            background: #fff3cd;
-            padding: 12px 20px;
-            text-align: center;
-            font-size: 14px;
-            border-bottom: 1px solid #ffc107;
-        }
-        .disclaimer-banner strong {
-            color: #856404;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            padding: 20px;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        nav a {
-            color: #000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
-        .hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 100px 20px;
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .hero p {
-            font-size: 20px;
-            opacity: 0.95;
-            max-width: 600px;
-            margin: 0 auto 40px;
-        }
-        .hero .btn {
-            display: inline-block;
-            background: #fff;
-            color: #667eea;
-            padding: 16px 40px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .hero .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 60px 24px;
-            text-align: center;
-        }
-        .info-box {
-            background: #f5f5f7;
-            padding: 32px;
-            border-radius: 12px;
-            margin-bottom: 32px;
-        }
-        .info-box h2 {
-            font-size: 20px;
-            margin-bottom: 12px;
-        }
-        .info-box p {
-            color: #666;
-            margin: 0;
-        }
-        .links {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-        .links a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .links a:hover {
-            text-decoration: underline;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-        @media (max-width: 600px) {
-            .hero h1 {
-                font-size: 32px;
-            }
-            .hero p {
-                font-size: 16px;
-            }
-            nav {
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-        }
-    </style>
+    <meta name="description" content="Thank you for registering your interest in Oralable.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
     </div>
 
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="overview.html">Overview</a>
-        <a href="user-guide.html">User Guide</a>
-        <a href="support.html">Support</a>
-        <a href="register.html">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <section class="hero">
+    <!-- Hero -->
+    <section class="success-hero">
         <h1>Thank You!</h1>
         <p>Your interest has been registered. We'll keep you updated on our launch.</p>
         <a href="index.html" class="btn">Return to Home</a>
     </section>
 
-    <div class="container">
-        <div class="info-box">
-            <h2>What's Next?</h2>
-            <p>We'll send you updates about Oralable's development and notify you when we launch. In the meantime, feel free to explore our site.</p>
-        </div>
-
-        <div class="links">
-            <a href="overview.html">Learn about our apps</a>
-            <a href="user-guide.html">Read the User Guide</a>
-            <a href="support.html">Get Support</a>
-        </div>
-    </div>
-
-    <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="support.html">Support</a>
+    <!-- Content -->
+    <section class="section">
+        <div class="container" style="max-width: 500px; text-align: center;">
+            <div class="section-box">
+                <h2 style="font-size: 20px; margin-bottom: 12px;">What's Next?</h2>
+                <p style="color: var(--color-text-secondary); margin: 0;">
+                    We'll send you updates about Oralable's development and notify you when we launch. In the meantime, feel free to explore our site.
+                </p>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
+
+            <div style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 32px;">
+                <a href="overview.html" style="font-weight: 600;">Learn about our apps</a>
+                <a href="user-guide.html" style="font-weight: 600;">Read the User Guide</a>
+                <a href="support.html" style="font-weight: 600;">Get Support</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
+            </div>
         </div>
     </footer>
 </body>

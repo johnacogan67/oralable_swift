@@ -4,408 +4,185 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Overview - Oralable Apps</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .disclaimer-banner {
-            background: #fff3cd;
-            padding: 12px 20px;
-            text-align: center;
-            font-size: 14px;
-            border-bottom: 1px solid #ffc107;
-        }
-        .disclaimer-banner strong {
-            color: #856404;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            padding: 20px;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        nav a {
-            color: #000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
-        .hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 80px 20px;
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .hero p {
-            font-size: 20px;
-            opacity: 0.95;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 60px 24px;
-        }
-        h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #000;
-        }
-        h3 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-        p {
-            margin-bottom: 16px;
-            color: #333333;
-        }
-        ul {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-        li {
-            margin-bottom: 8px;
-            color: #333333;
-        }
-        .app-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin: 40px 0;
-        }
-        .app-card {
-            background: #f5f5f7;
-            padding: 32px;
-            border-radius: 16px;
-        }
-        .app-card.consumer {
-            border-top: 4px solid #667eea;
-        }
-        .app-card.professional {
-            border-top: 4px solid #1a1a1a;
-        }
-        .app-card h3 {
-            margin-bottom: 12px;
-        }
-        .app-card .description {
-            color: #666;
-            font-size: 15px;
-            margin-bottom: 20px;
-        }
-        .app-card ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        .app-card li {
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        .workflow-section {
-            background: #000;
-            color: white;
-            padding: 48px 32px;
-            border-radius: 16px;
-            margin: 48px 0;
-        }
-        .workflow-section h2 {
-            color: white;
-            border-bottom-color: #444;
-            margin-bottom: 32px;
-        }
-        .workflow-steps {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 16px;
-        }
-        .workflow-step {
-            background: #1a1a1a;
-            padding: 20px 24px;
-            border-radius: 12px;
-            text-align: center;
-            min-width: 140px;
-        }
-        .workflow-step .number {
-            width: 32px;
-            height: 32px;
-            background: #667eea;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14px;
-            margin: 0 auto 12px;
-        }
-        .workflow-step .title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        .workflow-step .subtitle {
-            font-size: 12px;
-            color: #999;
-        }
-        .workflow-arrow {
-            font-size: 24px;
-            color: #666;
-        }
-        .coming-soon {
-            background: #e8f4fd;
-            border-left: 4px solid #007AFF;
-            padding: 20px 24px;
-            border-radius: 0 8px 8px 0;
-            margin: 32px 0;
-        }
-        .coming-soon strong {
-            color: #007AFF;
-        }
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 32px 0;
-        }
-        .comparison-table th,
-        .comparison-table td {
-            padding: 14px 16px;
-            text-align: left;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .comparison-table th {
-            background: #000;
-            color: white;
-            font-weight: 600;
-        }
-        .comparison-table tr:hover {
-            background: #f5f5f7;
-        }
-        .comparison-table .check {
-            color: #28a745;
-            font-weight: bold;
-        }
-        .comparison-table .dash {
-            color: #999;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-        @media (max-width: 600px) {
-            .hero h1 {
-                font-size: 28px;
-            }
-            .hero p {
-                font-size: 16px;
-            }
-            nav {
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-            .workflow-steps {
-                flex-direction: column;
-            }
-            .workflow-arrow {
-                transform: rotate(90deg);
-            }
-        }
-    </style>
+    <meta name="description" content="Two apps, one ecosystem. Oralable empowers individuals, Oralable for Professionals enables collaboration.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
     </div>
 
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="overview.html">Overview</a>
-        <a href="user-guide.html">User Guide</a>
-        <a href="support.html">Support</a>
-        <a href="register.html">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <section class="hero">
+    <!-- Hero -->
+    <section class="page-header">
         <h1>Two Apps, One Ecosystem</h1>
         <p>Oralable empowers individuals, Oralable for Professionals enables collaboration.</p>
     </section>
 
-    <div class="container">
-
-        <h2>The Oralable Ecosystem</h2>
-        <p>Oralable is a two-app system designed for seamless collaboration between individuals monitoring their own wellness and the professionals who support them.</p>
-
-        <div class="app-cards">
-            <div class="app-card consumer">
-                <h3>Oralable (Consumer App)</h3>
-                <p class="description">For individuals monitoring their own muscle activity.</p>
-                <ul>
-                    <li>Connect to Oralable device via Bluetooth</li>
-                    <li>Record muscle activity sessions</li>
-                    <li>View your personal session history</li>
-                    <li>Export and share data as CSV</li>
-                    <li>Demo Mode to explore without hardware</li>
-                </ul>
-            </div>
-            <div class="app-card professional">
-                <h3>Oralable for Professionals</h3>
-                <p class="description">For therapists, researchers, and coaches.</p>
-                <ul>
-                    <li>Import participant CSV data</li>
-                    <li>Manage multiple participants</li>
-                    <li>Analyze sessions and view trends</li>
-                    <li>Track progress over time</li>
-                    <li>Demo Mode with sample participant data</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="workflow-section">
-            <h2>How They Work Together</h2>
-            <div class="workflow-steps">
-                <div class="workflow-step">
-                    <div class="number">1</div>
-                    <div class="title">Record</div>
-                    <div class="subtitle">Consumer records sessions</div>
-                </div>
-                <div class="workflow-arrow">&#8594;</div>
-                <div class="workflow-step">
-                    <div class="number">2</div>
-                    <div class="title">Export</div>
-                    <div class="subtitle">Consumer exports CSV</div>
-                </div>
-                <div class="workflow-arrow">&#8594;</div>
-                <div class="workflow-step">
-                    <div class="number">3</div>
-                    <div class="title">Import</div>
-                    <div class="subtitle">Professional imports CSV</div>
-                </div>
-                <div class="workflow-arrow">&#8594;</div>
-                <div class="workflow-step">
-                    <div class="number">4</div>
-                    <div class="title">Analyze</div>
-                    <div class="subtitle">Review and analyze together</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="coming-soon">
-            <strong>Coming January 2026</strong> - CloudKit share codes for secure syncing. Generate a code in the consumer app, enter it in the professional app, and data syncs automatically.
-        </div>
-
-        <h2>Feature Comparison</h2>
-        <table class="comparison-table">
-            <thead>
-                <tr>
-                    <th>Feature</th>
-                    <th>Consumer App</th>
-                    <th>Professional App</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Connect to device</td>
-                    <td class="check">&#10003;</td>
-                    <td class="dash">&#8211;</td>
-                </tr>
-                <tr>
-                    <td>Record sessions</td>
-                    <td class="check">&#10003;</td>
-                    <td class="dash">&#8211;</td>
-                </tr>
-                <tr>
-                    <td>View history</td>
-                    <td class="check">&#10003;</td>
-                    <td class="check">&#10003;</td>
-                </tr>
-                <tr>
-                    <td>Export/Share CSV</td>
-                    <td class="check">&#10003;</td>
-                    <td class="dash">&#8211;</td>
-                </tr>
-                <tr>
-                    <td>Import participant CSV</td>
-                    <td class="dash">&#8211;</td>
-                    <td class="check">&#10003;</td>
-                </tr>
-                <tr>
-                    <td>Manage participants</td>
-                    <td class="dash">&#8211;</td>
-                    <td class="check">&#10003;</td>
-                </tr>
-                <tr>
-                    <td>Demo Mode</td>
-                    <td class="check">&#10003;</td>
-                    <td class="check">&#10003;</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h2>Get Started</h2>
-        <p>Ready to explore? Both apps are available on the App Store.</p>
-        <ul>
-            <li><strong>Individuals:</strong> Download <a href="index.html">Oralable</a> to monitor your own muscle activity</li>
-            <li><strong>Professionals:</strong> Download <a href="for-professionals.html">Oralable for Professionals</a> to work with participants</li>
-            <li><strong>Learn more:</strong> Read the <a href="user-guide.html">User Guide</a> for detailed instructions</li>
-        </ul>
-
-    </div>
-
-    <footer>
+    <!-- Content -->
+    <section class="section">
         <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="support.html">Support</a>
-                <a href="register.html">Register</a>
+            <h2 style="font-size: 28px; margin-bottom: 16px;">The Oralable Ecosystem</h2>
+            <p style="color: var(--color-text-secondary); margin-bottom: 40px;">
+                Oralable is a two-app system designed for seamless collaboration between individuals monitoring their own wellness and the professionals who support them.
+            </p>
+
+            <div class="app-cards">
+                <div class="app-card">
+                    <h3>Oralable (Consumer App)</h3>
+                    <p class="description">For individuals monitoring their own muscle activity.</p>
+                    <ul>
+                        <li>Connect to Oralable device via Bluetooth</li>
+                        <li>Record muscle activity sessions</li>
+                        <li>View your personal session history</li>
+                        <li>Export and share data as CSV</li>
+                        <li>Demo Mode to explore without hardware</li>
+                    </ul>
+                </div>
+                <div class="app-card">
+                    <h3>Oralable for Professionals</h3>
+                    <p class="description">For therapists, researchers, and coaches.</p>
+                    <ul>
+                        <li>Import participant CSV data</li>
+                        <li>Manage multiple participants</li>
+                        <li>Analyze sessions and view trends</li>
+                        <li>Track progress over time</li>
+                        <li>Demo Mode with sample participant data</li>
+                    </ul>
+                </div>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
+
+            <div class="workflow-section">
+                <h2>How They Work Together</h2>
+                <div class="workflow-steps">
+                    <div class="workflow-step">
+                        <div class="number">1</div>
+                        <div class="title">Record</div>
+                        <div class="subtitle">Consumer records sessions</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="number">2</div>
+                        <div class="title">Export</div>
+                        <div class="subtitle">Consumer exports CSV</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="number">3</div>
+                        <div class="title">Import</div>
+                        <div class="subtitle">Professional imports CSV</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="number">4</div>
+                        <div class="title">Analyze</div>
+                        <div class="subtitle">Review and analyze together</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>Coming Soon</strong> — CloudKit share codes for secure syncing. Generate a code in the consumer app, enter it in the professional app, and data syncs automatically.
+            </div>
+
+            <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">Feature Comparison</h2>
+            <table class="feature-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Consumer App</th>
+                        <th>Professional App</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Connect to device</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Record sessions</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>View history</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Export/Share CSV</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Import participant CSV</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Manage participants</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Demo Mode</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">Get Started</h2>
+            <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Ready to explore? Both apps are available on the App Store.</p>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>Individuals:</strong> Download <a href="index.html">Oralable</a> to monitor your own muscle activity</li>
+                <li><strong>Professionals:</strong> Download <a href="for-professionals.html">Oralable for Professionals</a> to work with participants</li>
+                <li><strong>Learn more:</strong> Read the <a href="user-guide.html">User Guide</a> for detailed instructions</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
+            </div>
         </div>
     </footer>
 </body>

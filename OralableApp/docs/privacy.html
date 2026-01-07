@@ -4,177 +4,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        header {
-            padding: 40px 0;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            text-decoration: none;
-            color: #000000;
-        }
-        main {
-            padding: 60px 0;
-        }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .updated {
-            font-size: 14px;
-            color: #666666;
-            margin-bottom: 40px;
-        }
-        h2 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-top: 40px;
-            margin-bottom: 16px;
-        }
-        p {
-            margin-bottom: 16px;
-            color: #333333;
-        }
-        ul {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-        li {
-            margin-bottom: 8px;
-            color: #333333;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-    </style>
+    <meta name="description" content="Privacy Policy for Oralable apps. Learn how we collect, use, and protect your information.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav style="display: flex; justify-content: center; gap: 30px; padding: 20px; border-bottom: 1px solid #e5e5e5;">
-        <a href="index.html" style="color: #000; text-decoration: none; font-size: 14px;">Home</a>
-        <a href="overview.html" style="color: #000; text-decoration: none; font-size: 14px;">Overview</a>
-        <a href="user-guide.html" style="color: #000; text-decoration: none; font-size: 14px;">User Guide</a>
-        <a href="support.html" style="color: #000; text-decoration: none; font-size: 14px;">Support</a>
-        <a href="register.html" style="color: #000; text-decoration: none; font-size: 14px;">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <header>
-        <div class="container">
-            <a href="index.html" class="logo">Oralable</a>
-        </div>
-    </header>
-
-    <main>
-        <div class="container">
+    <!-- Content -->
+    <section class="legal-content">
+        <div class="container-narrow">
             <h1>Privacy Policy</h1>
-            <p class="updated">Last updated: December 2025</p>
+            <p class="updated">Last updated: January 6, 2026</p>
 
-            <p>JAC Dental Solutions Limited ("we", "our", or "us") operates the Oralable mobile application. This Privacy Policy explains how we collect, use, and protect your information.</p>
+            <h2>Overview</h2>
+            <p>JAC Dental Solutions Limited ("we", "our", or "us") operates the Oralable app and hardware. This Privacy Policy explains how we collect, use, and protect your information.</p>
 
-            <h2>Information We Collect</h2>
+            <h2>Data We Collect</h2>
             <p>The Oralable app collects the following types of data:</p>
             <ul>
-                <li><strong>Sensor Data:</strong> Muscle activity measurements from the Oralable sensor, including PPG (photoplethysmography) readings</li>
+                <li><strong>Sensor Data:</strong> PPG readings, accelerometer data, temperature, and battery level from your Oralable device</li>
                 <li><strong>Session Data:</strong> Timestamps, duration, and metadata for monitoring sessions</li>
-                <li><strong>Device Information:</strong> Device model and operating system version for app compatibility</li>
+                <li><strong>Account Information:</strong> If you use Sign in with Apple, we receive your Apple ID email (or relay email)</li>
+                <li><strong>Usage Analytics:</strong> Anonymous app usage statistics via Google Analytics</li>
             </ul>
 
-            <h2>How We Store Your Data</h2>
-            <p>All sensor and session data is stored locally on your device. We do not automatically upload your health data to external servers.</p>
-            <p>You control your data. You can export it as CSV files or delete it at any time from within the app.</p>
+            <h2>Data Storage</h2>
+            <p>Your sensor data is stored locally on your device. If you enable iCloud sync, data is also stored in your private iCloud account. We do not have access to your sensor data.</p>
 
             <h2>Data Sharing</h2>
-            <p>We do not sell, rent, or share your personal health data with third parties. Your data is only shared when:</p>
-            <ul>
-                <li>You explicitly choose to export and share CSV files</li>
-                <li>Required by law or legal process</li>
-            </ul>
+            <p>We do not sell, rent, or share your personal data with third parties. You control when and how to export or share your data via the app's CSV export feature.</p>
 
             <h2>Third-Party Services</h2>
             <p>The app may use the following third-party services:</p>
             <ul>
                 <li><strong>Apple HealthKit:</strong> Optional integration to store wellness data (requires your permission)</li>
-                <li><strong>Analytics:</strong> Anonymous usage statistics to improve the app</li>
+                <li><strong>Google Analytics:</strong> Anonymous usage statistics to improve the app</li>
             </ul>
 
-            <h2>Data Security</h2>
-            <p>We implement appropriate security measures to protect your data stored on your device. Data transmitted via Bluetooth uses standard encryption protocols.</p>
+            <h2>Data Retention</h2>
+            <p>Sensor data remains on your device until you delete it. Deleting the app removes all local data. iCloud data can be managed through your iCloud settings.</p>
+
+            <h2>Security</h2>
+            <p>We use industry-standard security measures including encryption for data in transit (Bluetooth LE encryption, HTTPS) and at rest (iOS Data Protection).</p>
 
             <h2>Your Rights</h2>
             <p>You have the right to:</p>
             <ul>
-                <li>Access your data stored in the app</li>
-                <li>Export your data at any time</li>
-                <li>Delete your data from the app</li>
-                <li>Withdraw consent for optional features</li>
+                <li>Access your data (via app export)</li>
+                <li>Delete your data (via app settings or by deleting the app)</li>
+                <li>Opt out of analytics (via app settings)</li>
             </ul>
 
             <h2>Children's Privacy</h2>
-            <p>The app is not intended for use by children under 17. We do not knowingly collect data from children.</p>
+            <p>Oralable is not intended for children under 13. We do not knowingly collect data from children under 13.</p>
 
             <h2>Changes to This Policy</h2>
-            <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
+            <p>We may update this policy from time to time. We will notify you of any material changes through the app or by email.</p>
 
             <h2>Contact Us</h2>
-            <p>If you have questions about this Privacy Policy, please contact us at:</p>
-            <p>Email: support@oralable.com</p>
-            <p>JAC Dental Solutions Limited<br>Dublin, Ireland</p>
+            <p>If you have questions about this Privacy Policy, contact us at:</p>
+            <p>JAC Dental Solutions Limited<br>
+            Dublin, Ireland<br>
+            Email: <a href="mailto:privacy@oralable.com">privacy@oralable.com</a></p>
         </div>
-    </main>
+    </section>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="footer">
         <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="support.html">Support</a>
-                <a href="register.html">Register</a>
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
         </div>
     </footer>
 </body>

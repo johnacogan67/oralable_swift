@@ -4,328 +4,200 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oralable - Muscle Activity Monitor</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        header {
-            padding: 60px 0 40px;
-            text-align: center;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .logo {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .tagline {
-            font-size: 18px;
-            color: #666666;
-        }
-        .hero {
-            padding: 60px 0;
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 36px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .hero p {
-            font-size: 18px;
-            color: #333333;
-            max-width: 600px;
-            margin: 0 auto 32px;
-        }
-        .badge {
-            display: inline-block;
-            background: #000000;
-            color: #ffffff;
-            padding: 8px 20px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 40px;
-        }
-        .app-store-btn {
-            display: inline-block;
-            background: #000000;
-            color: #ffffff;
-            padding: 14px 32px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .app-store-btn:hover {
-            background: #333333;
-        }
-        .features {
-            padding: 60px 0;
-            border-top: 1px solid #e5e5e5;
-        }
-        .features h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 40px;
-            text-align: center;
-        }
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 32px;
-        }
-        .feature {
-            padding: 24px;
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-        }
-        .feature h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .feature p {
-            font-size: 14px;
-            color: #666666;
-        }
-        .how-it-works {
-            padding: 60px 0;
-            border-top: 1px solid #e5e5e5;
-        }
-        .how-it-works h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 40px;
-            text-align: center;
-        }
-        .steps {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-        .step {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-        }
-        .step-number {
-            width: 32px;
-            height: 32px;
-            background: #000000;
-            color: #ffffff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-        .step-content h3 {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .step-content p {
-            font-size: 14px;
-            color: #666666;
-        }
-        .disclaimer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .disclaimer-box {
-            background: #f5f5f5;
-            padding: 24px;
-            border-radius: 8px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .disclaimer-box h3 {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        .disclaimer-box p {
-            font-size: 13px;
-            color: #666666;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-    </style>
+    <meta name="description" content="Monitor jaw muscle activity with precision PPG sensor technology. Export your data for personal tracking or to share with healthcare providers.">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Oralable - Muscle Activity Monitor">
+    <meta property="og:description" content="Monitor jaw muscle activity with precision PPG sensor technology.">
+    <meta property="og:image" content="https://oralable.com/images/og-image.png">
+    <meta property="og:url" content="https://oralable.com">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav style="display: flex; justify-content: center; gap: 30px; padding: 20px; border-bottom: 1px solid #e5e5e5;">
-        <a href="index.html" style="color: #000; text-decoration: none; font-size: 14px;">Home</a>
-        <a href="overview.html" style="color: #000; text-decoration: none; font-size: 14px;">Overview</a>
-        <a href="user-guide.html" style="color: #000; text-decoration: none; font-size: 14px;">User Guide</a>
-        <a href="support.html" style="color: #000; text-decoration: none; font-size: 14px;">Support</a>
-        <a href="register.html" style="color: #000; text-decoration: none; font-size: 14px;">Register</a>
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <header>
-        <div class="container">
-            <div class="logo">Oralable</div>
-            <div class="tagline">Muscle Activity Monitor</div>
-        </div>
-    </header>
-
+    <!-- Hero -->
     <section class="hero">
         <div class="container">
-            <span class="badge">Wellness Monitoring</span>
-            <h1>Track Your Muscle Activity</h1>
-            <p>Monitor jaw muscle activity with precision PPG sensor technology. Export your data for personal tracking or to share with healthcare providers.</p>
-            <a href="#" class="app-store-btn">Download on the App Store</a>
+            <p class="hero-eyebrow">Muscle Activity Monitor</p>
+            <h1 class="hero-title">Track Your<br>Muscle Activity</h1>
+            <p class="hero-subtitle">
+                Monitor jaw muscle activity with precision PPG sensor technology.
+                Export your data for personal tracking or to share with healthcare providers.
+            </p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <a href="https://apps.apple.com/app/oralable" class="hero-cta">
+                    Download on App Store
+                </a>
+                <a href="user-guide.html" class="hero-cta hero-cta-secondary">
+                    Learn more →
+                </a>
+            </div>
         </div>
     </section>
 
-    <section class="features">
+    <!-- Features -->
+    <section class="section section-alt">
         <div class="container">
-            <h2>Features</h2>
-            <div class="feature-grid">
-                <div class="feature">
-                    <h3>PPG Sensor Monitoring</h3>
-                    <p>Advanced photoplethysmography technology captures muscle activity data with precision.</p>
+            <h2 class="section-title">Features</h2>
+            <p class="section-subtitle">
+                Everything you need to monitor and understand your muscle activity patterns.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="24" cy="24" r="20" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M12 24h6l3-8 6 16 3-8h6" stroke="#1d1d1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <h3 class="feature-title">PPG Sensor</h3>
+                    <p class="feature-desc">Three-wavelength photoplethysmography captures detailed muscle activity data.</p>
                 </div>
-                <div class="feature">
-                    <h3>Real-Time Dashboard</h3>
-                    <p>View your muscle activity metrics in real-time with an intuitive, easy-to-read interface.</p>
+
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="8" width="32" height="32" rx="4" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M16 28l6-8 6 6 6-10" stroke="#1d1d1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <h3 class="feature-title">Real-Time Display</h3>
+                    <p class="feature-desc">View your muscle activity metrics live with an intuitive dashboard.</p>
                 </div>
-                <div class="feature">
-                    <h3>CSV Data Export</h3>
-                    <p>Export your recorded sessions as CSV files to analyze or share with healthcare providers.</p>
+
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 34V20l10-6 10 6v14l-10 6-10-6z" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M14 20l10 6 10-6M24 26v14" stroke="#1d1d1f" stroke-width="2"/>
+                    </svg>
+                    <h3 class="feature-title">Data Export</h3>
+                    <p class="feature-desc">Export sessions as CSV files for analysis or to share with providers.</p>
                 </div>
-                <div class="feature">
-                    <h3>Session History</h3>
-                    <p>Review past monitoring sessions and track your patterns over time.</p>
+
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="24" cy="24" r="16" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M24 16v8l6 6" stroke="#1d1d1f" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h3 class="feature-title">Session History</h3>
+                    <p class="feature-desc">Review past sessions and track patterns over time.</p>
                 </div>
-                <div class="feature">
-                    <h3>Bluetooth Connection</h3>
-                    <p>Seamlessly connect to the Oralable sensor via Bluetooth Low Energy.</p>
+
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M24 8c-8.837 0-16 7.163-16 16s7.163 16 16 16 16-7.163 16-16" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M24 8c4.418 0 8 7.163 8 16" stroke="#1d1d1f" stroke-width="2" stroke-dasharray="4 4"/>
+                    </svg>
+                    <h3 class="feature-title">Bluetooth LE</h3>
+                    <p class="feature-desc">Seamless wireless connection to your iPhone.</p>
                 </div>
-                <div class="feature">
-                    <h3>Local Data Storage</h3>
-                    <p>Your data stays on your device. You control when and how to share it.</p>
+
+                <div class="feature-card">
+                    <svg class="feature-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="12" y="8" width="24" height="32" rx="2" stroke="#1d1d1f" stroke-width="2"/>
+                        <path d="M18 16h12M18 22h12M18 28h8" stroke="#1d1d1f" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h3 class="feature-title">Local Storage</h3>
+                    <p class="feature-desc">Your data stays on your device. You control sharing.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="how-it-works">
+    <!-- How It Works -->
+    <section class="section">
         <div class="container">
-            <h2>How It Works</h2>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Connect Your Sensor</h3>
-                        <p>Pair the Oralable sensor with your iPhone via Bluetooth.</p>
-                    </div>
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">
+                Get started in four simple steps.
+            </p>
+
+            <div class="features-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="feature-card">
+                    <div style="font-size: 40px; font-weight: 700; color: #1d1d1f; margin-bottom: 16px;">1</div>
+                    <h3 class="feature-title">Connect</h3>
+                    <p class="feature-desc">Pair the Oralable sensor with your iPhone via Bluetooth.</p>
                 </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>Start Monitoring</h3>
-                        <p>Begin a session and watch your muscle activity data in real-time.</p>
-                    </div>
+
+                <div class="feature-card">
+                    <div style="font-size: 40px; font-weight: 700; color: #1d1d1f; margin-bottom: 16px;">2</div>
+                    <h3 class="feature-title">Monitor</h3>
+                    <p class="feature-desc">Start a session and view your data in real-time.</p>
                 </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Review Your Data</h3>
-                        <p>Analyze your sessions and identify patterns in your muscle activity.</p>
-                    </div>
+
+                <div class="feature-card">
+                    <div style="font-size: 40px; font-weight: 700; color: #1d1d1f; margin-bottom: 16px;">3</div>
+                    <h3 class="feature-title">Review</h3>
+                    <p class="feature-desc">Analyze sessions and identify activity patterns.</p>
                 </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h3>Export and Share</h3>
-                        <p>Export your data as CSV to share with healthcare providers or for personal records.</p>
-                    </div>
+
+                <div class="feature-card">
+                    <div style="font-size: 40px; font-weight: 700; color: #1d1d1f; margin-bottom: 16px;">4</div>
+                    <h3 class="feature-title">Export</h3>
+                    <p class="feature-desc">Share CSV data with healthcare providers.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section style="padding: 60px 0; background: #f5f5f7;">
+    <!-- Demo Mode -->
+    <section class="section section-alt">
+        <div class="container" style="text-align: center;">
+            <h2 class="section-title">Try Before You Buy</h2>
+            <p class="section-subtitle">
+                No hardware? No problem. Demo Mode lets you explore the full app with simulated data.
+            </p>
+            <p style="color: var(--color-text-secondary); margin-bottom: 24px;">
+                Settings → Demo Mode → On
+            </p>
+            <a href="user-guide.html#demo-mode" class="hero-cta">
+                Learn about Demo Mode →
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
         <div class="container">
-            <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 12px; text-align: center;">Try Before You Buy</h2>
-            <p style="color: #666; font-size: 18px; margin-bottom: 30px; text-align: center;">No hardware? No problem.</p>
-            <div style="background: #fff; padding: 40px; border-radius: 16px;">
-                <h3 style="font-size: 24px; margin-bottom: 16px;">Demo Mode Included</h3>
-                <p style="margin-bottom: 16px;">Experience the full Oralable app without purchasing hardware. Demo Mode simulates a connected device with realistic muscle activity patterns.</p>
-                <ul style="margin: 20px 0; padding-left: 24px;">
-                    <li style="margin-bottom: 8px;">Explore the complete interface</li>
-                    <li style="margin-bottom: 8px;">See real-time waveform display</li>
-                    <li style="margin-bottom: 8px;">Test recording and playback</li>
-                    <li style="margin-bottom: 8px;">View historical charts</li>
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
                 </ul>
-                <p><strong>How to enable:</strong> Settings &rarr; Demo Mode &rarr; On</p>
-                <p style="margin-top: 20px;"><a href="user-guide.html#demo-mode" style="color: #000; text-decoration: underline;">Read the full User Guide &rarr;</a></p>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
             </div>
-        </div>
-    </section>
-
-    <section class="disclaimer">
-        <div class="container">
-            <div class="disclaimer-box">
-                <h3>Important Notice</h3>
-                <p>Oralable is a wellness monitoring tool and is NOT a medical device. It is not intended to diagnose, treat, cure, or prevent any disease or health condition. Always consult a qualified healthcare provider for medical advice.</p>
-            </div>
-        </div>
-    </section>
-
-    <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="support.html">Support</a>
-                <a href="register.html">Register</a>
-            </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
         </div>
     </footer>
 </body>

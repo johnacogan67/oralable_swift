@@ -4,233 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register Your Interest - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .disclaimer-banner {
-            background: #fff3cd;
-            padding: 12px 20px;
-            text-align: center;
-            font-size: 14px;
-            border-bottom: 1px solid #ffc107;
-        }
-        .disclaimer-banner strong {
-            color: #856404;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            padding: 20px;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        nav a {
-            color: #000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
-        .hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 80px 20px;
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .hero p {
-            font-size: 20px;
-            opacity: 0.95;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 60px 24px;
-        }
-        h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 24px;
-        }
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
-        }
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid #e5e5e5;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .form-group textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-        .form-group .optional {
-            color: #666;
-            font-weight: 400;
-            font-size: 14px;
-        }
-        button[type="submit"] {
-            width: 100%;
-            padding: 16px 32px;
-            background: #000;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button[type="submit"]:hover {
-            background: #333;
-        }
-        .privacy-note {
-            margin-top: 24px;
-            padding: 16px;
-            background: #f5f5f7;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #666;
-            text-align: center;
-        }
-        .privacy-note a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        .privacy-note a:hover {
-            text-decoration: underline;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-        @media (max-width: 600px) {
-            .hero h1 {
-                font-size: 28px;
-            }
-            .hero p {
-                font-size: 16px;
-            }
-            nav {
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-        }
-    </style>
+    <meta name="description" content="Register your interest in Oralable and be the first to know about updates.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
     </div>
 
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="overview.html">Overview</a>
-        <a href="user-guide.html">User Guide</a>
-        <a href="support.html">Support</a>
-        <a href="register.html">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <section class="hero">
+    <!-- Hero -->
+    <section class="page-header">
         <h1>Stay Updated</h1>
-        <p>Register your interest in Oralable and be the first to know about our launch.</p>
+        <p>Register your interest in Oralable and be the first to know about updates.</p>
     </section>
 
-    <div class="container">
-        <h2>Register Your Interest</h2>
+    <!-- Content -->
+    <section class="section">
+        <div class="container" style="max-width: 500px;">
+            <h2 style="font-size: 24px; text-align: center; margin-bottom: 32px;">Register Your Interest</h2>
 
-        <form name="interest" method="POST" data-netlify="true" action="thank-you.html">
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" required placeholder="Your name">
+            <form name="interest" method="POST" data-netlify="true" action="thank-you.html">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" required placeholder="Your name">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message <span class="optional">(optional)</span></label>
+                    <textarea id="message" name="message" placeholder="Tell us about your interest in Oralable..."></textarea>
+                </div>
+
+                <button type="submit">Register Interest</button>
+            </form>
+
+            <div class="section-box" style="margin-top: 32px; text-align: center;">
+                <p style="color: var(--color-text-secondary); font-size: 13px; margin: 0;">
+                    We respect your privacy. Your information will only be used to contact you about Oralable updates.
+                    Read our <a href="privacy.html">Privacy Policy</a>.
+                </p>
             </div>
-
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required placeholder="your@email.com">
-            </div>
-
-            <div class="form-group">
-                <label for="message">Message <span class="optional">(optional)</span></label>
-                <textarea id="message" name="message" placeholder="Tell us about your interest in Oralable..."></textarea>
-            </div>
-
-            <button type="submit">Register Interest</button>
-        </form>
-
-        <div class="privacy-note">
-            We respect your privacy. Your information will only be used to contact you about Oralable updates.
-            Read our <a href="privacy.html">Privacy Policy</a>.
         </div>
-    </div>
+    </section>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="footer">
         <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="support.html">Support</a>
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
         </div>
     </footer>
 </body>

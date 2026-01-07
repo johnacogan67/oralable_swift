@@ -4,133 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terms of Service - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        header {
-            padding: 40px 0;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            text-decoration: none;
-            color: #000000;
-        }
-        main {
-            padding: 60px 0;
-        }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .updated {
-            font-size: 14px;
-            color: #666666;
-            margin-bottom: 40px;
-        }
-        h2 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-top: 40px;
-            margin-bottom: 16px;
-        }
-        p {
-            margin-bottom: 16px;
-            color: #333333;
-        }
-        ul {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-        li {
-            margin-bottom: 8px;
-            color: #333333;
-        }
-        .important {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 24px 0;
-        }
-        .important h3 {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-    </style>
+    <meta name="description" content="Terms of Service for Oralable apps and hardware.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav style="display: flex; justify-content: center; gap: 30px; padding: 20px; border-bottom: 1px solid #e5e5e5;">
-        <a href="index.html" style="color: #000; text-decoration: none; font-size: 14px;">Home</a>
-        <a href="overview.html" style="color: #000; text-decoration: none; font-size: 14px;">Overview</a>
-        <a href="user-guide.html" style="color: #000; text-decoration: none; font-size: 14px;">User Guide</a>
-        <a href="support.html" style="color: #000; text-decoration: none; font-size: 14px;">Support</a>
-        <a href="register.html" style="color: #000; text-decoration: none; font-size: 14px;">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <header>
-        <div class="container">
-            <a href="index.html" class="logo">Oralable</a>
-        </div>
-    </header>
-
-    <main>
-        <div class="container">
+    <!-- Content -->
+    <section class="legal-content">
+        <div class="container-narrow">
             <h1>Terms of Service</h1>
-            <p class="updated">Last updated: December 2025</p>
+            <p class="updated">Last updated: January 6, 2026</p>
 
-            <p>These Terms of Service ("Terms") govern your use of the Oralable mobile application ("App") provided by JAC Dental Solutions Limited ("we", "our", or "us").</p>
-
-            <p>By downloading or using the App, you agree to be bound by these Terms.</p>
+            <h2>Acceptance of Terms</h2>
+            <p>By using the Oralable app and hardware, you agree to these Terms of Service. If you do not agree, do not use Oralable.</p>
 
             <div class="important">
-                <h3>Important: Not a Medical Device</h3>
-                <p>Oralable is a wellness monitoring tool and is NOT a medical device. It is not intended to diagnose, treat, cure, or prevent any disease or health condition. The App is designed for general wellness monitoring and personal data tracking only. Always consult a qualified healthcare provider for medical advice, diagnosis, or treatment.</p>
+                <h3>Important Health Disclaimer</h3>
+                <p><strong>Oralable is a wellness monitoring tool and is NOT a medical device.</strong> It is not intended to diagnose, treat, cure, or prevent any disease or health condition. The data provided by Oralable is for informational purposes only and should not be used as a substitute for professional medical advice, diagnosis, or treatment.</p>
             </div>
+
+            <p>Always consult a qualified healthcare provider before making any decisions based on Oralable data. If you have concerns about your health, seek professional medical attention immediately.</p>
+
+            <h2>Intended Use</h2>
+            <p>Oralable is intended for:</p>
+            <ul>
+                <li>Personal wellness monitoring</li>
+                <li>Tracking muscle activity patterns</li>
+                <li>Sharing data with healthcare providers for their review</li>
+                <li>Research purposes (with appropriate consent and oversight)</li>
+            </ul>
 
             <h2>Use of the App</h2>
             <p>The Oralable app is designed to:</p>
@@ -144,10 +71,10 @@
             <h2>User Responsibilities</h2>
             <p>You agree to:</p>
             <ul>
-                <li>Use the App only for its intended wellness monitoring purpose</li>
-                <li>Not rely on the App for medical decisions</li>
-                <li>Seek professional medical advice for any health concerns</li>
-                <li>Keep your device and the App updated</li>
+                <li>Use Oralable only for its intended purpose</li>
+                <li>Not rely on Oralable data for medical decisions</li>
+                <li>Keep your device clean and maintained</li>
+                <li>Not modify or reverse engineer the hardware or software</li>
                 <li>Use the sensor according to provided instructions</li>
             </ul>
 
@@ -155,7 +82,10 @@
             <p>The App, including its design, features, and content, is owned by JAC Dental Solutions Limited and is protected by intellectual property laws. You may not copy, modify, distribute, or reverse engineer any part of the App.</p>
 
             <h2>Data and Privacy</h2>
-            <p>Your use of the App is also governed by our Privacy Policy. By using the App, you consent to the collection and use of information as described in our Privacy Policy.</p>
+            <p>Your use of the App is also governed by our <a href="privacy.html">Privacy Policy</a>. By using the App, you consent to the collection and use of information as described in our Privacy Policy.</p>
+
+            <h2>Limitation of Liability</h2>
+            <p>To the maximum extent permitted by law, JAC Dental Solutions Limited shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of Oralable.</p>
 
             <h2>Disclaimer of Warranties</h2>
             <p>The App is provided "as is" without warranties of any kind. We do not guarantee that:</p>
@@ -165,36 +95,40 @@
                 <li>The App will meet your specific requirements</li>
             </ul>
 
-            <h2>Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, JAC Dental Solutions Limited shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the App.</p>
-
-            <h2>Changes to Terms</h2>
-            <p>We may update these Terms from time to time. Continued use of the App after changes constitutes acceptance of the new Terms.</p>
+            <h2>Warranty</h2>
+            <p>Oralable hardware is warranted against manufacturing defects for 12 months from the date of purchase. This warranty does not cover damage from misuse, modifications, or normal wear.</p>
 
             <h2>Termination</h2>
             <p>We may terminate or suspend your access to the App at any time for violation of these Terms.</p>
 
+            <h2>Changes to Terms</h2>
+            <p>We may update these Terms from time to time. Continued use of Oralable after changes constitutes acceptance of the new Terms.</p>
+
             <h2>Governing Law</h2>
             <p>These Terms are governed by the laws of Ireland. Any disputes shall be resolved in the courts of Ireland.</p>
 
-            <h2>Contact Us</h2>
-            <p>If you have questions about these Terms, please contact us at:</p>
-            <p>Email: support@oralable.com</p>
-            <p>JAC Dental Solutions Limited<br>Dublin, Ireland</p>
+            <h2>Contact</h2>
+            <p>For questions about these Terms, contact us at:</p>
+            <p>JAC Dental Solutions Limited<br>
+            Dublin, Ireland<br>
+            Email: <a href="mailto:legal@oralable.com">legal@oralable.com</a></p>
         </div>
-    </main>
+    </section>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="footer">
         <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="support.html">Support</a>
-                <a href="register.html">Register</a>
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
         </div>
     </footer>
 </body>

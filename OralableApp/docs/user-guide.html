@@ -4,830 +4,602 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Guide - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #fff;
-            color: #1d1d1f;
-            line-height: 1.6;
-        }
-        .disclaimer-banner {
-            background: #000;
-            color: #fff;
-            text-align: center;
-            padding: 8px 20px;
-            font-size: 12px;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        nav a {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        nav a:hover {
-            color: #000;
-            text-decoration: underline;
-        }
-        .hero {
-            text-align: center;
-            padding: 60px 20px 40px;
-            background: #f5f5f7;
-        }
-        .hero h1 {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-        .hero p {
-            color: #86868b;
-            font-size: 18px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-        h2 {
-            font-size: 28px;
-            margin: 40px 0 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #000;
-        }
-        h2:first-of-type {
-            margin-top: 0;
-        }
-        h3 {
-            font-size: 20px;
-            margin: 30px 0 15px;
-            color: #1d1d1f;
-        }
-        h4 {
-            font-size: 16px;
-            margin: 20px 0 10px;
-            color: #333;
-        }
-        p {
-            margin-bottom: 16px;
-            color: #1d1d1f;
-        }
-        ul, ol {
-            margin-bottom: 16px;
-            padding-left: 24px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        .app-selector {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 30px 0;
-        }
-        .app-tab {
-            padding: 12px 30px;
-            border: 2px solid #000;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            text-decoration: none;
-            color: #000;
-            background: #fff;
-        }
-        .app-tab:hover, .app-tab.active {
-            background: #000;
-            color: #fff;
-        }
-        .section-box {
-            background: #f5f5f7;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 20px 0;
-        }
-        .section-box h4 {
-            margin-top: 0;
-        }
-        .steps {
-            counter-reset: step-counter;
-            list-style: none;
-            padding: 0;
-        }
-        .steps li {
-            counter-increment: step-counter;
-            padding: 15px 0 15px 50px;
-            position: relative;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .steps li:last-child {
-            border-bottom: none;
-        }
-        .steps li::before {
-            content: counter(step-counter);
-            position: absolute;
-            left: 0;
-            top: 15px;
-            width: 32px;
-            height: 32px;
-            background: #000;
-            color: #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .tip-box {
-            background: #f0f0f0;
-            border-left: 4px solid #000;
-            padding: 15px 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .tip-box strong {
-            color: #000;
-        }
-        .note-box {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            padding: 15px 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-        }
-        .feature-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .feature-table th, .feature-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .feature-table th {
-            background: #000;
-            color: #fff;
-            font-weight: 600;
-        }
-        .feature-table tr:hover {
-            background: #f5f5f7;
-        }
-        .status-available {
-            color: #1d1d1f;
-            font-weight: 600;
-        }
-        .status-coming {
-            color: #86868b;
-        }
-        .toc {
-            background: #f5f5f7;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 30px 0;
-        }
-        .toc h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-        .toc ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .toc li {
-            padding: 8px 0;
-            margin: 0;
-        }
-        .toc a {
-            color: #1d1d1f;
-            text-decoration: none;
-        }
-        .toc a:hover {
-            text-decoration: underline;
-        }
-        .version-badge {
-            display: inline-block;
-            background: #000;
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin-left: 10px;
-            vertical-align: middle;
-        }
-        footer {
-            padding: 40px 20px;
-            text-align: center;
-            color: #86868b;
-            font-size: 14px;
-            border-top: 1px solid #e0e0e0;
-            margin-top: 60px;
-        }
-        footer a {
-            color: #86868b;
-            text-decoration: none;
-        }
-        footer a:hover {
-            text-decoration: underline;
-        }
-        .footer-links {
-            margin-bottom: 20px;
-        }
-        .footer-links a {
-            margin: 0 15px;
-        }
-        @media (max-width: 600px) {
-            .hero h1 {
-                font-size: 28px;
-            }
-            .app-selector {
-                flex-direction: column;
-                align-items: center;
-            }
-            .steps li {
-                padding-left: 45px;
-            }
-            nav {
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-        }
-    </style>
+    <meta name="description" content="Complete user guide for Oralable apps. Learn how to connect, record, and share your muscle activity data.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
     </div>
 
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="overview.html">Overview</a>
-        <a href="user-guide.html">User Guide</a>
-        <a href="support.html">Support</a>
-        <a href="register.html">Register</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <section class="hero">
+    <!-- Hero -->
+    <section class="page-header">
         <h1>User Guide</h1>
         <p>Complete instructions for Oralable apps</p>
     </section>
 
-    <div class="container">
+    <!-- Content -->
+    <section class="section">
+        <div class="container" style="max-width: 800px;">
 
-        <div class="app-selector">
-            <a href="#consumer" class="app-tab active">Oralable</a>
-            <a href="#professional" class="app-tab">For Professionals</a>
-        </div>
+            <div class="app-selector">
+                <a href="#consumer" class="app-tab active">Oralable</a>
+                <a href="#professional" class="app-tab">For Professionals</a>
+            </div>
 
-        <!-- HOW IT WORKS TOGETHER -->
-        <div class="section-box" style="background: #000; color: #fff; margin-bottom: 40px;">
-            <h3 style="color: #fff; margin-top: 0; margin-bottom: 20px; font-size: 24px;">How the Two Apps Work Together</h3>
-            <p style="color: #ccc; margin-bottom: 20px;">Oralable is a two-app system designed for collaboration between consumers and professionals.</p>
+            <!-- How It Works Together -->
+            <div class="workflow-section">
+                <h2 style="margin-top: 0;">How the Two Apps Work Together</h2>
+                <p style="color: var(--color-text-secondary); text-align: center; margin-bottom: 24px;">
+                    Oralable is a two-app system designed for collaboration between consumers and professionals.
+                </p>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
-                <div style="flex: 1; min-width: 250px; background: #1a1a1a; padding: 20px; border-radius: 8px;">
-                    <h4 style="color: #fff; margin-top: 0;">Oralable (Consumer)</h4>
-                    <p style="color: #999; font-size: 14px;">For individuals monitoring their own muscle activity</p>
-                    <ul style="color: #ccc; margin: 10px 0 0 0; padding-left: 20px;">
-                        <li>Connect to device</li>
-                        <li>Record sessions</li>
-                        <li>View your data</li>
-                        <li>Share with professionals</li>
-                    </ul>
+                <div class="app-cards" style="margin-bottom: 32px;">
+                    <div class="app-card" style="background: var(--color-bg-primary);">
+                        <h3 style="font-size: 18px;">Oralable (Consumer)</h3>
+                        <p class="description">For individuals monitoring their own muscle activity</p>
+                        <ul>
+                            <li>Connect to device</li>
+                            <li>Record sessions</li>
+                            <li>View your data</li>
+                            <li>Share with professionals</li>
+                        </ul>
+                    </div>
+                    <div class="app-card" style="background: var(--color-bg-primary);">
+                        <h3 style="font-size: 18px;">Oralable for Professionals</h3>
+                        <p class="description">For therapists, researchers, and coaches</p>
+                        <ul>
+                            <li>Import participant data</li>
+                            <li>Manage multiple participants</li>
+                            <li>Analyze sessions</li>
+                            <li>Track progress over time</li>
+                        </ul>
+                    </div>
                 </div>
-                <div style="flex: 1; min-width: 250px; background: #1a1a1a; padding: 20px; border-radius: 8px;">
-                    <h4 style="color: #fff; margin-top: 0;">Oralable for Professionals</h4>
-                    <p style="color: #999; font-size: 14px;">For therapists, researchers, and coaches</p>
-                    <ul style="color: #ccc; margin: 10px 0 0 0; padding-left: 20px;">
-                        <li>Import participant data</li>
-                        <li>Manage multiple participants</li>
-                        <li>Analyze sessions</li>
-                        <li>Track progress over time</li>
-                    </ul>
+
+                <div class="workflow-steps">
+                    <div class="workflow-step" style="background: var(--color-bg-primary);">
+                        <div class="number">1</div>
+                        <div class="title">Record</div>
+                        <div class="subtitle">Consumer records</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step" style="background: var(--color-bg-primary);">
+                        <div class="number">2</div>
+                        <div class="title">Share</div>
+                        <div class="subtitle">Shares CSV</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step" style="background: var(--color-bg-primary);">
+                        <div class="number">3</div>
+                        <div class="title">Import</div>
+                        <div class="subtitle">Professional imports</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step" style="background: var(--color-bg-primary);">
+                        <div class="number">4</div>
+                        <div class="title">Analyze</div>
+                        <div class="subtitle">Review together</div>
+                    </div>
                 </div>
             </div>
 
-            <h4 style="color: #fff; margin-bottom: 15px;">The Workflow</h4>
-            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; justify-content: center;">
-                <div style="background: #333; padding: 12px 20px; border-radius: 20px; text-align: center;">
-                    <div style="font-size: 24px;">📱</div>
-                    <div style="font-size: 12px; color: #ccc;">Consumer records</div>
-                </div>
-                <div style="color: #666; font-size: 24px;">→</div>
-                <div style="background: #333; padding: 12px 20px; border-radius: 20px; text-align: center;">
-                    <div style="font-size: 24px;">📄</div>
-                    <div style="font-size: 12px; color: #ccc;">Shares CSV</div>
-                </div>
-                <div style="color: #666; font-size: 24px;">→</div>
-                <div style="background: #333; padding: 12px 20px; border-radius: 20px; text-align: center;">
-                    <div style="font-size: 24px;">💼</div>
-                    <div style="font-size: 12px; color: #ccc;">Professional imports</div>
-                </div>
-                <div style="color: #666; font-size: 24px;">→</div>
-                <div style="background: #333; padding: 12px 20px; border-radius: 20px; text-align: center;">
-                    <div style="font-size: 24px;">📊</div>
-                    <div style="font-size: 12px; color: #ccc;">Analyzes together</div>
-                </div>
+            <div class="toc">
+                <h3>Contents</h3>
+                <ul>
+                    <li><a href="#setup-workflow">Setup: Consumer & Professional Workflow</a></li>
+                    <li><a href="#getting-started">1. Getting Started</a></li>
+                    <li><a href="#demo-mode">2. Demo Mode</a></li>
+                    <li><a href="#connecting">3. Connecting Your Device</a></li>
+                    <li><a href="#dashboard">4. Dashboard</a></li>
+                    <li><a href="#recording">5. Recording Sessions</a></li>
+                    <li><a href="#history">6. Viewing History</a></li>
+                    <li><a href="#sharing">7. Sharing Data</a></li>
+                    <li><a href="#settings">8. Settings</a></li>
+                    <li><a href="#professional">9. Oralable for Professionals</a></li>
+                    <li><a href="#roadmap">10. Feature Roadmap</a></li>
+                </ul>
             </div>
-        </div>
 
-        <div class="toc">
-            <h3>Contents</h3>
-            <ul>
-                <li><a href="#setup-workflow">Setup: Consumer & Professional Workflow</a></li>
-                <li><a href="#getting-started">1. Getting Started</a></li>
-                <li><a href="#demo-mode">2. Demo Mode</a></li>
-                <li><a href="#connecting">3. Connecting Your Device</a></li>
-                <li><a href="#dashboard">4. Dashboard</a></li>
-                <li><a href="#recording">5. Recording Sessions</a></li>
-                <li><a href="#history">6. Viewing History</a></li>
-                <li><a href="#sharing">7. Sharing Data</a></li>
-                <li><a href="#settings">8. Settings</a></li>
-                <li><a href="#professional">9. Oralable for Professionals</a></li>
-                <li><a href="#roadmap">10. Feature Roadmap</a></li>
-            </ul>
-        </div>
+            <!-- SECTION 0: SETUP WORKFLOW -->
+            <h2 id="setup-workflow" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">Setup: Consumer & Professional Workflow</h2>
 
-        <!-- SECTION 0: SETUP WORKFLOW -->
-        <h2 id="setup-workflow">Setup: Consumer & Professional Workflow</h2>
+            <p style="color: var(--color-text-secondary);">This section explains how a professional (therapist, researcher, coach) and their client/participant should set up Oralable for collaborative monitoring.</p>
 
-        <p>This section explains how a professional (therapist, researcher, coach) and their client/participant should set up Oralable for collaborative monitoring.</p>
-
-        <h3>For Professionals: Setting Up a New Participant</h3>
-        <ol class="steps">
-            <li><strong>Download</strong> Oralable for Professionals from the App Store on your device</li>
-            <li><strong>Sign in</strong> to create your professional account</li>
-            <li><strong>Instruct your participant</strong> to download the consumer Oralable app</li>
-            <li><strong>Wait</strong> for them to record sessions and share data with you</li>
-            <li><strong>Import</strong> their CSV file when received</li>
-            <li><strong>Review</strong> their sessions during appointments</li>
-        </ol>
-
-        <h3>For Consumers: Sharing Data with Your Professional</h3>
-        <ol class="steps">
-            <li><strong>Download</strong> Oralable from the App Store</li>
-            <li><strong>Connect</strong> your Oralable device (or use Demo Mode to practice)</li>
-            <li><strong>Record</strong> sessions as directed by your professional</li>
-            <li><strong>Go to Share tab</strong> and select the sessions to share</li>
-            <li><strong>Tap Share CSV</strong> and send via Email, AirDrop, or Files</li>
-            <li><strong>Your professional</strong> will import and review your data</li>
-        </ol>
-
-        <div class="section-box">
-            <h4>Quick Reference: Who Does What</h4>
-            <table class="feature-table">
-                <tr>
-                    <th>Task</th>
-                    <th>Consumer App</th>
-                    <th>Professional App</th>
-                </tr>
-                <tr>
-                    <td>Connect to Oralable device</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>Record sessions</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>View own history</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>Export/Share CSV</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>Import participant CSV</td>
-                    <td>-</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>Manage multiple participants</td>
-                    <td>-</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>Review participant sessions</td>
-                    <td>-</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>Demo Mode (testing)</td>
-                    <td class="status-available">Yes</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-            </table>
-        </div>
-
-        <h3>Example Scenario: Speech Therapy</h3>
-        <div class="note-box">
-            <p><strong>Sarah</strong> is a speech therapist. <strong>Tom</strong> is her patient working on jaw relaxation exercises.</p>
-            <ol style="margin-top: 15px; padding-left: 20px;">
-                <li style="margin-bottom: 8px;"><strong>Session 1:</strong> Sarah explains Oralable and helps Tom install the consumer app and pair his device</li>
-                <li style="margin-bottom: 8px;"><strong>At home:</strong> Tom records 10-minute sessions during his daily exercises</li>
-                <li style="margin-bottom: 8px;"><strong>Before Session 2:</strong> Tom shares his week's recordings as a CSV via email</li>
-                <li style="margin-bottom: 8px;"><strong>Session 2:</strong> Sarah imports Tom's CSV into her Professional app and reviews his progress together</li>
-                <li style="margin-bottom: 8px;"><strong>Ongoing:</strong> Tom continues recording, Sarah tracks improvement over weeks</li>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">For Professionals: Setting Up a New Participant</h3>
+            <ol class="steps">
+                <li><strong>Download</strong> Oralable for Professionals from the App Store on your device</li>
+                <li><strong>Sign in</strong> to create your professional account</li>
+                <li><strong>Instruct your participant</strong> to download the consumer Oralable app</li>
+                <li><strong>Wait</strong> for them to record sessions and share data with you</li>
+                <li><strong>Import</strong> their CSV file when received</li>
+                <li><strong>Review</strong> their sessions during appointments</li>
             </ol>
-        </div>
 
-        <h3>Sharing Methods</h3>
-        <p>The consumer can share their CSV data via:</p>
-        <ul>
-            <li><strong>AirDrop</strong> - Fastest for in-person handoff</li>
-            <li><strong>Email</strong> - Best for remote sharing</li>
-            <li><strong>Files app</strong> - Save to iCloud Drive, Dropbox, etc.</li>
-            <li><strong>Messages</strong> - Quick sharing via iMessage</li>
-        </ul>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">For Consumers: Sharing Data with Your Professional</h3>
+            <ol class="steps">
+                <li><strong>Download</strong> Oralable from the App Store</li>
+                <li><strong>Connect</strong> your Oralable device (or use Demo Mode to practice)</li>
+                <li><strong>Record</strong> sessions as directed by your professional</li>
+                <li><strong>Go to Share tab</strong> and select the sessions to share</li>
+                <li><strong>Tap Share CSV</strong> and send via Email, AirDrop, or Files</li>
+                <li><strong>Your professional</strong> will import and review your data</li>
+            </ol>
 
-        <div class="tip-box">
-            <strong>Coming in January 2026:</strong> CloudKit share codes will make sharing even easier. The consumer will generate a code, and the professional will enter it to sync data automatically.
-        </div>
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Quick Reference: Who Does What</h4>
+                <table class="feature-table">
+                    <tr>
+                        <th>Task</th>
+                        <th>Consumer App</th>
+                        <th>Professional App</th>
+                    </tr>
+                    <tr>
+                        <td>Connect to Oralable device</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Record sessions</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>View own history</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Export/Share CSV</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Import participant CSV</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Manage multiple participants</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Review participant sessions</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Demo Mode (testing)</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                </table>
+            </div>
 
-        <!-- SECTION 1: GETTING STARTED -->
-        <h2 id="getting-started">1. Getting Started</h2>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Example Scenario: Speech Therapy</h3>
+            <div class="note-box">
+                <p><strong>Sarah</strong> is a speech therapist. <strong>Tom</strong> is her patient working on jaw relaxation exercises.</p>
+                <ol style="margin-top: 15px; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;"><strong>Session 1:</strong> Sarah explains Oralable and helps Tom install the consumer app and pair his device</li>
+                    <li style="margin-bottom: 8px;"><strong>At home:</strong> Tom records 10-minute sessions during his daily exercises</li>
+                    <li style="margin-bottom: 8px;"><strong>Before Session 2:</strong> Tom shares his week's recordings as a CSV via email</li>
+                    <li style="margin-bottom: 8px;"><strong>Session 2:</strong> Sarah imports Tom's CSV into her Professional app and reviews his progress together</li>
+                    <li style="margin-bottom: 8px;"><strong>Ongoing:</strong> Tom continues recording, Sarah tracks improvement over weeks</li>
+                </ol>
+            </div>
 
-        <p>Oralable monitors muscle activity using PPG (photoplethysmography) sensor technology. The app works with the Oralable Bluetooth device, or you can explore all features using Demo Mode.</p>
-
-        <div class="section-box">
-            <h4>Requirements</h4>
-            <ul>
-                <li>iPhone with iOS 16.0 or later</li>
-                <li>Oralable Bluetooth sensor (optional with Demo Mode)</li>
-                <li>Bluetooth enabled</li>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Sharing Methods</h3>
+            <p style="color: var(--color-text-secondary);">The consumer can share their CSV data via:</p>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>AirDrop</strong> — Fastest for in-person handoff</li>
+                <li><strong>Email</strong> — Best for remote sharing</li>
+                <li><strong>Files app</strong> — Save to iCloud Drive, Dropbox, etc.</li>
+                <li><strong>Messages</strong> — Quick sharing via iMessage</li>
             </ul>
-        </div>
 
-        <h3>First Launch</h3>
-        <ol class="steps">
-            <li><strong>Download</strong> Oralable from the App Store</li>
-            <li><strong>Open</strong> the app and review the welcome screens</li>
-            <li><strong>Grant Bluetooth permission</strong> when prompted</li>
-            <li><strong>Start exploring</strong> with Demo Mode or connect your device</li>
-        </ol>
+            <div class="info-box">
+                <strong>Coming Soon:</strong> CloudKit share codes will make sharing even easier. The consumer will generate a code, and the professional will enter it to sync data automatically.
+            </div>
 
-        <!-- SECTION 2: DEMO MODE -->
-        <h2 id="demo-mode">2. Demo Mode</h2>
+            <!-- SECTION 1: GETTING STARTED -->
+            <h2 id="getting-started" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">1. Getting Started</h2>
 
-        <p>Demo Mode simulates a connected Oralable device with realistic muscle activity data. Use it to explore the app without hardware.</p>
+            <p style="color: var(--color-text-secondary);">Oralable monitors muscle activity using PPG (photoplethysmography) sensor technology. The app works with the Oralable Bluetooth device, or you can explore all features using Demo Mode.</p>
 
-        <h3>Enabling Demo Mode</h3>
-        <ol class="steps">
-            <li>Go to the <strong>Settings</strong> tab</li>
-            <li>Toggle <strong>Demo Mode</strong> on</li>
-            <li>Return to <strong>Dashboard</strong></li>
-            <li>See "Demo Mode Active" banner and live data</li>
-        </ol>
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Requirements</h4>
+                <ul style="color: var(--color-text-secondary); margin: 0;">
+                    <li>iPhone with iOS 16.0 or later</li>
+                    <li>Oralable Bluetooth sensor (optional with Demo Mode)</li>
+                    <li>Bluetooth enabled</li>
+                </ul>
+            </div>
 
-        <h3>What Works in Demo Mode</h3>
-        <ul>
-            <li>Real-time waveform display</li>
-            <li>Recording sessions</li>
-            <li>Viewing history</li>
-            <li>Sharing data as CSV</li>
-        </ul>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">First Launch</h3>
+            <ol class="steps">
+                <li><strong>Download</strong> Oralable from the App Store</li>
+                <li><strong>Open</strong> the app and review the welcome screens</li>
+                <li><strong>Grant Bluetooth permission</strong> when prompted</li>
+                <li><strong>Start exploring</strong> with Demo Mode or connect your device</li>
+            </ol>
 
-        <div class="tip-box">
-            <strong>Tip:</strong> Demo Mode is ideal for learning the app before your device arrives or for demonstrating features to others.
-        </div>
+            <!-- SECTION 2: DEMO MODE -->
+            <h2 id="demo-mode" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">2. Demo Mode</h2>
 
-        <!-- SECTION 3: CONNECTING -->
-        <h2 id="connecting">3. Connecting Your Device</h2>
+            <p style="color: var(--color-text-secondary);">Demo Mode simulates a connected Oralable device with realistic muscle activity data. Use it to explore the app without hardware.</p>
 
-        <h3>Before Connecting</h3>
-        <ul>
-            <li>Charge your Oralable device</li>
-            <li>Enable Bluetooth on your iPhone</li>
-            <li>Disable Demo Mode if enabled</li>
-        </ul>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Enabling Demo Mode</h3>
+            <ol class="steps">
+                <li>Go to the <strong>Settings</strong> tab</li>
+                <li>Toggle <strong>Demo Mode</strong> on</li>
+                <li>Return to <strong>Dashboard</strong></li>
+                <li>See "Demo Mode Active" banner and live data</li>
+            </ol>
 
-        <h3>Pairing Steps</h3>
-        <ol class="steps">
-            <li><strong>Turn on</strong> your Oralable device (LED flashes)</li>
-            <li>Go to the <strong>Devices</strong> tab</li>
-            <li>Tap <strong>Scan for Devices</strong></li>
-            <li>Select <strong>Oralable</strong> from the list</li>
-            <li>Wait for connection (LED solid)</li>
-            <li>Return to <strong>Dashboard</strong> to see live data</li>
-        </ol>
-
-        <h3>Connection Status Indicators</h3>
-        <ul>
-            <li><strong>Green dot</strong> - Connected and streaming</li>
-            <li><strong>Gray dot</strong> - Not connected</li>
-            <li><strong>Orange dot</strong> - Demo Mode active</li>
-        </ul>
-
-        <div class="tip-box">
-            <strong>Tip:</strong> Keep the device within 10 meters of your iPhone for reliable connection.
-        </div>
-
-        <!-- SECTION 4: DASHBOARD -->
-        <h2 id="dashboard">4. Dashboard</h2>
-
-        <p>The Dashboard displays real-time muscle activity from your connected device or Demo Mode.</p>
-
-        <div class="section-box">
-            <h4>Dashboard Elements</h4>
-            <ul>
-                <li><strong>Connection Status</strong> - Device status at the top</li>
-                <li><strong>PPG IR Card</strong> - Current muscle activity value and sparkline</li>
-                <li><strong>Record Button</strong> - Start/stop recording</li>
-                <li><strong>Timer</strong> - Elapsed recording time</li>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">What Works in Demo Mode</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Real-time waveform display</li>
+                <li>Recording sessions</li>
+                <li>Viewing history</li>
+                <li>Sharing data as CSV</li>
             </ul>
+
+            <div class="tip-box">
+                <strong>Tip:</strong> Demo Mode is ideal for learning the app before your device arrives or for demonstrating features to others.
+            </div>
+
+            <!-- SECTION 3: CONNECTING -->
+            <h2 id="connecting" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">3. Connecting Your Device</h2>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Before Connecting</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Charge your Oralable device</li>
+                <li>Enable Bluetooth on your iPhone</li>
+                <li>Disable Demo Mode if enabled</li>
+            </ul>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Pairing Steps</h3>
+            <ol class="steps">
+                <li><strong>Turn on</strong> your Oralable device (LED flashes)</li>
+                <li>Go to the <strong>Devices</strong> tab</li>
+                <li>Tap <strong>Scan for Devices</strong></li>
+                <li>Select <strong>Oralable</strong> from the list</li>
+                <li>Wait for connection (LED solid)</li>
+                <li>Return to <strong>Dashboard</strong> to see live data</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Connection Status Indicators</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>Green dot</strong> — Connected and streaming</li>
+                <li><strong>Gray dot</strong> — Not connected</li>
+                <li><strong>Orange dot</strong> — Demo Mode active</li>
+            </ul>
+
+            <div class="tip-box">
+                <strong>Tip:</strong> Keep the device within 10 meters of your iPhone for reliable connection.
+            </div>
+
+            <!-- SECTION 4: DASHBOARD -->
+            <h2 id="dashboard" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">4. Dashboard</h2>
+
+            <p style="color: var(--color-text-secondary);">The Dashboard displays real-time muscle activity from your connected device or Demo Mode.</p>
+
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Dashboard Elements</h4>
+                <ul style="color: var(--color-text-secondary); margin: 0;">
+                    <li><strong>Connection Status</strong> — Device status at the top</li>
+                    <li><strong>PPG IR Card</strong> — Current muscle activity value and sparkline</li>
+                    <li><strong>Record Button</strong> — Start/stop recording</li>
+                    <li><strong>Timer</strong> — Elapsed recording time</li>
+                </ul>
+            </div>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Understanding PPG Values</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>Higher values</strong> = More muscle tension</li>
+                <li><strong>Lower values</strong> = Relaxed muscles</li>
+                <li><strong>Spikes</strong> = Clenching or grinding events</li>
+            </ul>
+
+            <!-- SECTION 5: RECORDING -->
+            <h2 id="recording" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">5. Recording Sessions</h2>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Starting a Recording</h3>
+            <ol class="steps">
+                <li>Ensure device is connected or Demo Mode is enabled</li>
+                <li>Tap the <strong>Record</strong> button</li>
+                <li>Button turns red, timer starts</li>
+                <li>Continue normal activities</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Stopping a Recording</h3>
+            <ol class="steps">
+                <li>Tap the <strong>Stop</strong> button</li>
+                <li>Recording saves automatically</li>
+                <li>Find it in the <strong>History</strong> tab</li>
+            </ol>
+
+            <div class="note-box">
+                <strong>Note:</strong> Recordings are stored locally on your device. They are not uploaded to any cloud service.
+            </div>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Recording Tips</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Record for at least 5-10 minutes to capture patterns</li>
+                <li>Keep device properly positioned</li>
+                <li>Note significant events for reference</li>
+            </ul>
+
+            <!-- SECTION 6: HISTORY -->
+            <h2 id="history" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">6. Viewing History</h2>
+
+            <p style="color: var(--color-text-secondary);">The History tab displays all recorded sessions.</p>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Navigating History</h3>
+            <ol class="steps">
+                <li>Tap the <strong>History</strong> tab</li>
+                <li>Browse sessions (newest first)</li>
+                <li>Tap a session to view details</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Session Details</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Date and time of recording</li>
+                <li>Duration</li>
+                <li>Interactive chart (scroll and zoom)</li>
+                <li>Metric selector tabs</li>
+            </ul>
+
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Available Metrics</h4>
+                <table class="feature-table">
+                    <tr>
+                        <th>Metric</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr>
+                        <td>IR (PPG)</td>
+                        <td>Primary muscle activity signal</td>
+                        <td style="font-weight: 600;">Available</td>
+                    </tr>
+                    <tr>
+                        <td>Movement</td>
+                        <td>Accelerometer data</td>
+                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
+                    </tr>
+                    <tr>
+                        <td>Temperature</td>
+                        <td>Skin temperature</td>
+                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
+                    </tr>
+                    <tr>
+                        <td>Heart Rate</td>
+                        <td>Derived from PPG</td>
+                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
+                    </tr>
+                    <tr>
+                        <td>SpO2</td>
+                        <td>Blood oxygen estimate</td>
+                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- SECTION 7: SHARING -->
+            <h2 id="sharing" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">7. Sharing Data</h2>
+
+            <p style="color: var(--color-text-secondary);">Share recorded data as CSV files for analysis or professional review.</p>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">How to Share</h3>
+            <ol class="steps">
+                <li>Go to the <strong>Share</strong> tab</li>
+                <li>Select date range (Today, This Week, This Month, or Custom)</li>
+                <li>Tap <strong>Share CSV</strong></li>
+                <li>Choose method: AirDrop, Email, Files, etc.</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">CSV Contents</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Timestamp per data point</li>
+                <li>PPG values (IR, Red, Green)</li>
+                <li>Accelerometer (X, Y, Z)</li>
+                <li>Temperature</li>
+                <li>Device ID</li>
+            </ul>
+
+            <div class="tip-box">
+                <strong>For Professionals:</strong> Your therapist, coach, or researcher can import this CSV into Oralable for Professionals.
+            </div>
+
+            <!-- SECTION 8: SETTINGS -->
+            <h2 id="settings" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">8. Settings</h2>
+
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Current Settings</h4>
+                <table class="feature-table">
+                    <tr>
+                        <th>Setting</th>
+                        <th>Description</th>
+                    </tr>
+                    <tr>
+                        <td>Demo Mode</td>
+                        <td>Enable simulated device data</td>
+                    </tr>
+                    <tr>
+                        <td>About</td>
+                        <td>Version, privacy policy, terms</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Coming Soon</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Subscription management</li>
+                <li>Health Integration (Apple Health)</li>
+                <li>Detection settings</li>
+                <li>CloudKit sharing</li>
+            </ul>
+
+            <!-- SECTION 9: PROFESSIONAL APP -->
+            <h2 id="professional" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">9. Oralable for Professionals</h2>
+
+            <p style="color: var(--color-text-secondary);">Oralable for Professionals is for therapists, researchers, coaches, and other professionals working with Oralable users.</p>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Getting Started</h3>
+            <ol class="steps">
+                <li><strong>Download</strong> Oralable for Professionals from the App Store</li>
+                <li><strong>Sign in</strong> to create your account</li>
+                <li><strong>Enable Demo Mode</strong> to explore, or import participant data</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Demo Mode (Professional)</h3>
+            <p style="color: var(--color-text-secondary);">Shows a sample participant with three pre-recorded sessions.</p>
+            <ol class="steps">
+                <li>Go to <strong>Settings</strong></li>
+                <li>Toggle <strong>Demo Mode</strong> on</li>
+                <li>Return to Participants to see "Demo Participant"</li>
+                <li>Tap to view sessions and charts</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Importing Participant Data</h3>
+            <ol class="steps">
+                <li>Participant shares CSV from their Oralable app</li>
+                <li>Tap <strong>Import CSV</strong></li>
+                <li>Select the file</li>
+                <li>Participant appears in your list</li>
+                <li>View and analyze their sessions</li>
+            </ol>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Use Cases</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>Speech Therapy</strong> — Monitor jaw tension during exercises</li>
+                <li><strong>Research</strong> — Collect objective muscle data</li>
+                <li><strong>Sports</strong> — Track muscle tension patterns</li>
+                <li><strong>Wellness</strong> — Monitor biofeedback progress</li>
+            </ul>
+
+            <!-- SECTION 10: ROADMAP -->
+            <h2 id="roadmap" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">10. Feature Roadmap</h2>
+
+            <div class="section-box">
+                <h4 style="margin-top: 0;">Current Features</h4>
+                <table class="feature-table">
+                    <tr>
+                        <th>Feature</th>
+                        <th>Consumer</th>
+                        <th>Professional</th>
+                    </tr>
+                    <tr>
+                        <td>Demo Mode</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Device Connection</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Real-time PPG Display</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>Session Recording</td>
+                        <td class="check">✓</td>
+                        <td class="dash">—</td>
+                    </tr>
+                    <tr>
+                        <td>History View</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>CSV Share/Import</td>
+                        <td class="check">✓</td>
+                        <td class="check">✓</td>
+                    </tr>
+                    <tr>
+                        <td>Participant Management</td>
+                        <td class="dash">—</td>
+                        <td class="check">✓</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Coming Soon</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Premium subscription</li>
+                <li>CloudKit share codes</li>
+                <li>Additional metrics (Movement, Temperature, HR, SpO2)</li>
+                <li>Apple Health integration</li>
+            </ul>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Q2 2026</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Apple Watch companion app</li>
+                <li>ANR M40 EMG device support</li>
+                <li>Speech therapy exercise library</li>
+                <li>PDF export</li>
+            </ul>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">2027+</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Medical device certification pathway</li>
+                <li>Clinical integrations</li>
+            </ul>
+
+            <div class="note-box">
+                <strong>Important:</strong> Oralable is a wellness and biofeedback tool for personal awareness. It is NOT a medical device and should not be used for medical diagnosis or treatment.
+            </div>
+
         </div>
+    </section>
 
-        <h3>Understanding PPG Values</h3>
-        <ul>
-            <li><strong>Higher values</strong> = More muscle tension</li>
-            <li><strong>Lower values</strong> = Relaxed muscles</li>
-            <li><strong>Spikes</strong> = Clenching or grinding events</li>
-        </ul>
-
-        <!-- SECTION 5: RECORDING -->
-        <h2 id="recording">5. Recording Sessions</h2>
-
-        <h3>Starting a Recording</h3>
-        <ol class="steps">
-            <li>Ensure device is connected or Demo Mode is enabled</li>
-            <li>Tap the <strong>Record</strong> button</li>
-            <li>Button turns red, timer starts</li>
-            <li>Continue normal activities</li>
-        </ol>
-
-        <h3>Stopping a Recording</h3>
-        <ol class="steps">
-            <li>Tap the <strong>Stop</strong> button</li>
-            <li>Recording saves automatically</li>
-            <li>Find it in the <strong>History</strong> tab</li>
-        </ol>
-
-        <div class="note-box">
-            <strong>Note:</strong> Recordings are stored locally on your device. They are not uploaded to any cloud service.
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
+            </div>
         </div>
-
-        <h3>Recording Tips</h3>
-        <ul>
-            <li>Record for at least 5-10 minutes to capture patterns</li>
-            <li>Keep device properly positioned</li>
-            <li>Note significant events for reference</li>
-        </ul>
-
-        <!-- SECTION 6: HISTORY -->
-        <h2 id="history">6. Viewing History</h2>
-
-        <p>The History tab displays all recorded sessions.</p>
-
-        <h3>Navigating History</h3>
-        <ol class="steps">
-            <li>Tap the <strong>History</strong> tab</li>
-            <li>Browse sessions (newest first)</li>
-            <li>Tap a session to view details</li>
-        </ol>
-
-        <h3>Session Details</h3>
-        <ul>
-            <li>Date and time of recording</li>
-            <li>Duration</li>
-            <li>Interactive chart (scroll and zoom)</li>
-            <li>Metric selector tabs</li>
-        </ul>
-
-        <div class="section-box">
-            <h4>Available Metrics (Pre-Launch)</h4>
-            <table class="feature-table">
-                <tr>
-                    <th>Metric</th>
-                    <th>Description</th>
-                    <th>Status</th>
-                </tr>
-                <tr>
-                    <td>IR (PPG)</td>
-                    <td>Primary muscle activity signal</td>
-                    <td class="status-available">Available</td>
-                </tr>
-                <tr>
-                    <td>Movement</td>
-                    <td>Accelerometer data</td>
-                    <td class="status-coming">January Update</td>
-                </tr>
-                <tr>
-                    <td>Temperature</td>
-                    <td>Skin temperature</td>
-                    <td class="status-coming">January Update</td>
-                </tr>
-                <tr>
-                    <td>Heart Rate</td>
-                    <td>Derived from PPG</td>
-                    <td class="status-coming">January Update</td>
-                </tr>
-                <tr>
-                    <td>SpO2</td>
-                    <td>Blood oxygen estimate</td>
-                    <td class="status-coming">January Update</td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- SECTION 7: SHARING -->
-        <h2 id="sharing">7. Sharing Data</h2>
-
-        <p>Share recorded data as CSV files for analysis or professional review.</p>
-
-        <h3>How to Share</h3>
-        <ol class="steps">
-            <li>Go to the <strong>Share</strong> tab</li>
-            <li>Select date range (Today, This Week, This Month, or Custom)</li>
-            <li>Tap <strong>Share CSV</strong></li>
-            <li>Choose method: AirDrop, Email, Files, etc.</li>
-        </ol>
-
-        <h3>CSV Contents</h3>
-        <ul>
-            <li>Timestamp per data point</li>
-            <li>PPG values (IR, Red, Green)</li>
-            <li>Accelerometer (X, Y, Z)</li>
-            <li>Temperature</li>
-            <li>Device ID</li>
-        </ul>
-
-        <div class="tip-box">
-            <strong>For Professionals:</strong> Your therapist, coach, or researcher can import this CSV into Oralable for Professionals.
-        </div>
-
-        <!-- SECTION 8: SETTINGS -->
-        <h2 id="settings">8. Settings</h2>
-
-        <div class="section-box">
-            <h4>Current Settings</h4>
-            <table class="feature-table">
-                <tr>
-                    <th>Setting</th>
-                    <th>Description</th>
-                </tr>
-                <tr>
-                    <td>Demo Mode</td>
-                    <td>Enable simulated device data</td>
-                </tr>
-                <tr>
-                    <td>About</td>
-                    <td>Version, privacy policy, terms</td>
-                </tr>
-            </table>
-        </div>
-
-        <h3>Coming in January Update</h3>
-        <ul>
-            <li>Subscription management</li>
-            <li>Health Integration (Apple Health)</li>
-            <li>Detection settings</li>
-            <li>CloudKit sharing</li>
-        </ul>
-
-        <!-- SECTION 9: PROFESSIONAL APP -->
-        <h2 id="professional">9. Oralable for Professionals <span class="version-badge">Separate App</span></h2>
-
-        <p>Oralable for Professionals is for therapists, researchers, coaches, and other professionals working with Oralable users.</p>
-
-        <h3>Getting Started</h3>
-        <ol class="steps">
-            <li><strong>Download</strong> Oralable for Professionals from the App Store</li>
-            <li><strong>Sign in</strong> to create your account</li>
-            <li><strong>Enable Demo Mode</strong> to explore, or import participant data</li>
-        </ol>
-
-        <h3>Demo Mode (Professional)</h3>
-        <p>Shows a sample participant with three pre-recorded sessions.</p>
-        <ol class="steps">
-            <li>Go to <strong>Settings</strong></li>
-            <li>Toggle <strong>Demo Mode</strong> on</li>
-            <li>Return to Participants to see "Demo Participant"</li>
-            <li>Tap to view sessions and charts</li>
-        </ol>
-
-        <h3>Importing Participant Data</h3>
-        <ol class="steps">
-            <li>Participant shares CSV from their Oralable app</li>
-            <li>Tap <strong>Import CSV</strong></li>
-            <li>Select the file</li>
-            <li>Participant appears in your list</li>
-            <li>View and analyze their sessions</li>
-        </ol>
-
-        <h3>Use Cases</h3>
-        <ul>
-            <li><strong>Speech Therapy</strong> - Monitor jaw tension during exercises</li>
-            <li><strong>Research</strong> - Collect objective muscle data</li>
-            <li><strong>Sports</strong> - Track muscle tension patterns</li>
-            <li><strong>Wellness</strong> - Monitor biofeedback progress</li>
-        </ul>
-
-        <!-- SECTION 10: ROADMAP -->
-        <h2 id="roadmap">10. Feature Roadmap</h2>
-
-        <div class="section-box">
-            <h4>Pre-Launch Features (Now)</h4>
-            <table class="feature-table">
-                <tr>
-                    <th>Feature</th>
-                    <th>Consumer</th>
-                    <th>Professional</th>
-                </tr>
-                <tr>
-                    <td>Demo Mode</td>
-                    <td class="status-available">Yes</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>Device Connection</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>Real-time PPG Display</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>Session Recording</td>
-                    <td class="status-available">Yes</td>
-                    <td>-</td>
-                </tr>
-                <tr>
-                    <td>History View</td>
-                    <td class="status-available">Yes</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>CSV Share/Import</td>
-                    <td class="status-available">Yes</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-                <tr>
-                    <td>Participant Management</td>
-                    <td>-</td>
-                    <td class="status-available">Yes</td>
-                </tr>
-            </table>
-        </div>
-
-        <h3>January 2026 Update</h3>
-        <ul>
-            <li>Premium subscription</li>
-            <li>CloudKit share codes</li>
-            <li>Additional metrics (Movement, Temperature, HR, SpO2)</li>
-            <li>Apple Health integration</li>
-        </ul>
-
-        <h3>Q2 2026</h3>
-        <ul>
-            <li>Apple Watch companion app</li>
-            <li>ANR M40 EMG device support</li>
-            <li>Speech therapy exercise library</li>
-            <li>PDF export</li>
-        </ul>
-
-        <h3>2027+</h3>
-        <ul>
-            <li>Medical device certification pathway</li>
-            <li>Clinical integrations</li>
-        </ul>
-
-        <div class="note-box">
-            <strong>Important:</strong> Oralable is a wellness and biofeedback tool for personal awareness. It is NOT a medical device and should not be used for medical diagnosis or treatment.
-        </div>
-
-    </div>
-
-    <footer>
-        <div class="footer-links">
-            <a href="overview.html">Overview</a>
-            <a href="privacy.html">Privacy Policy</a>
-            <a href="terms.html">Terms of Service</a>
-            <a href="support.html">Support</a>
-            <a href="register.html">Register</a>
-        </div>
-        <p>&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
-        <p style="margin-top: 10px; font-size: 12px;">Last updated: December 2025 | Pre-Launch Version</p>
     </footer>
 </body>
 </html>

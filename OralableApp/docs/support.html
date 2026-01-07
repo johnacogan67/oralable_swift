@@ -4,138 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Support - Oralable</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #ffffff;
-            color: #000000;
-            line-height: 1.7;
-        }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        header {
-            padding: 40px 0;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            text-decoration: none;
-            color: #000000;
-        }
-        main {
-            padding: 60px 0;
-        }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .intro {
-            font-size: 18px;
-            color: #666666;
-            margin-bottom: 40px;
-        }
-        h2 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-top: 48px;
-            margin-bottom: 24px;
-        }
-        .faq-item {
-            margin-bottom: 24px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid #e5e5e5;
-        }
-        .faq-item:last-child {
-            border-bottom: none;
-        }
-        .faq-question {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .faq-answer {
-            font-size: 15px;
-            color: #333333;
-        }
-        .contact-box {
-            background: #f5f5f5;
-            padding: 32px;
-            border-radius: 12px;
-            margin-top: 48px;
-            text-align: center;
-        }
-        .contact-box h2 {
-            margin-top: 0;
-            margin-bottom: 16px;
-        }
-        .contact-box p {
-            margin-bottom: 8px;
-            color: #333333;
-        }
-        .contact-box a {
-            color: #000000;
-            font-weight: 600;
-        }
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid #e5e5e5;
-            text-align: center;
-        }
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .footer-links a {
-            color: #000000;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .copyright {
-            font-size: 13px;
-            color: #666666;
-        }
-    </style>
+    <meta name="description" content="Get help with Oralable. Find answers to common questions or contact our support team.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav style="display: flex; justify-content: center; gap: 30px; padding: 20px; border-bottom: 1px solid #e5e5e5;">
-        <a href="index.html" style="color: #000; text-decoration: none; font-size: 14px;">Home</a>
-        <a href="overview.html" style="color: #000; text-decoration: none; font-size: 14px;">Overview</a>
-        <a href="user-guide.html" style="color: #000; text-decoration: none; font-size: 14px;">User Guide</a>
-        <a href="support.html" style="color: #000; text-decoration: none; font-size: 14px;">Support</a>
-        <a href="register.html" style="color: #000; text-decoration: none; font-size: 14px;">Register</a>
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <header>
-        <div class="container">
-            <a href="index.html" class="logo">Oralable</a>
-        </div>
-    </header>
+    <!-- Hero -->
+    <section class="page-header">
+        <h1>Support</h1>
+        <p>Find answers to common questions or contact us for help.</p>
+    </section>
 
-    <main>
-        <div class="container">
-            <h1>Support</h1>
-            <p class="intro">Find answers to common questions or contact us for help.</p>
-
-            <h2>Frequently Asked Questions</h2>
+    <!-- Content -->
+    <section class="section">
+        <div class="container-narrow">
+            <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 24px;">Frequently Asked Questions</h2>
 
             <div class="faq-item">
                 <p class="faq-question">How do I connect the sensor to my iPhone?</p>
@@ -174,10 +87,10 @@
 
             <div class="faq-item">
                 <p class="faq-question">How long does the sensor battery last?</p>
-                <p class="faq-answer">The sensor battery provides approximately 8-10 hours of continuous monitoring on a full charge. Charging takes about 2 hours via the included USB cable.</p>
+                <p class="faq-answer">The sensor battery provides approximately 6-8 hours of continuous monitoring on a full charge. Charging takes about 2 hours via the included USB cable or wireless charger.</p>
             </div>
 
-            <h2 id="demo-mode">Demo Mode</h2>
+            <h2 id="demo-mode" style="font-size: 24px; font-weight: 600; margin-top: 48px; margin-bottom: 24px;">Demo Mode</h2>
 
             <div class="faq-item">
                 <p class="faq-question">What is Demo Mode?</p>
@@ -210,19 +123,22 @@
                 <p><a href="mailto:support@oralable.com">support@oralable.com</a></p>
             </div>
         </div>
-    </main>
+    </section>
 
-    <footer>
+    <!-- Footer -->
+    <footer class="footer">
         <div class="container">
-            <div class="footer-links">
-                <a href="index.html">Home</a>
-                <a href="overview.html">Overview</a>
-                <a href="user-guide.html">User Guide</a>
-                <a href="privacy.html">Privacy Policy</a>
-                <a href="terms.html">Terms of Service</a>
-                <a href="register.html">Register</a>
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
             </div>
-            <p class="copyright">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
         </div>
     </footer>
 </body>

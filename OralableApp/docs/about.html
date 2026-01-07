@@ -1,311 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-8KS53K3LST');
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About - Oralable</title>
+    <meta name="description" content="About Oralable - Simple biofeedback for personal awareness of muscle activity patterns.">
+
     <link rel="icon" type="image/png" href="images/oralable-icon.png">
     <link rel="apple-touch-icon" href="images/oralable-icon.png">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #ffffff;
-            color: #1a1a1a;
-            line-height: 1.7;
-        }
-        .disclaimer-banner {
-            background: #fff3cd;
-            padding: 15px 20px;
-            text-align: center;
-            font-size: 14px;
-            border-bottom: 1px solid #ffc107;
-        }
-        .disclaimer-banner strong {
-            color: #856404;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            padding: 20px;
-            background: #fff;
-            border-bottom: 1px solid #e8e8ed;
-        }
-        nav a {
-            color: #1d1d1f;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        nav a:hover {
-            color: #007AFF;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-        h1 {
-            font-size: 36px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        h2 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-top: 50px;
-            margin-bottom: 20px;
-        }
-        p {
-            margin-bottom: 15px;
-            color: #333;
-        }
-        .mission-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            border-radius: 16px;
-            margin: 30px 0;
-            text-align: center;
-        }
-        .mission-box p {
-            color: white;
-            font-size: 20px;
-            margin: 0;
-        }
-        .timeline {
-            margin: 40px 0;
-        }
-        .timeline-item {
-            display: flex;
-            margin-bottom: 30px;
-        }
-        .timeline-year {
-            width: 100px;
-            flex-shrink: 0;
-            font-weight: 700;
-            color: #007AFF;
-        }
-        .timeline-content {
-            flex: 1;
-            padding-left: 20px;
-            border-left: 2px solid #e8e8ed;
-        }
-        .timeline-content.current {
-            border-left-color: #007AFF;
-        }
-        .timeline-milestone {
-            margin-bottom: 10px;
-        }
-        .timeline-milestone.done::before {
-            content: "✓ ";
-            color: #28a745;
-        }
-        .timeline-milestone.current::before {
-            content: "→ ";
-            color: #007AFF;
-        }
-        .timeline-milestone.future {
-            color: #86868b;
-        }
-        .highlight-box {
-            background: #f5f5f7;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 30px 0;
-        }
-        .highlight-box h3 {
-            margin-bottom: 15px;
-        }
-        ul {
-            margin-bottom: 15px;
-            padding-left: 25px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        .not-yet-box {
-            background: #e8f4fd;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 30px 0;
-            border-left: 4px solid #007AFF;
-        }
-        .not-yet-box h3 {
-            color: #007AFF;
-            margin-bottom: 15px;
-        }
-        .company-info {
-            background: #f5f5f7;
-            padding: 25px;
-            border-radius: 12px;
-            margin: 30px 0;
-        }
-        footer {
-            padding: 40px 20px;
-            text-align: center;
-            color: #86868b;
-            font-size: 14px;
-            border-top: 1px solid #e8e8ed;
-            margin-top: 60px;
-        }
-        footer a {
-            color: #86868b;
-            text-decoration: none;
-            margin: 0 15px;
-        }
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 28px;
-            }
-            nav {
-                flex-wrap: wrap;
-                gap: 15px;
-            }
-            .timeline-item {
-                flex-direction: column;
-            }
-            .timeline-year {
-                margin-bottom: 10px;
-            }
-            .timeline-content {
-                padding-left: 15px;
-            }
-        }
-    </style>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
     </div>
 
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="product.html">Product</a>
-        <a href="for-professionals.html">For Professionals</a>
-        
-        <a href="about.html">About</a>
-        <a href="beta.html">Early Access</a>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <div class="container">
+    <!-- Hero -->
+    <section class="page-header">
         <h1>About Oralable</h1>
+        <p>Simple biofeedback for personal awareness of muscle activity patterns.</p>
+    </section>
 
-        <div class="mission-box">
-            <p>"Simple biofeedback for personal awareness of muscle activity patterns."</p>
-        </div>
+    <!-- Content -->
+    <section class="section">
+        <div class="container" style="max-width: 800px;">
 
-        <p>Oralable is developing an accessible muscle activity monitor that helps people become aware of their jaw muscle patterns. Our goal is to create a simple, affordable biofeedback tool &mdash; like a fitness tracker for your facial muscles.</p>
+            <p style="color: var(--color-text-secondary); font-size: 18px; margin-bottom: 40px;">
+                Oralable is developing an accessible muscle activity monitor that helps people become aware of their jaw muscle patterns. Our goal is to create a simple, affordable biofeedback tool — like a fitness tracker for your facial muscles.
+            </p>
 
-        <h2>Roadmap</h2>
+            <h2 style="font-size: 28px; margin-bottom: 24px;">Roadmap</h2>
 
-        <div class="timeline">
-            <div class="timeline-item">
-                <div class="timeline-year">2024</div>
-                <div class="timeline-content">
-                    <p class="timeline-milestone done">Technology development</p>
-                    <p class="timeline-milestone done">Patent protection</p>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">2024</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone done">Technology development</p>
+                        <p class="timeline-milestone done">Patent protection</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">2025</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone done">Hardware manufacturing</p>
+                        <p class="timeline-milestone done">iOS app development</p>
+                        <p class="timeline-milestone done">Beta testing</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">January 2026</div>
+                    <div class="timeline-content current">
+                        <p class="timeline-milestone current"><strong>Public launch (You are here)</strong></p>
+                        <p class="timeline-milestone">App Store release</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">Q2 2026</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone future">Oralable for Research</p>
+                        <p class="timeline-milestone future">ANR device comparison support</p>
+                        <p class="timeline-milestone future">University partnerships</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">2027+</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone future">Clinical validation studies</p>
+                        <p class="timeline-milestone future">Medical device pathway (future)</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="timeline-item">
-                <div class="timeline-year">2025</div>
-                <div class="timeline-content current">
-                    <p class="timeline-milestone done">Hardware manufacturing</p>
-                    <p class="timeline-milestone done">iOS app development</p>
-                    <p class="timeline-milestone current"><strong>Pre-launch release (You are here)</strong></p>
-                </div>
+            <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">What We're Building</h2>
+            <p style="color: var(--color-text-secondary);">
+                Oralable is a personal wellness tool that provides biofeedback about jaw muscle activity. It's designed for people curious about their patterns — whether during sleep, work, or daily activities.
+            </p>
+
+            <div class="section-box" style="margin-top: 32px;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">What Oralable Is</h3>
+                <ul style="color: var(--color-text-secondary); margin: 0;">
+                    <li>A consumer wellness device</li>
+                    <li>A biofeedback tool for personal awareness</li>
+                    <li>Similar in concept to fitness trackers</li>
+                    <li>Accessible and affordable</li>
+                    <li>Privacy-focused (you control your data)</li>
+                </ul>
             </div>
 
-            <div class="timeline-item">
-                <div class="timeline-year">January 2026</div>
-                <div class="timeline-content">
-                    <p class="timeline-milestone future">Muscle Activity Monitor launch</p>
-                    <p class="timeline-milestone future">App Store release</p>
-                </div>
+            <div class="info-box" style="margin-top: 32px;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">What We're Not (Yet)</h3>
+                <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Oralable is currently a <strong>wellness device</strong>, not a medical device. This means:</p>
+                <ul style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                    <li>We do NOT diagnose any medical conditions</li>
+                    <li>We do NOT provide medical advice</li>
+                    <li>We are NOT approved by FDA, CE, or other medical regulatory bodies</li>
+                    <li>We are NOT a substitute for professional healthcare</li>
+                </ul>
+                <p style="color: var(--color-text-secondary); margin: 0;">
+                    <strong>Future Plans:</strong> We are exploring a medical device pathway for future versions. This would involve clinical validation studies, regulatory approvals, and partnerships with healthcare institutions. However, this is a multi-year undertaking and our current product should be understood as a wellness/biofeedback tool only.
+                </p>
             </div>
 
-            <div class="timeline-item">
-                <div class="timeline-year">Q2 2026</div>
-                <div class="timeline-content">
-                    <p class="timeline-milestone future">Oralable for Research</p>
-                    <p class="timeline-milestone future">ANR device comparison support</p>
-                    <p class="timeline-milestone future">University partnerships</p>
-                </div>
+            <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">Our Company</h2>
+
+            <div class="section-box">
+                <p style="margin: 0 0 8px;"><strong>JAC Dental Solutions Limited</strong></p>
+                <p style="margin: 0 0 16px; color: var(--color-text-secondary);">Dublin, Ireland</p>
+                <p style="margin: 0; color: var(--color-text-secondary);">
+                    Founded to develop innovative oral health awareness tools. We believe that simple biofeedback can help people become more aware of habits they might not otherwise notice.
+                </p>
             </div>
 
-            <div class="timeline-item">
-                <div class="timeline-year">2027+</div>
-                <div class="timeline-content">
-                    <p class="timeline-milestone future">Clinical validation studies</p>
-                    <p class="timeline-milestone future">Medical device pathway (future)</p>
-                </div>
-            </div>
-        </div>
-
-        <h2>What We're Building</h2>
-        <p>Oralable is a personal wellness tool that provides biofeedback about jaw muscle activity. It's designed for people curious about their patterns &mdash; whether during sleep, work, or daily activities.</p>
-
-        <div class="highlight-box">
-            <h3>What Oralable Is</h3>
-            <ul>
-                <li>A consumer wellness device</li>
-                <li>A biofeedback tool for personal awareness</li>
-                <li>Similar in concept to fitness trackers</li>
-                <li>Accessible and affordable</li>
-                <li>Privacy-focused (you control your data)</li>
+            <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">Contact</h2>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>General:</strong> <a href="mailto:hello@oralable.com">hello@oralable.com</a></li>
+                <li><strong>Support:</strong> <a href="mailto:support@oralable.com">support@oralable.com</a></li>
+                <li><strong>Research:</strong> <a href="mailto:research@oralable.com">research@oralable.com</a></li>
+                <li><strong>Press:</strong> <a href="mailto:press@oralable.com">press@oralable.com</a></li>
             </ul>
         </div>
+    </section>
 
-        <div class="not-yet-box">
-            <h3>What We're Not (Yet)</h3>
-            <p>Oralable is currently a <strong>wellness device</strong>, not a medical device. This means:</p>
-            <ul>
-                <li>We do NOT diagnose any medical conditions</li>
-                <li>We do NOT provide medical advice</li>
-                <li>We are NOT approved by FDA, CE, or other medical regulatory bodies</li>
-                <li>We are NOT a substitute for professional healthcare</li>
-            </ul>
-            <p><strong>Future Plans:</strong> We are exploring a medical device pathway for future versions. This would involve clinical validation studies, regulatory approvals, and partnerships with healthcare institutions. However, this is a multi-year undertaking and our current product should be understood as a wellness/biofeedback tool only.</p>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
+            </div>
         </div>
-
-        <h2>Our Company</h2>
-
-        <div class="company-info">
-            <p><strong>JAC Dental Solutions Limited</strong></p>
-            <p>Dublin, Ireland</p>
-            <p style="margin-top: 15px;">Founded to develop innovative oral health awareness tools. We believe that simple biofeedback can help people become more aware of habits they might not otherwise notice.</p>
-        </div>
-
-        <h2>Contact</h2>
-        <ul>
-            <li><strong>General:</strong> <a href="mailto:hello@oralable.com">hello@oralable.com</a></li>
-            <li><strong>Support:</strong> <a href="mailto:support@oralable.com">support@oralable.com</a></li>
-            <li><strong>Research:</strong> <a href="mailto:research@oralable.com">research@oralable.com</a></li>
-            <li><strong>Press:</strong> <a href="mailto:press@oralable.com">press@oralable.com</a></li>
-        </ul>
-    </div>
-
-    <footer>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
-        <a href="support.html">Support</a>
-        <p style="margin-top: 20px;">&copy; 2025 JAC Dental Solutions Limited. All rights reserved.</p>
     </footer>
 </body>
 </html>

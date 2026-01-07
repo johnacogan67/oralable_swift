@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Specifications - Oralable</title>
+    <meta name="description" content="Technical specifications for the Oralable muscle activity monitor.">
+
+    <link rel="icon" type="image/png" href="images/oralable-icon.png">
+    <link rel="apple-touch-icon" href="images/oralable-icon.png">
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KS53K3LST"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KS53K3LST');
+    </script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="nav-logo">Oralable</a>
+            <ul class="nav-links">
+                <li><a href="overview.html">Overview</a></li>
+                <li><a href="specifications.html">Specifications</a></li>
+                <li><a href="user-guide.html">User Guide</a></li>
+                <li><a href="support.html">Support</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <section class="section">
+        <div class="container-narrow">
+            <h1 class="section-title">Specifications</h1>
+            <p class="section-subtitle">Technical details for Oralable PCB REV10</p>
+
+            <!-- Sensors -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Sensors</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>PPG Sensor</td>
+                    <td>MAXM86161 (Analog Devices)</td>
+                </tr>
+                <tr>
+                    <td>PPG Wavelengths</td>
+                    <td>Infrared (880nm), Red (660nm), Green (520nm)</td>
+                </tr>
+                <tr>
+                    <td>Accelerometer</td>
+                    <td>LIS2DTW12 (STMicroelectronics)</td>
+                </tr>
+                <tr>
+                    <td>Accelerometer Range</td>
+                    <td>±2g, 14-bit resolution</td>
+                </tr>
+                <tr>
+                    <td>Temperature</td>
+                    <td>On-chip sensor</td>
+                </tr>
+            </table>
+
+            <!-- Sampling -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Sampling Rates</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>PPG (all channels)</td>
+                    <td>50 Hz</td>
+                </tr>
+                <tr>
+                    <td>Accelerometer</td>
+                    <td>100 Hz</td>
+                </tr>
+                <tr>
+                    <td>Temperature</td>
+                    <td>1 Hz</td>
+                </tr>
+                <tr>
+                    <td>Battery</td>
+                    <td>0.1 Hz</td>
+                </tr>
+            </table>
+
+            <!-- Wireless -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Wireless</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>Protocol</td>
+                    <td>Bluetooth Low Energy 5.0</td>
+                </tr>
+                <tr>
+                    <td>Processor</td>
+                    <td>nRF52832 (Nordic Semiconductor)</td>
+                </tr>
+                <tr>
+                    <td>Module</td>
+                    <td>EYSHSNZWZ (Taiyo Yuden)</td>
+                </tr>
+                <tr>
+                    <td>Range</td>
+                    <td>~10 meters (typical indoor)</td>
+                </tr>
+            </table>
+
+            <!-- Power -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Power</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>Battery</td>
+                    <td>LiPo rechargeable</td>
+                </tr>
+                <tr>
+                    <td>Runtime</td>
+                    <td>6-8 hours continuous</td>
+                </tr>
+                <tr>
+                    <td>Charging</td>
+                    <td>Wireless (Qi compatible) or USB</td>
+                </tr>
+                <tr>
+                    <td>Charge Time</td>
+                    <td>~2 hours</td>
+                </tr>
+            </table>
+
+            <!-- Physical -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Physical</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>Dimensions</td>
+                    <td>26.2 × 9.1 × 8.2 mm</td>
+                </tr>
+                <tr>
+                    <td>Weight</td>
+                    <td>~2 grams</td>
+                </tr>
+                <tr>
+                    <td>Housing</td>
+                    <td>Formlabs Dental LT Clear V2 resin</td>
+                </tr>
+                <tr>
+                    <td>Water Resistance</td>
+                    <td>Splash resistant (not submersible)</td>
+                </tr>
+            </table>
+
+            <!-- Compatibility -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Compatibility</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>iOS</td>
+                    <td>iPhone 12 and later, iOS 16+</td>
+                </tr>
+                <tr>
+                    <td>Android</td>
+                    <td>Not currently supported</td>
+                </tr>
+                <tr>
+                    <td>App</td>
+                    <td>Free on App Store</td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <ul class="footer-links">
+                    <li><a href="overview.html">Overview</a></li>
+                    <li><a href="specifications.html">Specifications</a></li>
+                    <li><a href="user-guide.html">User Guide</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                </ul>
+                <p class="footer-copyright">© 2026 JAC Dental Solutions Limited. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
