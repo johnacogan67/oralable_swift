@@ -3,7 +3,7 @@ import OralableCore
 
 @main
 struct OralableApp: App {
-    // Core managers - no legacy OralableBLE
+    // Core managers - no legacy OralableBLE.
     @StateObject private var authenticationManager: AuthenticationManager
     @StateObject private var sensorDataStore: SensorDataStore
     @StateObject private var recordingSessionManager: RecordingSessionManager
