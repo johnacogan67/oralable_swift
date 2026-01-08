@@ -64,6 +64,7 @@ struct SettingsView: View {
                 if featureFlags.showDetectionSettings {
                     Section {
                         thresholdsRow
+                        eventSettingsRow
                     } header: {
                         Text("Detection Settings")
                     }
@@ -194,6 +195,32 @@ struct SettingsView: View {
                         .foregroundColor(.primary)
 
                     Text("Adjust movement sensitivity")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var eventSettingsRow: some View {
+        NavigationLink {
+            EventSettingsView()
+        } label: {
+            HStack {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 20))
+                    .foregroundColor(.blue)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Event Detection")
+                        .font(.system(size: 17))
+                        .foregroundColor(.primary)
+
+                    Text("Configure IR threshold for events")
                         .font(.system(size: 15))
                         .foregroundColor(.secondary)
                 }

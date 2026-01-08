@@ -89,6 +89,11 @@ class DashboardViewModel: ObservableObject {
         sessionDuration
     }
 
+    // MARK: - Event Recording
+    @Published private(set) var eventCount: Int = 0
+    @Published private(set) var discardedEventCount: Int = 0
+    private var eventSession: EventRecordingSession?
+
     // MARK: - Heart Rate & Worn Status
     @Published var currentHRResult: HeartRateService.HRResult?
     @Published var wornStatus: WornStatus = .initializing
@@ -174,10 +179,59 @@ class DashboardViewModel: ObservableObject {
 
     func startRecording() {
         recordingStateCoordinator.startRecording()
+        startEventRecording()
     }
 
     func stopRecording() {
         recordingStateCoordinator.stopRecording()
+        stopEventRecording()
+    }
+
+    // MARK: - Event Recording
+
+    /// Start event recording with current threshold settings
+    func startEventRecording() {
+        eventSession = EventRecordingSession(threshold: EventSettings.shared.threshold)
+        eventSession?.startRecording()
+        eventCount = 0
+        discardedEventCount = 0
+        Logger.shared.info("[DashboardViewModel] Event recording started with threshold: \(EventSettings.shared.threshold)")
+    }
+
+    /// Stop event recording
+    func stopEventRecording() {
+        eventSession?.stopRecording()
+        Logger.shared.info("[DashboardViewModel] Event recording stopped. Events: \(eventCount), Discarded: \(discardedEventCount)")
+    }
+
+    /// Get export options based on enabled dashboard cards
+    func getEventExportOptions() -> EventCSVExporter.ExportOptions {
+        EventCSVExporter.ExportOptions(
+            includeTemperature: featureFlags.showTemperatureCard,
+            includeHR: featureFlags.showHeartRateCard,
+            includeSpO2: featureFlags.showSpO2Card,
+            includeSleep: false // Sleep not currently tracked
+        )
+    }
+
+    /// Export recorded events to a file
+    /// - Returns: URL of the exported file, or nil if no events
+    func exportEvents() throws -> URL? {
+        guard let session = eventSession, !session.events.isEmpty else {
+            Logger.shared.info("[DashboardViewModel] No events to export")
+            return nil
+        }
+
+        let options = getEventExportOptions()
+        let userIdentifier = UserDefaults.standard.string(forKey: "userID")
+        let fileURL = try session.exportToTempFile(options: options, userIdentifier: userIdentifier)
+        Logger.shared.info("[DashboardViewModel] Events exported to: \(fileURL.lastPathComponent)")
+        return fileURL
+    }
+
+    /// Get the current event session for direct access
+    var currentEventSession: EventRecordingSession? {
+        eventSession
     }
 
     func disconnect() {
@@ -401,6 +455,43 @@ class DashboardViewModel: ObservableObject {
                 muscleActivityHistory.removeFirst()
             }
         }
+
+        // Feed data to event detector for event-based recording
+        feedSampleToEventDetector(irValue: Int(value))
+    }
+
+    /// Feed sample data to the event detector
+    private func feedSampleToEventDetector(irValue: Int) {
+        guard let session = eventSession, session.isRecording else { return }
+
+        session.processSample(
+            irValue: irValue,
+            timestamp: Date(),
+            accelX: Int(accelXRaw),
+            accelY: Int(accelYRaw),
+            accelZ: Int(accelZRaw),
+            temperature: temperature
+        )
+
+        // Update metrics for event validation
+        if heartRate > 0 {
+            session.updateHR(Double(heartRate))
+        }
+        if spO2 > 0 {
+            session.updateSpO2(Double(spO2))
+        }
+        // Temperature is always passed - validation checks 32-38°C range
+        session.updateTemperature(temperature)
+
+        // Update event counts
+        eventCount = session.eventCount
+        discardedCount = session.discardedCount
+    }
+
+    /// Discarded event count (alias for consistency)
+    private var discardedCount: Int {
+        get { discardedEventCount }
+        set { discardedEventCount = newValue }
     }
 
     // MARK: - EMG Data Processing (ANR M40)

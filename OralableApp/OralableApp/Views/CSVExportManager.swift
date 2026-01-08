@@ -97,6 +97,83 @@ class CSVExportManager: ObservableObject {
     
     // CSV generation is now handled by OralableCore.CSVExporter
 
+    // MARK: - Event-Based Export
+
+    /// Export muscle activity events to CSV file
+    /// - Parameters:
+    ///   - events: Array of muscle activity events to export
+    ///   - options: Export options controlling which columns are included
+    /// - Returns: URL of the exported CSV file, or nil if export fails
+    func exportEvents(_ events: [MuscleActivityEvent], options: EventCSVExporter.ExportOptions? = nil) -> URL? {
+        guard !events.isEmpty else {
+            Logger.shared.info("[CSVExportManager] No events to export")
+            return nil
+        }
+
+        // Use provided options or build from feature flags
+        let exportOptions = options ?? buildEventExportOptions()
+
+        // Create filename with current timestamp and user identifier
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = dateFormatter.string(from: Date())
+
+        // Get user identifier
+        let userIdentifier: String
+        if let userID = UserDefaults.standard.string(forKey: "userID"), !userID.isEmpty {
+            userIdentifier = String(userID.prefix(8))
+        } else {
+            userIdentifier = "guest"
+        }
+
+        let filename = "oralable_events_\(userIdentifier)_\(timestamp).csv"
+
+        // Use the cache directory for temporary files
+        let fileManager = FileManager.default
+        let cacheDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let exportDirectory = cacheDirectory.appendingPathComponent("Exports", isDirectory: true)
+
+        // Create exports directory if it doesn't exist
+        if !fileManager.fileExists(atPath: exportDirectory.path) {
+            try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
+        }
+
+        let fileURL = exportDirectory.appendingPathComponent(filename)
+
+        do {
+            // Remove existing file if present
+            if fileManager.fileExists(atPath: fileURL.path) {
+                try fileManager.removeItem(at: fileURL)
+            }
+
+            // Generate and write CSV content
+            let csvContent = EventCSVExporter.exportToCSV(events: events, options: exportOptions)
+            try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+
+            Logger.shared.info("[CSVExportManager] Successfully exported \(events.count) events to: \(fileURL.path)")
+            return fileURL
+        } catch {
+            Logger.shared.error("[CSVExportManager] Failed to write event CSV file: \(error)")
+            return nil
+        }
+    }
+
+    /// Build event export options based on current feature flags
+    private func buildEventExportOptions() -> EventCSVExporter.ExportOptions {
+        EventCSVExporter.ExportOptions(
+            includeTemperature: featureFlags.showTemperatureCard,
+            includeHR: featureFlags.showHeartRateCard,
+            includeSpO2: featureFlags.showSpO2Card,
+            includeSleep: false // Sleep not currently tracked
+        )
+    }
+
+    /// Get event export summary
+    func getEventExportSummary(events: [MuscleActivityEvent]) -> EventExportSummary {
+        let options = buildEventExportOptions()
+        return EventCSVExporter.getExportSummary(events: events, options: options)
+    }
+
     /// Get estimated file size for export
     func estimateExportSize(sensorDataCount: Int, logCount: Int) -> String {
         // Rough estimation: each sensor data row is about 150 characters
