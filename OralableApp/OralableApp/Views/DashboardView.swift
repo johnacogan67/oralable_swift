@@ -101,6 +101,8 @@ struct DashboardView: View {
                         isRecording: viewModel.isRecording,
                         isConnected: viewModel.isConnected,
                         duration: viewModel.formattedDuration,
+                        eventCount: viewModel.liveEventCount,
+                        memoryUsage: viewModel.liveMemoryUsage,
                         action: { viewModel.toggleRecording() }
                     )
                     .padding(.vertical, 8)
@@ -536,7 +538,25 @@ struct RecordingButton: View {
     let isRecording: Bool
     let isConnected: Bool
     let duration: String
+    let eventCount: Int
+    let memoryUsage: String
     let action: () -> Void
+
+    init(
+        isRecording: Bool,
+        isConnected: Bool,
+        duration: String,
+        eventCount: Int = 0,
+        memoryUsage: String = "0 KB",
+        action: @escaping () -> Void
+    ) {
+        self.isRecording = isRecording
+        self.isConnected = isConnected
+        self.duration = duration
+        self.eventCount = eventCount
+        self.memoryUsage = memoryUsage
+        self.action = action
+    }
 
     private var buttonColor: Color {
         if !isConnected { return .gray }
@@ -548,32 +568,65 @@ struct RecordingButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(buttonColor)
-                        .frame(width: 70, height: 70)
-                        .shadow(color: buttonColor.opacity(0.3), radius: 8, x: 0, y: 4)
+        VStack(spacing: 8) {
+            Button(action: action) {
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(buttonColor)
+                            .frame(width: 70, height: 70)
+                            .shadow(color: buttonColor.opacity(0.3), radius: 8, x: 0, y: 4)
 
-                    Image(systemName: iconName)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                        Image(systemName: iconName)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.white)
+                    }
 
-                if isRecording {
-                    Text(duration)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundColor(.red)
-                } else {
-                    Text(isConnected ? "Record" : "Not Connected")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isConnected ? .primary : .secondary)
+                    if isRecording {
+                        Text(duration)
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundColor(.red)
+                    } else {
+                        Text(isConnected ? "Record" : "Not Connected")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(isConnected ? .primary : .secondary)
+                    }
                 }
             }
+            .disabled(!isConnected)
+            .opacity(isConnected ? 1.0 : 0.5)
+
+            // Live statistics during recording
+            if isRecording {
+                HStack(spacing: 16) {
+                    StatBadge(label: "Events", value: "\(eventCount)")
+                    StatBadge(label: "Memory", value: memoryUsage)
+                }
+                .transition(.opacity)
+            }
         }
-        .disabled(!isConnected)
-        .opacity(isConnected ? 1.0 : 0.5)
+        .animation(.easeInOut(duration: 0.2), value: isRecording)
+    }
+}
+
+// MARK: - Stat Badge
+struct StatBadge: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.caption.bold())
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
     }
 }
 

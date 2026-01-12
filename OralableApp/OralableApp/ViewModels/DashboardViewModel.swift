@@ -113,6 +113,12 @@ class DashboardViewModel: ObservableObject {
     @Published private(set) var discardedEventCount: Int = 0
     private var eventSession: EventRecordingSession?
 
+    // MARK: - Live Event Stats (for recording button display)
+    @Published var liveEventCount: Int = 0
+    @Published var liveSamplesProcessed: Int = 0
+    @Published var liveMemoryUsage: String = "0 KB"
+    private var eventSessionCancellables = Set<AnyCancellable>()
+
     // MARK: - Heart Rate & Worn Status
     @Published var currentHRResult: HeartRateService.HRResult?
     @Published var wornStatus: WornStatus = .initializing
@@ -210,16 +216,80 @@ class DashboardViewModel: ObservableObject {
 
     /// Start event recording with current threshold settings
     func startEventRecording() {
+        // Clean up previous session
+        eventSessionCancellables.removeAll()
+
         eventSession = EventRecordingSession(threshold: EventSettings.shared.threshold)
+
+        // Setup live stats bindings
+        setupEventSessionBindings()
+
         eventSession?.startRecording()
         eventCount = 0
         discardedEventCount = 0
+        liveEventCount = 0
+        liveSamplesProcessed = 0
+        liveMemoryUsage = "0 KB"
         Logger.shared.info("[DashboardViewModel] Event recording started with threshold: \(EventSettings.shared.threshold)")
+    }
+
+    /// Setup bindings for live event stats
+    private func setupEventSessionBindings() {
+        guard let session = eventSession else { return }
+
+        // Observe event count changes
+        session.$eventCount
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] count in
+                self?.liveEventCount = count
+                self?.eventCount = count
+            }
+            .store(in: &eventSessionCancellables)
+
+        // Observe discarded count
+        session.$discardedCount
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] count in
+                self?.discardedEventCount = count
+            }
+            .store(in: &eventSessionCancellables)
+
+        // Observe samples processed
+        session.$samplesProcessed
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] count in
+                self?.liveSamplesProcessed = count
+            }
+            .store(in: &eventSessionCancellables)
+
+        // Observe memory usage
+        session.$estimatedMemoryBytes
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] bytes in
+                if bytes < 1024 {
+                    self?.liveMemoryUsage = "\(bytes) B"
+                } else if bytes < 1024 * 1024 {
+                    self?.liveMemoryUsage = "\(bytes / 1024) KB"
+                } else {
+                    self?.liveMemoryUsage = String(format: "%.1f MB", Double(bytes) / 1024.0 / 1024.0)
+                }
+            }
+            .store(in: &eventSessionCancellables)
     }
 
     /// Stop event recording
     func stopEventRecording() {
         eventSession?.stopRecording()
+
+        // Log summary
+        if let summary = eventSession?.summary {
+            Logger.shared.info("[DashboardViewModel] Recording summary:")
+            Logger.shared.info("  Duration: \(summary.formattedDuration)")
+            Logger.shared.info("  Samples: \(summary.samplesProcessed)")
+            Logger.shared.info("  Events: \(summary.eventsDetected)")
+            Logger.shared.info("  Memory: \(summary.memoryEfficiency)")
+        }
+
         Logger.shared.info("[DashboardViewModel] Event recording stopped. Events: \(eventCount), Discarded: \(discardedEventCount)")
     }
 

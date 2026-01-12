@@ -6,6 +6,7 @@
 //
 //  Features:
 //  - Export sensor data to CSV format
+//  - Export events to CSV format (event-based recording)
 //  - Share via iOS share sheet (AirDrop, Files, etc.)
 //  - Export file history display
 //  - Data summary (record count, date range)
@@ -18,18 +19,37 @@
 //  Future: Professional sharing via CloudKit (when enabled)
 //
 //  Updated: December 13, 2025 - Changed Export to Share terminology
+//  Updated: January 12, 2026 - Added event-based export option
 //
 
 import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
+import OralableCore
+
+/// Export type for sharing data
+enum ExportType: String, CaseIterable {
+    case events = "Events Only"
+    case continuous = "All Samples"
+
+    var description: String {
+        switch self {
+        case .events:
+            return "Export detected events (smaller file)"
+        case .continuous:
+            return "Export all sensor samples (larger file)"
+        }
+    }
+}
 
 struct ShareView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var sharedDataManager: SharedDataManager
+    @EnvironmentObject var dependencies: AppDependencies
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
     @ObservedObject var deviceManager: DeviceManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
+    @ObservedObject private var eventSettings = EventSettings.shared
 
     @State private var shareCode: String = ""
     @State private var isGeneratingCode = false
@@ -40,6 +60,7 @@ struct ShareView: View {
     @State private var errorMessage = ""
     @State private var isSharing = false
     @State private var shareProgress: String = ""
+    @State private var exportType: ExportType = .events
 
     var body: some View {
         NavigationView {
@@ -86,6 +107,16 @@ struct ShareView: View {
     // MARK: - Share CSV Section
     private var shareCSVSection: some View {
         Section {
+            // Export type picker
+            Picker("Export Type", selection: $exportType) {
+                ForEach(ExportType.allCases, id: \.self) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+
             Button(action: shareCSV) {
                 HStack {
                     if isSharing {
@@ -125,8 +156,19 @@ struct ShareView: View {
         } header: {
             Text("Share")
         } footer: {
+            exportFooterText
+        }
+    }
+
+    private var exportFooterText: Text {
+        switch exportType {
+        case .events:
+            let dashboardVM = dependencies.makeDashboardViewModel()
+            let eventCount = dashboardVM.currentEventSession?.eventCount ?? 0
+            return Text("Export \(eventCount) detected events (fast, small file)")
+        case .continuous:
             let recordCount = sensorDataProcessor.sensorDataHistory.count
-            Text("Share your sensor data for use in other applications (\(recordCount) records)")
+            return Text("Export \(recordCount) sensor samples (may take longer)")
         }
     }
 
@@ -268,7 +310,18 @@ struct ShareView: View {
                 shareProgress = "Preparing..."
             }
 
-            if let url = await generateCSVFileOptimized() {
+            var url: URL? = nil
+
+            switch exportType {
+            case .events:
+                // Export cached events (fast, small file)
+                url = await generateEventCSVFile()
+            case .continuous:
+                // Legacy export (all samples)
+                url = await generateCSVFileOptimized()
+            }
+
+            if let url = url {
                 await MainActor.run {
                     isSharing = false
                     shareProgress = ""
@@ -281,6 +334,43 @@ struct ShareView: View {
                     shareProgress = ""
                 }
             }
+        }
+    }
+
+    /// Generate CSV file from cached events (fast export)
+    private func generateEventCSVFile() async -> URL? {
+        let dashboardVM = dependencies.makeDashboardViewModel()
+
+        guard let session = dashboardVM.currentEventSession,
+              !session.events.isEmpty else {
+            await MainActor.run {
+                errorMessage = "No events to export. Start a recording to detect events."
+                showError = true
+            }
+            return nil
+        }
+
+        let events = session.events
+        Logger.shared.info("[ShareView] 📊 Starting event CSV export with \(events.count) events")
+
+        // Build export options based on feature flags
+        let options = EventCSVExporter.ExportOptions(
+            includeTemperature: featureFlags.showTemperatureCard,
+            includeHR: featureFlags.showHeartRateCard,
+            includeSpO2: featureFlags.showSpO2Card,
+            includeSleep: false
+        )
+
+        // Export to file
+        if let url = CSVExportManager.shared.exportEvents(events, options: options) {
+            Logger.shared.info("[ShareView] ✅ Event CSV export complete: \(url.lastPathComponent)")
+            return url
+        } else {
+            await MainActor.run {
+                errorMessage = "Failed to export events"
+                showError = true
+            }
+            return nil
         }
     }
 

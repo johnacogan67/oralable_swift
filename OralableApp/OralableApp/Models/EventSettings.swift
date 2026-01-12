@@ -3,10 +3,26 @@
 //  OralableApp
 //
 //  Created: January 8, 2026
-//  User settings for event detection threshold
+//  Updated: January 12, 2026 - Added recording mode setting
+//  User settings for event detection threshold and recording mode
 //
 
 import Foundation
+
+/// Recording mode determines how data is stored during recording
+public enum RecordingMode: String, CaseIterable {
+    case continuous = "Continuous"  // Store all samples (legacy, high memory)
+    case eventBased = "Event-Based" // Store only events (new, low memory)
+
+    public var description: String {
+        switch self {
+        case .continuous:
+            return "Store all sensor samples (high memory)"
+        case .eventBased:
+            return "Store only events (low memory, recommended)"
+        }
+    }
+}
 
 /// User settings for event detection
 class EventSettings: ObservableObject {
@@ -17,6 +33,7 @@ class EventSettings: ObservableObject {
 
     private enum Keys {
         static let threshold = "eventThreshold"
+        static let recordingMode = "recordingMode"
     }
 
     // MARK: - Threshold Configuration
@@ -48,11 +65,25 @@ class EventSettings: ObservableObject {
         }
     }
 
+    /// Recording mode: event-based (default, low memory) or continuous (legacy, high memory)
+    @Published var recordingMode: RecordingMode {
+        didSet {
+            UserDefaults.standard.set(recordingMode.rawValue, forKey: Keys.recordingMode)
+        }
+    }
+
     // MARK: - Init
 
     private init() {
-        let saved = UserDefaults.standard.integer(forKey: Keys.threshold)
-        self.threshold = saved > 0 ? saved : EventSettings.defaultThreshold
+        let savedThreshold = UserDefaults.standard.integer(forKey: Keys.threshold)
+        self.threshold = savedThreshold > 0 ? savedThreshold : EventSettings.defaultThreshold
+
+        if let modeString = UserDefaults.standard.string(forKey: Keys.recordingMode),
+           let mode = RecordingMode(rawValue: modeString) {
+            self.recordingMode = mode
+        } else {
+            self.recordingMode = .eventBased // Default to event-based for memory efficiency
+        }
     }
 
     // MARK: - Reset
@@ -60,6 +91,7 @@ class EventSettings: ObservableObject {
     /// Reset threshold to default value
     func resetToDefault() {
         threshold = EventSettings.defaultThreshold
+        recordingMode = .eventBased
     }
 
     // MARK: - Display Helpers
