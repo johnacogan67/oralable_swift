@@ -2,7 +2,26 @@
 //  DashboardViewModel.swift
 //  OralableApp
 //
-//  Complete ViewModel with MAM state detection
+//  ViewModel for the Dashboard screen managing sensor data and recording.
+//
+//  Responsibilities:
+//  - Subscribes to DeviceManagerAdapter for sensor updates
+//  - Manages recording session state (start/stop/duration)
+//  - Processes PPG data for heart rate calculation
+//  - Processes accelerometer data for movement detection
+//  - Handles demo mode data flow
+//  - Publishes values for SwiftUI binding
+//
+//  Published Properties:
+//  - Sensor values (ppgIRValue, temperature, heartRate, etc.)
+//  - Connection state (isConnected, oralableConnected)
+//  - Recording state (isRecording, formattedDuration)
+//  - Chart data (ppgHistory, muscleActivityHistory)
+//
+//  Demo Mode:
+//  - Subscribes to DemoDataProvider when demo mode enabled
+//  - Processes demo PPG, accelerometer, temperature data
+//
 //  Updated: December 7, 2025 - Added dual-device support (Oralable + ANR M40)
 //
 

@@ -1,3 +1,26 @@
+//
+//  HistoricalDataManager.swift
+//  OralableApp
+//
+//  Manager for caching and updating historical metrics.
+//
+//  Purpose:
+//  Prevents recalculating aggregations on every view update
+//  by caching metrics for each time range.
+//
+//  Time Ranges Cached:
+//  - Minute, Hour, Day, Week, Month metrics
+//
+//  Features:
+//  - Background metric updates (60 second interval)
+//  - Throttled updates to prevent excessive computation
+//  - Memory-efficient caching
+//
+//  Integration:
+//  - Works with SensorDataProcessor for raw data
+//  - Provides data to HistoricalViewModel
+//
+
 import Foundation
 import Combine
 import UIKit

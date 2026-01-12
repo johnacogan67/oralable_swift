@@ -2,6 +2,12 @@
 //  MainDashboardView.swift
 //  OralableApp
 //
+//  Legacy/debug dashboard view (not the primary dashboard).
+//
+//  Purpose:
+//  Simple debug view showing basic stats and navigation to DebugMenuView.
+//  The primary dashboard is DashboardView.swift.
+//
 //  Created by John A Cogan on 23/11/2025.
 //
 

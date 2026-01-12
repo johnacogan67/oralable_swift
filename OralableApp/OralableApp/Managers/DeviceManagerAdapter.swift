@@ -2,10 +2,26 @@
 //  DeviceManagerAdapter.swift
 //  OralableApp
 //
+//  Adapts raw sensor data from DeviceManager to published properties.
+//
+//  Responsibilities:
+//  - Receives sensor readings from DeviceManager
+//  - Updates published properties for UI binding
+//  - Maintains local sensor data history
+//  - Forwards data to SensorDataProcessor for storage
+//
+//  Published Properties:
+//  - ppgIRValue, ppgRedValue, ppgGreenValue
+//  - accelX, accelY, accelZ (raw LSB values)
+//  - temperature
+//  - batteryLevel
+//
+//  History Buffer:
+//  - Maintains recent samples for real-time charts
+//  - Limited size to prevent memory issues
+//
 //  Created: November 24, 2025
-//  Purpose: Adapts DeviceManager to BLEManagerProtocol for compatibility with existing ViewModels
-//  Updated: December 7, 2025 - Added EMG support for ANR M40 dual-device
-//  Updated: December 8, 2025 - Fixed battery tracking: only Oralable reports battery, ANR shows 100%
+//  Updated: December 8, 2025 - Fixed battery tracking for dual-device
 //
 
 import Foundation

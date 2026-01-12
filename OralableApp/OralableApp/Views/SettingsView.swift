@@ -2,7 +2,22 @@
 //  SettingsView.swift
 //  OralableApp
 //
-//  Settings - Subscription and Health Integration
+//  Settings screen for app configuration.
+//
+//  Sections:
+//  - Detection Settings: Event detection threshold configuration (if enabled)
+//  - Subscription: Premium features and subscription management (if enabled)
+//  - Health: Apple Health integration settings
+//  - Support: Links to user guide, FAQ, contact support
+//  - About: App version, legal links, and hidden developer access (7-tap)
+//
+//  Hidden Features:
+//  - Developer Settings: Accessible by tapping version number 7 times
+//    - Feature flag toggles for dashboard cards
+//    - Demo mode toggle (moved here from main settings)
+//    - Debug configuration options
+//
+//  Updated: January 2026 - Removed Demo Mode from main UI (now in Developer Settings only)
 //
 
 import SwiftUI
@@ -24,33 +39,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                // Demo Mode Section - ALWAYS VISIBLE
-                Section {
-                    Toggle("Demo Mode", isOn: $featureFlags.demoModeEnabled)
-                        .onChange(of: featureFlags.demoModeEnabled) { _, newValue in
-                            if !newValue {
-                                // Disconnect demo device when demo mode disabled
-                                dependencies.deviceManager.disconnectDemoDevice()
-                            }
-                        }
-
-                    if featureFlags.demoModeEnabled {
-                        HStack {
-                            Image(systemName: DemoDataProvider.shared.isConnected ? "checkmark.circle.fill" : "info.circle")
-                                .foregroundColor(DemoDataProvider.shared.isConnected ? .green : .blue)
-                            Text(DemoDataProvider.shared.isConnected
-                                 ? "Demo device connected. Go to Dashboard to see data."
-                                 : "Go to Devices tab and tap Scan to discover the demo device.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Testing")
-                } footer: {
-                    Text("Enable to test the app without an Oralable device.")
-                }
-
                 // Subscription Section - CONDITIONAL
                 if featureFlags.showSubscription {
                     Section {

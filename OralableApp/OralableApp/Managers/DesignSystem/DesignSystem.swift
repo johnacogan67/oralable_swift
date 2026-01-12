@@ -2,7 +2,24 @@
 //  DesignSystem.swift
 //  OralableApp
 //
-//  TRULY FINAL version - adds bodyMedium
+//  Centralized design system for consistent UI styling.
+//
+//  Components:
+//  - Colors: Primary, secondary, background, text colors
+//  - Typography: Font styles for different text elements
+//  - Spacing: Standard spacing values (xs, sm, md, lg, xl)
+//  - CornerRadius: Rounded corner sizes
+//  - Shadows: Shadow definitions for elevation
+//  - Layout: Device-specific layout constants
+//
+//  Usage:
+//  - Injected as EnvironmentObject
+//  - Access via: designSystem.colors.primary
+//
+//  Supports:
+//  - Light/Dark mode adaptation
+//  - iPad layout adjustments
+//  - Dynamic Type scaling
 //
 
 import SwiftUI

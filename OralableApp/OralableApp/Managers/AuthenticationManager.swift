@@ -1,3 +1,25 @@
+//
+//  AuthenticationManager.swift
+//  OralableApp
+//
+//  Manages Apple ID authentication and user session state.
+//
+//  Responsibilities:
+//  - Sign in with Apple integration
+//  - User profile storage (Keychain)
+//  - Session persistence across app launches
+//  - First launch detection
+//
+//  Published Properties:
+//  - isAuthenticated: Current auth state
+//  - isFirstLaunch: First time user flag
+//  - userID, userFullName, userEmail: Profile data
+//
+//  Storage:
+//  - User credentials stored in Keychain
+//  - Profile data persisted in UserDefaults
+//
+
 import Foundation
 import AuthenticationServices
 import Combine

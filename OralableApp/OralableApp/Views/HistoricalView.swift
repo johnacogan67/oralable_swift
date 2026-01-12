@@ -2,6 +2,22 @@
 //  HistoricalView.swift
 //  OralableApp
 //
+//  Historical data visualization from exported CSV sessions.
+//
+//  Features:
+//  - Metric tab selector (EMG, IR, Movement, Temperature)
+//  - Chart displaying data over time
+//  - X-axis spans full day (midnight to midnight)
+//  - Data summary card (min, max, average)
+//  - Loads from most recent CSV export file
+//
+//  Chart Types:
+//  - Activity chart: Line chart for PPG data
+//  - Movement chart: Point chart with rest/active coloring
+//  - Temperature chart: Line chart with 30-42°C range
+//
+//  Data Source: CSV files in Documents directory
+//
 //  Updated: December 8, 2025 - Load from ShareView exports instead of RecordingSessions
 //  Updated: December 8, 2025 - Fixed movement chart to use movementIntensity directly (already in g units)
 //
@@ -134,6 +150,19 @@ struct HistoricalView: View {
             }
         }
         return .dateTime.hour().minute().second()
+    }
+
+    /// X-axis domain - always show full day (midnight to midnight)
+    private var xAxisDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+
+        // Use first data point's date, or today if no data
+        let referenceDate = dataPoints.first?.timestamp ?? Date()
+
+        let startOfDay = calendar.startOfDay(for: referenceDate)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+
+        return startOfDay...endOfDay
     }
 
     var body: some View {
@@ -303,13 +332,14 @@ struct HistoricalView: View {
                 .foregroundStyle(selectedTab.chartColor)
             }
         }
+        .chartXScale(domain: xAxisDomain)
         .chartYAxis {
             AxisMarks(position: .leading)
         }
         .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
+            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: xAxisDateFormat)
+                AxisValueLabel(format: .dateTime.hour())
             }
         }
     }
@@ -324,6 +354,7 @@ struct HistoricalView: View {
             .foregroundStyle(point.isAtRest ? Color.blue.opacity(0.6) : Color.green.opacity(0.8))
             .symbolSize(10)
         }
+        .chartXScale(domain: xAxisDomain)
         .chartYScale(domain: 0...3)
         .chartYAxis {
             AxisMarks(position: .leading) { value in
@@ -336,9 +367,9 @@ struct HistoricalView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
+            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: xAxisDateFormat)
+                AxisValueLabel(format: .dateTime.hour())
             }
         }
     }
@@ -353,6 +384,7 @@ struct HistoricalView: View {
                 .foregroundStyle(selectedTab.chartColor)
             }
         }
+        .chartXScale(domain: xAxisDomain)
         .chartYScale(domain: 30...42)
         .chartYAxis {
             AxisMarks(position: .leading) { value in
@@ -365,9 +397,9 @@ struct HistoricalView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
+            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: xAxisDateFormat)
+                AxisValueLabel(format: .dateTime.hour())
             }
         }
     }

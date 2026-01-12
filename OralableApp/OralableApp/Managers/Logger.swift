@@ -2,8 +2,22 @@
 //  Logger.swift
 //  OralableApp
 //
+//  Centralized logging utility with multiple severity levels.
+//
+//  Levels:
+//  - debug: Detailed debugging information
+//  - info: General operational information
+//  - warning: Potential issues that don't prevent operation
+//  - error: Errors that affect functionality
+//
+//  Features:
+//  - Singleton access: Logger.shared
+//  - Recent log history for export
+//  - Category-based filtering
+//  - Console output in debug builds
+//  - File logging configurable per build
+//
 //  Created: November 11, 2025
-//  Purpose: Global logger for application-wide logging with conditional compilation
 //
 
 import Foundation

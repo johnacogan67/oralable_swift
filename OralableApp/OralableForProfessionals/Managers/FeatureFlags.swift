@@ -2,9 +2,21 @@
 //  FeatureFlags.swift
 //  OralableForProfessionals
 //
+//  Runtime feature flag management for professional app.
+//
+//  Dashboard Cards (same as consumer app):
+//  - showEMGCard, showMovementCard, showTemperatureCard
+//  - showHeartRateCard, showSpO2Card, showBatteryCard
+//
+//  Professional Features:
+//  - showSubscription: Subscription UI
+//  - showAdvancedAnalytics: Pro-only analytics
+//  - demoModeEnabled: Demo participant data
+//
+//  Persistence: UserDefaults
+//  Access: Developer Settings (tap version 7x)
+//
 //  Created: December 5, 2025
-//  Purpose: Feature flags for controlling app functionality
-//  Pre-launch release hides advanced features for simpler App Store approval
 //
 
 import Foundation

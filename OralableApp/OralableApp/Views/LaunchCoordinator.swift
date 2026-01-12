@@ -2,6 +2,17 @@
 //  LaunchCoordinator.swift
 //  OralableApp
 //
+//  Coordinates app launch flow based on authentication state.
+//
+//  Flow Logic:
+//  1. If authenticated → Show MainTabView
+//  2. If first launch → Show OnboardingView
+//  3. Otherwise → Show LoginView
+//
+//  Purpose:
+//  Single point of control for the initial view hierarchy.
+//  Responds to authentication state changes reactively.
+//
 //  Created by John A Cogan on 23/11/2025.
 //
 

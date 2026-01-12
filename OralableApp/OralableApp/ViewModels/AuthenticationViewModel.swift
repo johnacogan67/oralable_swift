@@ -1,3 +1,23 @@
+//
+//  AuthenticationViewModel.swift
+//  OralableApp
+//
+//  ViewModel for authentication state and user profile data.
+//
+//  Responsibilities:
+//  - Syncs with AuthenticationManager state
+//  - Exposes user profile (name, email, ID)
+//  - Handles sign in/out actions
+//  - Formats display name and member since date
+//
+//  Published Properties:
+//  - isAuthenticated: Current auth state
+//  - userFullName, userEmail, userID: Profile data
+//  - showError, authenticationError: Error state
+//
+//  Delegates actual auth operations to AuthenticationManager.
+//
+
 import Foundation
 import AuthenticationServices
 

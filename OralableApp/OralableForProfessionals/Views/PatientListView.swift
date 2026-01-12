@@ -2,7 +2,18 @@
 //  PatientListView.swift
 //  OralableForProfessionals
 //
-//  Apple Health Style - matches OralableApp
+//  Main screen displaying list of patients with shared data.
+//
+//  Features:
+//  - List of patients who have shared data
+//  - Search and filter functionality
+//  - Add patient button
+//  - Patient detail navigation
+//
+//  Data Source:
+//  - CloudKit shared data (when enabled)
+//  - Local CSV imports
+//  - Demo patients (for testing)
 //
 
 import SwiftUI

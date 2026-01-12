@@ -2,9 +2,28 @@
 //  HistoricalViewModel.swift
 //  OralableApp
 //
+//  ViewModel for historical data processing and chart display.
+//
+//  Responsibilities:
+//  - Loads data from CSV export files
+//  - Processes data for selected time range
+//  - Calculates statistics (min, max, average)
+//  - Manages session playback mode
+//
+//  Time Ranges:
+//  - Minute: Last 60 seconds
+//  - Hour: Last 60 minutes
+//  - Day: Last 24 hours (default)
+//  - Week: Last 7 days
+//  - Month: Last 30 days
+//
+//  Data Processing:
+//  - Aggregates samples into time buckets
+//  - Normalizes values for chart display
+//  - Filters by metric type
+//
 //  Created: November 7, 2025
 //  Updated: December 7, 2025 - Added session playback support
-//  MVVM Architecture - Historical data management business logic
 //
 
 import Foundation

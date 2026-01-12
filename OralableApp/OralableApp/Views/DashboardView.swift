@@ -2,7 +2,22 @@
 //  DashboardView.swift
 //  OralableApp
 //
-//  Apple Health Style Dashboard - V1 Minimal
+//  Main dashboard displaying real-time sensor data and recording controls.
+//
+//  Features:
+//  - Device connection status indicator
+//  - Recording start/stop button with duration display
+//  - PPG sensor card (IR waveform)
+//  - Optional metric cards (EMG, Movement, Temperature, HR, SpO2, Battery)
+//  - Demo mode banner when using virtual device
+//
+//  Data Flow:
+//  Device → DeviceManager → DashboardViewModel → DashboardView
+//
+//  Navigation:
+//  - Tapping metric cards navigates to HistoricalView
+//  - Profile icon opens ProfileView
+//
 //  Updated: December 8, 2025 - Added Movement to connection indicator, show g-units
 //
 

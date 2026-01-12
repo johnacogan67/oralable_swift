@@ -2,7 +2,25 @@
 //  OralableForProfessionals.swift
 //  OralableForProfessionals
 //
-//  Updated with DesignSystem - matches OralableApp
+//  Main entry point for the Oralable professional iOS app.
+//
+//  Purpose:
+//  Clinical tool for healthcare professionals to view and analyze
+//  patient oral muscle activity data shared from consumer app.
+//
+//  Features:
+//  - Patient list management
+//  - Data import from consumer app (via CloudKit or CSV)
+//  - Multi-session analysis
+//  - Professional dashboard with advanced metrics
+//
+//  Architecture:
+//  - SwiftUI with MVVM pattern
+//  - ProfessionalAppDependencies for DI
+//  - Subscription-gated features
+//
+//  Version: 1.0.0
+//  Target: iOS 16.0+
 //
 
 import SwiftUI

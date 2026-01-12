@@ -1,3 +1,25 @@
+//
+//  AppDependencies.swift
+//  OralableApp
+//
+//  Dependency injection container for app-wide services.
+//
+//  Provides:
+//  - DeviceManager: BLE device management
+//  - DeviceManagerAdapter: Sensor data adaptation
+//  - SensorDataProcessor: Data processing and storage
+//  - RecordingSessionManager: Recording lifecycle
+//  - HistoricalDataManager: Historical data access
+//  - SubscriptionManager: In-app purchase handling
+//  - AuthenticationManager: Apple ID authentication
+//  - SharedDataManager: CloudKit data sharing
+//  - DesignSystem: UI styling configuration
+//
+//  Usage:
+//  - Injected into SwiftUI via .environmentObject()
+//  - ViewModels created via factory methods
+//
+
 import SwiftUI
 
 @MainActor

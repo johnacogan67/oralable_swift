@@ -2,8 +2,19 @@
 //  PatientDashboardView.swift
 //  OralableForProfessionals
 //
-//  Participant dashboard view - mirrors OralableApp DashboardView
-//  Updated with FeatureFlags for wellness positioning
+//  Dashboard view for individual patient data analysis.
+//
+//  Features:
+//  - Session list with date and duration
+//  - Summary statistics across sessions
+//  - Chart previews for key metrics
+//  - Navigation to detailed analysis
+//
+//  Metrics Displayed:
+//  - PPG activity patterns
+//  - Movement analysis
+//  - Temperature trends
+//  - Event frequency
 //
 
 import SwiftUI

@@ -2,8 +2,19 @@
 //  DemoDataManager.swift
 //  OralableForProfessionals
 //
-//  Manages demo participant data for testing without real imports
-//  Allows Apple reviewers to explore the app with sample data
+//  Manages demo participant data for testing without real imports.
+//
+//  Purpose:
+//  - Allows Apple reviewers to explore the app with sample data
+//  - Provides realistic demo sessions for demonstration
+//  - No real patient data required
+//
+//  Demo Data:
+//  - Pre-configured demo participants
+//  - Sample session data from bundled CSV files
+//  - Realistic metrics for all chart types
+//
+//  Access: Enable via Developer Settings or FeatureFlags
 //
 
 import Foundation

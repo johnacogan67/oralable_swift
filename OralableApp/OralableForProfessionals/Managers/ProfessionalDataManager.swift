@@ -1,3 +1,21 @@
+//
+//  ProfessionalDataManager.swift
+//  OralableForProfessionals
+//
+//  Manages patient data storage and retrieval.
+//
+//  Responsibilities:
+//  - Patient record management
+//  - Session data storage
+//  - CloudKit sync for shared data
+//  - Local cache management
+//
+//  Data Sources:
+//  - CloudKit shared database
+//  - Local CSV imports
+//  - Demo data for testing
+//
+
 import Foundation
 import CloudKit
 import Combine

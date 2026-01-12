@@ -2,8 +2,26 @@
 //  DemoDataProvider.swift
 //  OralableApp
 //
-//  Simulates a real Oralable device using CSV data
-//  CSV data streams through the same pipeline as real BLE data
+//  Provides simulated sensor data for demo mode.
+//
+//  Purpose:
+//  Allows app testing and demonstration without physical hardware.
+//
+//  Simulates:
+//  - PPG IR values with realistic muscle activity patterns
+//  - Accelerometer data with movement variation
+//  - Temperature readings in skin contact range
+//  - Heart rate and SpO2 calculations
+//
+//  States:
+//  - isDiscovered: Demo device visible in scan results
+//  - isConnected: Demo device "connected" and streaming
+//
+//  Data Source:
+//  - Generated algorithmically (DemoDataGenerator)
+//  - Or loaded from bundled CSV files
+//
+//  Access: Enable via Developer Settings (tap version 7x)
 //
 
 import Foundation

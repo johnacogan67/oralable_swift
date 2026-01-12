@@ -1,3 +1,24 @@
+//
+//  SubscriptionManager.swift
+//  OralableApp
+//
+//  Manages in-app purchases and subscription state.
+//
+//  Subscription Tiers:
+//  - Basic (Free): Core features, single professional share
+//  - Premium: Advanced metrics, unlimited sharing, PDF export
+//
+//  Responsibilities:
+//  - StoreKit integration for purchases
+//  - Subscription status verification
+//  - Receipt validation
+//  - Feature gating based on tier
+//
+//  Published Properties:
+//  - currentTier: Active subscription level
+//  - isSubscribed: Whether user has premium
+//
+
 import Foundation
 import StoreKit
 

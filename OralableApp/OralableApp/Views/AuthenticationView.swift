@@ -2,8 +2,17 @@
 //  AuthenticationView.swift
 //  OralableApp
 //
-//  Fixed: November 7, 2025
-//  Corrected all component signatures to match actual components
+//  Authentication and account management view.
+//
+//  Features:
+//  - Sign in with Apple integration
+//  - Profile details display
+//  - Sign out confirmation
+//
+//  Uses shared AuthenticationManager passed from parent
+//  to maintain consistent auth state across the app.
+//
+//  Fixed: November 7, 2025 - Corrected component signatures
 //
 
 import SwiftUI

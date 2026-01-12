@@ -1,3 +1,22 @@
+//
+//  ProfessionalAppDependencies.swift
+//  OralableForProfessionals
+//
+//  Dependency injection container for professional app.
+//
+//  Provides:
+//  - ProfessionalDataManager: Patient data management
+//  - ProfessionalSubscriptionManager: Subscription handling
+//  - ProfessionalAuthenticationManager: Professional account
+//  - DesignSystem: UI styling
+//  - FeatureFlags: Feature configuration
+//
+//  Factory Methods:
+//  - makePatientListViewModel()
+//  - makePatientDashboardViewModel()
+//  - makeSettingsViewModel()
+//
+
 import Foundation
 import SwiftUI
 import Combine

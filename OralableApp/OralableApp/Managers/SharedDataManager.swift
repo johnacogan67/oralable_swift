@@ -1,3 +1,27 @@
+//
+//  SharedDataManager.swift
+//  OralableApp
+//
+//  Manages CloudKit data sharing with healthcare professionals.
+//
+//  Features:
+//  - Share code generation for professional connections
+//  - CloudKit record management
+//  - Data compression for efficient transfer
+//  - Professional relationship tracking
+//
+//  Sharing Flow:
+//  1. User generates share code
+//  2. Professional enters code in their app
+//  3. Connection established via CloudKit
+//  4. Data syncs automatically
+//
+//  Security:
+//  - Data encrypted in transit and at rest
+//  - Share codes expire after use
+//  - User can revoke access anytime
+//
+
 import Foundation
 import CloudKit
 import Compression

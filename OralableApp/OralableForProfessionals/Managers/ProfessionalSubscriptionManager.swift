@@ -1,3 +1,21 @@
+//
+//  ProfessionalSubscriptionManager.swift
+//  OralableForProfessionals
+//
+//  Manages subscriptions for professional app.
+//
+//  Subscription Tiers:
+//  - Starter (Free): Up to 5 participants
+//  - Professional (€29.99/mo): Up to 50 participants
+//  - Practice (€99.99/mo): Unlimited participants
+//
+//  Responsibilities:
+//  - StoreKit integration for purchases
+//  - Subscription verification
+//  - Patient limit enforcement
+//  - Feature gating based on tier
+//
+
 import Foundation
 import StoreKit
 import Combine

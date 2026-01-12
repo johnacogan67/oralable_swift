@@ -2,8 +2,20 @@
 //  SettingsViewModel.swift
 //  OralableApp
 //
+//  ViewModel for settings screen configuration.
+//
+//  Manages:
+//  - Notification preferences (connection, battery alerts)
+//  - Data retention settings
+//  - Display preferences (units, time format)
+//  - Privacy settings (analytics, local storage)
+//  - Chart refresh rate
+//
+//  Persistence:
+//  - Settings stored in UserDefaults
+//  - Loaded on init, saved on change
+//
 //  Created: November 7, 2025
-//  MVVM Architecture - Settings management business logic
 //
 
 import Foundation

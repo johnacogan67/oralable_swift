@@ -2,7 +2,21 @@
 //  ShareView.swift
 //  OralableApp
 //
-//  Share screen - Share code and connections management
+//  Data export and sharing screen.
+//
+//  Features:
+//  - Export sensor data to CSV format
+//  - Share via iOS share sheet (AirDrop, Files, etc.)
+//  - Export file history display
+//  - Data summary (record count, date range)
+//
+//  Export Options:
+//  - Columns based on enabled dashboard cards
+//  - Timestamp, PPG, Accelerometer, Temperature, HR, SpO2
+//  - Filename includes user ID and timestamp
+//
+//  Future: Professional sharing via CloudKit (when enabled)
+//
 //  Updated: December 13, 2025 - Changed Export to Share terminology
 //
 

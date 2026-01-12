@@ -1,3 +1,19 @@
+//
+//  MainTabView.swift
+//  OralableApp
+//
+//  Main tab bar container for the app's primary navigation.
+//
+//  Tabs:
+//  - Dashboard: Real-time monitoring and recording
+//  - Devices: BLE device management
+//  - Share: Data export and sharing
+//  - Settings: App configuration
+//
+//  Each tab receives required environment objects for
+//  dependency injection throughout the view hierarchy.
+//
+
 import SwiftUI
 
 struct MainTabView: View {

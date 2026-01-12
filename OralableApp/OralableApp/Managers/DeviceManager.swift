@@ -2,13 +2,31 @@
 //  DeviceManager.swift
 //  OralableApp
 //
-//  CORRECTED: November 11, 2025
-//  Fixed: connect() method now uses correct UUID key
-//  UPDATED: November 28, 2025 (Day 1 & Day 2)
-//  Added: ConnectionReadiness state machine and async discovery methods
-//  UPDATED: November 29, 2025 (Day 4 - Memory Fix + Diagnostic Logging)
-//  Fixed: Auto-stop scanning when ready, prevent duplicate device instances, smart scan restart prevention
-//  UPDATED: December 8, 2025 - Stricter device filtering (only Oralable and ANR)
+//  Coordinates BLE device discovery, connection, and data flow.
+//
+//  Responsibilities:
+//  - Manages BLE scanning for Oralable and ANR devices
+//  - Handles device connection state machine (ConnectionReadiness)
+//  - Routes sensor data to appropriate handlers
+//  - Manages demo device discovery and connection
+//  - Persists remembered devices across app launches
+//
+//  Connection State Machine (ConnectionReadiness):
+//  disconnected → connecting → connected → discoveringServices
+//  → servicesDiscovered → discoveringCharacteristics
+//  → characteristicsDiscovered → enablingNotifications → ready
+//
+//  Supported Devices:
+//  - Oralable: Primary muscle activity monitor
+//  - ANR M40: EMG device for research comparison
+//  - Demo: Virtual device for testing
+//
+//  Data Flow:
+//  BLE notification → OralableDevice.parseSensorData()
+//  → DeviceManager.handleReadingsBatch()
+//  → DeviceManagerAdapter → DashboardViewModel
+//
+//  Updated: December 8, 2025 - Stricter device filtering (only Oralable and ANR)
 //
 
 import Foundation

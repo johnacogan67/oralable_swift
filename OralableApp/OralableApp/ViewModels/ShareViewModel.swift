@@ -2,6 +2,24 @@
 //  ShareViewModel.swift
 //  OralableApp
 //
+//  ViewModel for data export and sharing functionality.
+//
+//  Responsibilities:
+//  - Manages export configuration (format, date range)
+//  - Triggers CSV/JSON export via CSVExportManager
+//  - Handles share sheet presentation
+//  - Tracks export progress
+//
+//  Export Formats:
+//  - CSV: Primary format for data analysis
+//  - JSON: Alternative structured format
+//  - PDF: Future feature (when enabled)
+//
+//  Export Options:
+//  - Quick export presets (today, this week, all)
+//  - Custom date range selection
+//  - Data type inclusion toggles
+//
 //  Created by John A Cogan on 04/11/2025.
 //
 

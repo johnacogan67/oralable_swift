@@ -1,4 +1,24 @@
-// DevicesViewModel.swift
+//
+//  DevicesViewModel.swift
+//  OralableApp
+//
+//  ViewModel for device discovery and connection management.
+//
+//  Responsibilities:
+//  - Manages BLE scanning state
+//  - Tracks discovered and connected devices
+//  - Handles device connection/disconnection
+//  - Manages device settings (LED brightness, sample rate)
+//
+//  Published Properties:
+//  - isConnected, isScanning: Connection state
+//  - discoveredDevices: List of found BLE devices
+//  - connectedDevice: Currently connected device info
+//  - autoConnect, ledBrightness, sampleRate: Settings
+//
+//  Uses BLEManagerProtocol for testable dependency injection.
+//
+
 import Foundation
 import Combine
 import CoreBluetooth

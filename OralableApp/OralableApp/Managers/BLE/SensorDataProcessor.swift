@@ -1,3 +1,27 @@
+//
+//  SensorDataProcessor.swift
+//  OralableApp
+//
+//  Processes raw sensor data and calculates derived metrics.
+//
+//  Responsibilities:
+//  - Stores sensor data history for export
+//  - Calculates heart rate from PPG signal
+//  - Calculates SpO2 from PPG Red/IR ratio
+//  - Detects movement from accelerometer data
+//  - Provides data to HistoricalDataProcessor
+//
+//  Heart Rate Calculation:
+//  - Peak detection on PPG IR signal
+//  - Requires stable signal quality
+//  - Valid range: 40-200 BPM
+//
+//  SpO2 Calculation:
+//  - R-ratio from PPG Red and IR channels
+//  - Lookup table for percentage conversion
+//  - Valid range: 70-100%
+//
+
 import Foundation
 import Combine
 

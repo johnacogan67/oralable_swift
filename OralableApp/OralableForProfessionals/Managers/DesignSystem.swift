@@ -2,7 +2,16 @@
 //  DesignSystem.swift
 //  OralableForProfessionals
 //
-//  Shared design system - matches OralableApp
+//  Shared design system matching OralableApp styling.
+//
+//  Components:
+//  - Colors: Same palette as consumer app
+//  - Typography: Consistent font styles
+//  - Spacing: Standard spacing values
+//  - CornerRadius: Rounded corner sizes
+//
+//  Note: This is a duplicate of OralableApp's DesignSystem
+//  to ensure both apps have identical styling.
 //
 
 import SwiftUI

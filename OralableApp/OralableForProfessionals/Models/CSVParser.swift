@@ -2,11 +2,23 @@
 //  CSVParser.swift
 //  OralableForProfessionals
 //
+//  Parses CSV files exported from consumer app.
+//
+//  Purpose:
+//  Import patient data from CSV files for analysis.
+//
+//  Uses: OralableCore.CSVParser for core parsing
+//
+//  Supported Formats:
+//  - Standard Oralable CSV export
+//  - Event-based CSV export
+//
+//  Output:
+//  - Array of HistoricalDataPoint for charting
+//  - Session metadata (date, duration, record count)
+//
 //  Created: December 10, 2025
 //  Updated: December 31, 2025 - Now uses OralableCore.CSVParser
-//
-//  Purpose: Parse CSV files exported from Oralable app
-//  Uses OralableCore.CSVParser for parsing to ensure consistency
 //
 
 import Foundation

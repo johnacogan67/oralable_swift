@@ -2,7 +2,19 @@
 //  OnboardingView.swift
 //  OralableApp
 //
-//  Welcome screen with direct Apple Sign In
+//  Welcome and onboarding flow for new users.
+//
+//  Pages:
+//  - Welcome: App introduction with tagline "Word of mouth"
+//  - Features: Key capabilities overview
+//  - Sign In: Apple ID authentication
+//
+//  Features:
+//  - Page indicator dots
+//  - Swipe navigation between pages
+//  - Sign in with Apple button
+//  - Skip option to explore without account
+//
 //  Updated: December 13, 2025 - New tagline and broader description
 //
 

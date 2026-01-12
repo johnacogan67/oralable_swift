@@ -1,3 +1,27 @@
+//
+//  CSVExportManager.swift
+//  OralableApp
+//
+//  Manages CSV export operations for sensor data.
+//
+//  Features:
+//  - Dynamic column selection based on FeatureFlags
+//  - Uses OralableCore.CSVExporter for generation
+//  - Handles file creation and cleanup
+//  - Event-based export for muscle activity events
+//
+//  Export Types:
+//  - Continuous data export: All sensor samples
+//  - Event-based export: Threshold-triggered events only
+//
+//  File Location:
+//  - Cache/Exports directory for sharing
+//  - Documents directory for History view access
+//
+//  Filename Format:
+//  oralable_data_{userID}_{timestamp}.csv
+//
+
 import Foundation
 import OralableCore
 

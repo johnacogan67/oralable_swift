@@ -2,7 +2,17 @@
 //  ProfileView.swift
 //  OralableApp
 //
-//  User profile and account management
+//  User profile and account management screen.
+//
+//  Sections:
+//  - Profile Info: Name, email, member since
+//  - Preferences: Notifications, Health sync, Auto export
+//  - Account: Subscription status, sign out
+//
+//  Features:
+//  - Displays Apple ID account information
+//  - Links to support and user guide
+//  - Sign out functionality
 //
 
 import SwiftUI

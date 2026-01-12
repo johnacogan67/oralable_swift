@@ -2,8 +2,23 @@
 //  PatientHistoricalView.swift
 //  OralableForProfessionals
 //
-//  Historical view for patient data - mirrors OralableApp HistoricalView
-//  Updated: December 9, 2025 - Simplified to match patient app (removed time selectors)
+//  Historical chart view for patient session data.
+//
+//  Features:
+//  - Multi-metric chart display
+//  - Time range selection
+//  - Session comparison
+//  - Export functionality
+//
+//  Charts:
+//  - Activity chart (PPG IR)
+//  - Movement chart (accelerometer)
+//  - Temperature chart
+//
+//  Similar to consumer HistoricalView but with
+//  professional-specific analysis features.
+//
+//  Updated: December 9, 2025 - Simplified to match patient app
 //
 
 import SwiftUI

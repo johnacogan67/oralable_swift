@@ -1,3 +1,19 @@
+//
+//  LoginView.swift
+//  OralableApp
+//
+//  Simple login view with Sign in with Apple button.
+//
+//  Purpose:
+//  Standalone login screen used when user needs to re-authenticate.
+//  Primary authentication happens in OnboardingView for new users.
+//
+//  Features:
+//  - Sign in with Apple button
+//  - Requests name and email scopes
+//  - Delegates to AuthenticationManager
+//
+
 import SwiftUI
 import AuthenticationServices
 

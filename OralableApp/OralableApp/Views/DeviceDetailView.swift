@@ -2,7 +2,17 @@
 //  DeviceDetailView.swift
 //  OralableApp
 //
-//  Device detail sheet with Forget Device option
+//  Device detail sheet showing device info and actions.
+//
+//  Displays:
+//  - Device name and type
+//  - Connection status
+//  - Signal strength (RSSI)
+//  - UUID identifier
+//
+//  Actions:
+//  - Disconnect: Disconnects active connection
+//  - Forget Device: Removes from remembered devices
 //
 
 import SwiftUI

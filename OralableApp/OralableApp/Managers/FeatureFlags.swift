@@ -2,9 +2,26 @@
 //  FeatureFlags.swift
 //  OralableApp
 //
+//  Runtime feature flag management for gradual feature rollout.
+//
+//  Dashboard Cards:
+//  - showEMGCard: EMG activity card
+//  - showMovementCard: Accelerometer/movement card
+//  - showTemperatureCard: Temperature card
+//  - showHeartRateCard: Heart rate card
+//  - showSpO2Card: Blood oxygen card
+//  - showBatteryCard: Battery level card
+//
+//  Features:
+//  - showSubscription: Subscription UI
+//  - showDetectionSettings: Event detection settings
+//  - showCloudKitShare: Professional sharing
+//  - demoModeEnabled: Virtual device mode
+//
+//  Persistence: UserDefaults
+//  Access: Developer Settings (tap version 7x)
+//
 //  Created: December 4, 2025
-//  Purpose: Feature flags for controlling app functionality
-//  Pre-launch release hides advanced features for simpler App Store approval
 //
 
 import Foundation

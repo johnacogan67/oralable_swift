@@ -2,9 +2,24 @@
 //  DevicesView.swift
 //  OralableApp
 //
-//  iOS Bluetooth Settings Style - Shows remembered and discovered devices
-//  Updated: Shows connection readiness state progression
-//  Updated: November 29, 2025 (Day 4) - Smart scan prevention
+//  BLE device discovery and connection management screen.
+//
+//  Sections:
+//  - My Devices: Previously connected/remembered devices
+//  - Other Devices: Newly discovered devices during scan
+//
+//  Features:
+//  - Automatic scanning on appear (if Bluetooth ready)
+//  - Manual scan button in toolbar
+//  - Connection state display (Connecting, Ready, Failed)
+//  - Device detail sheet for forget/disconnect actions
+//  - Demo device support when demo mode enabled
+//
+//  Device Types Supported:
+//  - Oralable (primary device)
+//  - ANR M40 (research comparison)
+//  - Demo (virtual device for testing)
+//
 //  Updated: December 8, 2025 - Fixed ANR showing "Failed" when actually working
 //
 

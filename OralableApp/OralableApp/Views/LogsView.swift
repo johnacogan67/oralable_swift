@@ -2,8 +2,17 @@
 //  LogsView.swift
 //  OralableApp
 //
-//  Updated: November 7, 2025
-//  Fixed version without LogLevel conflicts
+//  Log viewer for debugging and troubleshooting.
+//
+//  Features:
+//  - Filter logs by level (debug, info, warning, error)
+//  - Search logs by text content
+//  - Export logs to file for support
+//  - Clear log history
+//
+//  Used for diagnosing device connection and data issues.
+//
+//  Updated: November 7, 2025 - Fixed LogLevel conflicts
 //
 
 import SwiftUI
