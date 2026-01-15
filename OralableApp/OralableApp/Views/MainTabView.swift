@@ -13,6 +13,8 @@
 //  Each tab receives required environment objects for
 //  dependency injection throughout the view hierarchy.
 //
+//  Updated: January 15, 2026 - Added toggle between standard and simplified dashboard
+//
 
 import SwiftUI
 
@@ -23,10 +25,13 @@ struct MainTabView: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var dependencies: AppDependencies
 
+    /// Toggle between standard and simplified dashboard
+    @AppStorage("useSimplifiedDashboard") private var useSimplifiedDashboard: Bool = false
+
     var body: some View {
         TabView {
-            // Dashboard Tab
-            DashboardView()
+            // Dashboard Tab - switches based on user preference
+            DashboardContainer(useSimplified: useSimplifiedDashboard)
                 .tabItem {
                     Label("Dashboard", systemImage: "house.fill")
                 }
@@ -56,6 +61,39 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
+        }
+    }
+}
+
+// MARK: - Dashboard Container
+
+/// Container that switches between standard and simplified dashboard
+private struct DashboardContainer: View {
+    @EnvironmentObject var dependencies: AppDependencies
+    let useSimplified: Bool
+
+    @State private var viewModel: DashboardViewModel?
+
+    var body: some View {
+        Group {
+            if let viewModel = viewModel {
+                if useSimplified {
+                    SimplifiedDashboardView(viewModel: viewModel)
+                } else {
+                    DashboardView()
+                }
+            } else {
+                ProgressView("Loading...")
+                    .task {
+                        if viewModel == nil {
+                            let vm = dependencies.makeDashboardViewModel()
+                            await MainActor.run {
+                                self.viewModel = vm
+                                vm.startMonitoring()
+                            }
+                        }
+                    }
+            }
         }
     }
 }

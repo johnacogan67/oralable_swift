@@ -32,6 +32,9 @@ struct SettingsView: View {
     @State private var developerTapCount = 0
     @State private var showDeveloperSettings = false
 
+    /// Toggle between standard and simplified dashboard
+    @AppStorage("useSimplifiedDashboard") private var useSimplifiedDashboard: Bool = false
+
     init(viewModel: SettingsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
@@ -56,6 +59,15 @@ struct SettingsView: View {
                     } header: {
                         Text("Detection Settings")
                     }
+                }
+
+                // Display Settings Section - ALWAYS SHOWN
+                Section {
+                    dashboardStyleRow
+                } header: {
+                    Text("Display")
+                } footer: {
+                    Text("Simplified dashboard shows a single status card with color-coded positioning.")
                 }
 
                 // About Section - ALWAYS SHOWN (with hidden developer access)
@@ -217,6 +229,31 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         }
+    }
+
+    // MARK: - Dashboard Style Row
+
+    private var dashboardStyleRow: some View {
+        Toggle(isOn: $useSimplifiedDashboard) {
+            HStack {
+                Image(systemName: "rectangle.on.rectangle")
+                    .font(.system(size: 20))
+                    .foregroundColor(.blue)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Simplified Dashboard")
+                        .font(.system(size: 17))
+                        .foregroundColor(.primary)
+
+                    Text("Color-coded status card")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .tint(.blue)
+        .padding(.vertical, 4)
     }
 }
 

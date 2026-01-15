@@ -111,7 +111,12 @@ class DashboardViewModel: ObservableObject {
     // MARK: - Event Recording
     @Published private(set) var eventCount: Int = 0
     @Published private(set) var discardedEventCount: Int = 0
-    private var eventSession: EventRecordingSession?
+    private var _eventSession: EventRecordingSession?
+
+    /// Public accessor for event session (used by SimplifiedDashboardView for calibration state)
+    var eventSession: EventRecordingSession? {
+        _eventSession
+    }
 
     // MARK: - Live Event Stats (for recording button display)
     @Published var liveEventCount: Int = 0
@@ -220,7 +225,7 @@ class DashboardViewModel: ObservableObject {
         eventSessionCancellables.removeAll()
 
         let settings = EventSettings.shared
-        eventSession = EventRecordingSession(
+        _eventSession = EventRecordingSession(
             normalizedThresholdPercent: settings.normalizedThresholdPercent
         )
 
