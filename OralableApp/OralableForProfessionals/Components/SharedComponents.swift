@@ -3,10 +3,12 @@
 //  OralableForProfessionals
 //
 //  Reusable UI components matching OralableApp style
+//  Updated: January 15, 2026 - Use ColorSystem from OralableCore
 //
 
 import SwiftUI
 import Charts
+import OralableCore
 
 // MARK: - Health Metric Card (Apple Health Style)
 
@@ -20,6 +22,8 @@ struct HealthMetricCard: View {
     var sparklineData: [Double] = []
     var showChevron: Bool = false
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -30,7 +34,7 @@ struct HealthMetricCard: View {
 
                     Text(title)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(colors.textSecondary)
                 }
 
                 Spacer()
@@ -38,19 +42,19 @@ struct HealthMetricCard: View {
                 if showChevron {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                        .foregroundColor(colors.textTertiary)
                 }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(colors.textPrimary)
 
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(colors.textSecondary)
                 }
 
                 Spacer()
@@ -64,13 +68,13 @@ struct HealthMetricCard: View {
             if let subtitle = subtitle {
                 Text(subtitle)
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.textSecondary)
             }
         }
         .padding(16)
-        .background(Color(UIColor.systemBackground))
+        .background(colors.backgroundPrimary)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .shadow(color: colors.shadow, radius: 4, x: 0, y: 2)
     }
 }
 
@@ -107,6 +111,8 @@ struct SummaryMetricCard: View {
     let color: Color
     var trend: Double? = nil
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
@@ -119,11 +125,12 @@ struct SummaryMetricCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.textSecondary)
 
                 HStack(spacing: 8) {
                     Text(value)
                         .font(.title2.bold())
+                        .foregroundColor(colors.textPrimary)
 
                     if let trend = trend {
                         TrendIndicator(value: trend)
@@ -134,9 +141,9 @@ struct SummaryMetricCard: View {
             Spacer()
         }
         .padding()
-        .background(Color(UIColor.systemBackground))
+        .background(colors.backgroundPrimary)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .shadow(color: colors.shadow, radius: 2, x: 0, y: 1)
     }
 }
 
@@ -145,17 +152,20 @@ struct SummaryMetricCard: View {
 struct TrendIndicator: View {
     let value: Double
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         HStack(spacing: 2) {
             Image(systemName: value >= 0 ? "arrow.up.right" : "arrow.down.right")
                 .font(.system(size: 10, weight: .bold))
+
             Text(String(format: "%.0f%%", abs(value)))
                 .font(.system(size: 11, weight: .medium))
         }
-        .foregroundColor(value >= 0 ? .red : .green)
+        .foregroundColor(value >= 0 ? colors.error : colors.success)
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background((value >= 0 ? Color.red : Color.green).opacity(0.1))
+        .background((value >= 0 ? colors.error : colors.success).opacity(0.1))
         .cornerRadius(4)
     }
 }
@@ -168,15 +178,18 @@ struct SessionRowCard: View {
     let bruxismEvents: Int
     let peakIntensity: Double
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(formattedDate(date))
                     .font(.headline)
+                    .foregroundColor(colors.textPrimary)
 
                 Text(formattedDuration(duration))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.textSecondary)
             }
 
             Spacer()
@@ -185,19 +198,20 @@ struct SessionRowCard: View {
                 HStack(spacing: 4) {
                     Text("\(bruxismEvents)")
                         .font(.headline)
-                        .foregroundColor(.red)
+                        .foregroundColor(colors.error)
+
                     Text("events")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(colors.textSecondary)
                 }
 
                 Text(String(format: "Peak: %.1f", peakIntensity))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.textSecondary)
             }
         }
         .padding()
-        .background(Color(UIColor.systemBackground))
+        .background(colors.backgroundPrimary)
         .cornerRadius(10)
     }
 
@@ -224,19 +238,22 @@ struct EmptyStateView: View {
     var buttonTitle: String? = nil
     var buttonAction: (() -> Void)? = nil
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: icon)
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundColor(colors.textSecondary)
 
             VStack(spacing: 12) {
                 Text(title)
                     .font(.title2.bold())
+                    .foregroundColor(colors.textPrimary)
 
                 Text(message)
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
@@ -248,10 +265,10 @@ struct EmptyStateView: View {
                         Text(buttonTitle)
                     }
                     .font(.body.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(colors.primaryWhite)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(Color.black)
+                    .background(colors.primaryBlack)
                     .cornerRadius(10)
                 }
             }
@@ -265,6 +282,8 @@ struct EmptyStateView: View {
 struct LoadingView: View {
     let message: String
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -272,7 +291,7 @@ struct LoadingView: View {
 
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(colors.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -285,10 +304,13 @@ struct SectionHeader: View {
     var action: (() -> Void)? = nil
     var actionTitle: String? = nil
 
+    private let colors = OralableCore.DesignSystem.shared.colors
+
     var body: some View {
         HStack {
             Text(title)
                 .font(.title3.bold())
+                .foregroundColor(colors.textPrimary)
 
             Spacer()
 
@@ -296,7 +318,7 @@ struct SectionHeader: View {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(.subheadline)
-                        .foregroundColor(.blue)
+                        .foregroundColor(colors.info)
                 }
             }
         }

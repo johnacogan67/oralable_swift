@@ -23,6 +23,7 @@
 
 import SwiftUI
 import Charts
+import OralableCore
 
 /// Metric types available for viewing - mirrors OralableApp's HistoryMetricTab
 enum PatientHistoryMetricTab: String, CaseIterable {
@@ -41,11 +42,12 @@ enum PatientHistoryMetricTab: String, CaseIterable {
     }
 
     var chartColor: Color {
+        let colors = OralableCore.DesignSystem.shared.colors
         switch self {
-        case .emg: return .blue
-        case .ir: return .purple
-        case .move: return .green
-        case .temp: return .orange
+        case .emg: return colors.muscleActivity
+        case .ir: return colors.ppgInfraredChart
+        case .move: return colors.movement
+        case .temp: return colors.temperature
         }
     }
 

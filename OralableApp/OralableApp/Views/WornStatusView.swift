@@ -12,7 +12,7 @@ import SwiftUI
 
 /// An Apple-inspired UI component to indicate sensor coupling and HR.
 struct WornStatusView: View {
-    let result: HeartRateService.HRResult?
+    let result: HRResult?
     
     private var isWorn: Bool {
         (result?.confidence ?? 0) > 0.5

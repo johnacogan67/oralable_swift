@@ -120,7 +120,7 @@ class DashboardViewModel: ObservableObject {
     private var eventSessionCancellables = Set<AnyCancellable>()
 
     // MARK: - Heart Rate & Worn Status
-    @Published var currentHRResult: HeartRateService.HRResult?
+    @Published var currentHRResult: HRResult?
     @Published var wornStatus: WornStatus = .initializing
 
     // MARK: - Device-Specific Display Labels
@@ -838,16 +838,20 @@ extension DashboardViewModel {
     
     // Call this inside your SensorDataProcessor subscription
     func updateHeartRate(with rawIRSamples: [Double], accelMagnitudes: [Double]) {
-        let result = heartRateService.process(samples: rawIRSamples)
-        self.currentHRResult = result
-        
-        // Map boolean isWorn to WornStatus enum
-        if result.confidence < 0.3 {
-            self.wornStatus = .initializing
-        } else if result.isWorn {
-            self.wornStatus = .active
-        } else {
-            self.wornStatus = .repositioning
+        Task {
+            let result = await heartRateService.process(samples: rawIRSamples)
+            await MainActor.run {
+                self.currentHRResult = result
+
+                // Map boolean isWorn to WornStatus enum
+                if result.confidence < 0.3 {
+                    self.wornStatus = .initializing
+                } else if result.isWorn {
+                    self.wornStatus = .active
+                } else {
+                    self.wornStatus = .repositioning
+                }
+            }
         }
     }
 }

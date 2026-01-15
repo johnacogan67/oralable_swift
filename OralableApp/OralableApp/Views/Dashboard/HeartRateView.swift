@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HeartRateView: View {
     @Binding var wornStatus: WornStatus
-    @Binding var heartRateResult: HeartRateService.HRResult?
+    @Binding var heartRateResult: HRResult?
 
     @State private var isBeating = false
 
