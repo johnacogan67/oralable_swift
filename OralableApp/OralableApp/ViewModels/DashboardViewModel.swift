@@ -219,7 +219,12 @@ class DashboardViewModel: ObservableObject {
         // Clean up previous session
         eventSessionCancellables.removeAll()
 
-        eventSession = EventRecordingSession(threshold: EventSettings.shared.threshold)
+        let settings = EventSettings.shared
+        eventSession = EventRecordingSession(
+            detectionMode: settings.detectionMode,
+            absoluteThreshold: settings.absoluteThreshold,
+            normalizedThresholdPercent: settings.normalizedThresholdPercent
+        )
 
         // Setup live stats bindings
         setupEventSessionBindings()
@@ -230,7 +235,7 @@ class DashboardViewModel: ObservableObject {
         liveEventCount = 0
         liveSamplesProcessed = 0
         liveMemoryUsage = "0 KB"
-        Logger.shared.info("[DashboardViewModel] Event recording started with threshold: \(EventSettings.shared.threshold)")
+        Logger.shared.info("[DashboardViewModel] Event recording started with mode: \(settings.detectionMode.rawValue)")
     }
 
     /// Setup bindings for live event stats
@@ -247,7 +252,7 @@ class DashboardViewModel: ObservableObject {
             .store(in: &eventSessionCancellables)
 
         // Observe discarded count
-        session.$discardedCount
+        session.$discardedEventCount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] count in
                 self?.discardedEventCount = count
@@ -296,10 +301,12 @@ class DashboardViewModel: ObservableObject {
     /// Get export options based on enabled dashboard cards
     func getEventExportOptions() -> EventCSVExporter.ExportOptions {
         EventCSVExporter.ExportOptions(
+            includeNormalized: true,
             includeTemperature: featureFlags.showTemperatureCard,
             includeHR: featureFlags.showHeartRateCard,
             includeSpO2: featureFlags.showSpO2Card,
-            includeSleep: false // Sleep not currently tracked
+            includeSleep: false, // Sleep not currently tracked
+            includeAccelerometer: true
         )
     }
 
@@ -574,7 +581,7 @@ class DashboardViewModel: ObservableObject {
 
         // Update event counts
         eventCount = session.eventCount
-        discardedCount = session.discardedCount
+        discardedCount = session.discardedEventCount
     }
 
     /// Discarded event count (alias for consistency)

@@ -3,26 +3,13 @@
 //  OralableApp
 //
 //  Created: January 8, 2026
-//  Updated: January 12, 2026 - Added recording mode setting
-//  User settings for event detection threshold and recording mode
+//  Updated: January 13, 2026 - Added detection mode and normalized threshold
+//
+//  Settings for event detection and recording.
 //
 
 import Foundation
-
-/// Recording mode determines how data is stored during recording
-public enum RecordingMode: String, CaseIterable {
-    case continuous = "Continuous"  // Store all samples (legacy, high memory)
-    case eventBased = "Event-Based" // Store only events (new, low memory)
-
-    public var description: String {
-        switch self {
-        case .continuous:
-            return "Store all sensor samples (high memory)"
-        case .eventBased:
-            return "Store only events (low memory, recommended)"
-        }
-    }
-}
+import OralableCore
 
 /// User settings for event detection
 class EventSettings: ObservableObject {
@@ -32,85 +19,138 @@ class EventSettings: ObservableObject {
     // MARK: - Keys
 
     private enum Keys {
-        static let threshold = "eventThreshold"
+        static let detectionMode = "eventDetectionMode"
+        static let absoluteThreshold = "eventAbsoluteThreshold"
+        static let normalizedThreshold = "eventNormalizedThreshold"
+        static let calibrationDuration = "eventCalibrationDuration"
         static let recordingMode = "recordingMode"
     }
 
-    // MARK: - Threshold Configuration
+    // MARK: - Defaults
 
-    /// Default threshold value for PPG IR event detection
-    public static let defaultThreshold: Int = 150000
+    public static let defaultAbsoluteThreshold: Int = 150000
+    public static let defaultNormalizedThreshold: Double = 40.0
+    public static let defaultCalibrationDuration: TimeInterval = 15.0
 
-    /// Minimum allowed threshold value
-    public static let minThreshold: Int = 50000
+    /// Minimum allowed absolute threshold value
+    public static let minAbsoluteThreshold: Int = 50000
 
-    /// Maximum allowed threshold value
-    public static let maxThreshold: Int = 500000
+    /// Maximum allowed absolute threshold value
+    public static let maxAbsoluteThreshold: Int = 500000
 
     /// Step size for threshold slider
     public static let thresholdStep: Int = 10000
 
+    /// Minimum normalized threshold percentage
+    public static let minNormalizedThreshold: Double = 10.0
+
+    /// Maximum normalized threshold percentage
+    public static let maxNormalizedThreshold: Double = 100.0
+
     // MARK: - Published Properties
 
-    /// Current threshold value for event detection
-    /// Events are detected when PPG IR exceeds this value
-    @Published var threshold: Int {
+    /// Detection mode: absolute (fixed threshold) or normalized (percentage above baseline)
+    @Published var detectionMode: DetectionMode {
         didSet {
-            // Clamp to valid range
-            let clamped = min(max(threshold, EventSettings.minThreshold), EventSettings.maxThreshold)
-            if clamped != threshold {
-                threshold = clamped
-            }
-            UserDefaults.standard.set(threshold, forKey: Keys.threshold)
+            UserDefaults.standard.set(detectionMode.rawValue, forKey: Keys.detectionMode)
         }
     }
 
-    /// Recording mode: event-based (default, low memory) or continuous (legacy, high memory)
-    @Published var recordingMode: RecordingMode {
+    /// Absolute threshold value (for absolute mode)
+    @Published var absoluteThreshold: Int {
         didSet {
-            UserDefaults.standard.set(recordingMode.rawValue, forKey: Keys.recordingMode)
+            let clamped = min(max(absoluteThreshold, Self.minAbsoluteThreshold), Self.maxAbsoluteThreshold)
+            if clamped != absoluteThreshold {
+                absoluteThreshold = clamped
+            }
+            UserDefaults.standard.set(absoluteThreshold, forKey: Keys.absoluteThreshold)
+        }
+    }
+
+    /// Normalized threshold as percentage above baseline (for normalized mode)
+    @Published var normalizedThresholdPercent: Double {
+        didSet {
+            let clamped = min(max(normalizedThresholdPercent, Self.minNormalizedThreshold), Self.maxNormalizedThreshold)
+            if clamped != normalizedThresholdPercent {
+                normalizedThresholdPercent = clamped
+            }
+            UserDefaults.standard.set(normalizedThresholdPercent, forKey: Keys.normalizedThreshold)
+        }
+    }
+
+    /// Calibration duration in seconds
+    @Published var calibrationDuration: TimeInterval {
+        didSet {
+            UserDefaults.standard.set(calibrationDuration, forKey: Keys.calibrationDuration)
         }
     }
 
     // MARK: - Init
 
     private init() {
-        let savedThreshold = UserDefaults.standard.integer(forKey: Keys.threshold)
-        self.threshold = savedThreshold > 0 ? savedThreshold : EventSettings.defaultThreshold
-
-        if let modeString = UserDefaults.standard.string(forKey: Keys.recordingMode),
-           let mode = RecordingMode(rawValue: modeString) {
-            self.recordingMode = mode
+        // Load detection mode
+        if let modeString = UserDefaults.standard.string(forKey: Keys.detectionMode),
+           let mode = DetectionMode(rawValue: modeString) {
+            self.detectionMode = mode
         } else {
-            self.recordingMode = .eventBased // Default to event-based for memory efficiency
+            self.detectionMode = .normalized  // Default to normalized (recommended)
         }
+
+        // Load absolute threshold
+        let savedAbsoluteThreshold = UserDefaults.standard.integer(forKey: Keys.absoluteThreshold)
+        self.absoluteThreshold = savedAbsoluteThreshold > 0 ? savedAbsoluteThreshold : Self.defaultAbsoluteThreshold
+
+        // Load normalized threshold
+        let savedNormalizedThreshold = UserDefaults.standard.double(forKey: Keys.normalizedThreshold)
+        self.normalizedThresholdPercent = savedNormalizedThreshold > 0 ? savedNormalizedThreshold : Self.defaultNormalizedThreshold
+
+        // Load calibration duration
+        let savedCalibrationDuration = UserDefaults.standard.double(forKey: Keys.calibrationDuration)
+        self.calibrationDuration = savedCalibrationDuration > 0 ? savedCalibrationDuration : Self.defaultCalibrationDuration
     }
 
     // MARK: - Reset
 
-    /// Reset threshold to default value
-    func resetToDefault() {
-        threshold = EventSettings.defaultThreshold
-        recordingMode = .eventBased
+    /// Reset all settings to defaults
+    func resetToDefaults() {
+        detectionMode = .normalized
+        absoluteThreshold = Self.defaultAbsoluteThreshold
+        normalizedThresholdPercent = Self.defaultNormalizedThreshold
+        calibrationDuration = Self.defaultCalibrationDuration
     }
 
     // MARK: - Display Helpers
 
-    /// Threshold formatted for display (e.g., "150k")
-    var formattedThreshold: String {
-        if threshold >= 1000 {
-            return "\(threshold / 1000)k"
+    /// Absolute threshold formatted for display (e.g., "150k")
+    var formattedAbsoluteThreshold: String {
+        if absoluteThreshold >= 1000 {
+            return "\(absoluteThreshold / 1000)k"
         }
-        return "\(threshold)"
+        return "\(absoluteThreshold)"
     }
 
-    /// Minimum threshold formatted for display
-    static var formattedMinThreshold: String {
-        "\(minThreshold / 1000)k"
+    /// Normalized threshold formatted for display (e.g., "40%")
+    var formattedNormalizedThreshold: String {
+        return "\(Int(normalizedThresholdPercent))%"
     }
 
-    /// Maximum threshold formatted for display
-    static var formattedMaxThreshold: String {
-        "\(maxThreshold / 1000)k"
+    /// Current threshold description based on mode
+    var currentThresholdDescription: String {
+        switch detectionMode {
+        case .absolute:
+            return "Fixed: \(formattedAbsoluteThreshold)"
+        case .normalized:
+            return "Normalized: \(formattedNormalizedThreshold) above baseline"
+        }
+    }
+
+    /// Minimum absolute threshold formatted for display
+    static var formattedMinAbsoluteThreshold: String {
+        "\(minAbsoluteThreshold / 1000)k"
+    }
+
+    /// Maximum absolute threshold formatted for display
+    static var formattedMaxAbsoluteThreshold: String {
+        "\(maxAbsoluteThreshold / 1000)k"
     }
 }
