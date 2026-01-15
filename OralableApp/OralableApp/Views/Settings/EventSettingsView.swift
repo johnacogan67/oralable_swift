@@ -3,9 +3,9 @@
 //  OralableApp
 //
 //  Created: January 8, 2026
-//  Updated: January 13, 2026 - Updated for detection mode (absolute/normalized)
+//  Updated: January 15, 2026 - Simplified to normalized-only detection
 //
-//  Settings for event detection threshold and detection mode
+//  Settings for event detection threshold (normalized mode only).
 //
 
 import SwiftUI
@@ -17,173 +17,98 @@ struct EventSettingsView: View {
 
     var body: some View {
         Form {
-            // Detection Mode Section
+            // Detection Mode Info Section
             Section {
-                Picker("Detection Mode", selection: $settings.detectionMode) {
-                    Text("Normalized (Recommended)").tag(DetectionMode.normalized)
-                    Text("Absolute (Fixed)").tag(DetectionMode.absolute)
+                HStack {
+                    Image(systemName: "waveform.path.ecg")
+                        .foregroundColor(.orange)
+                    Text("Normalized Detection")
+                        .font(.headline)
                 }
+
+                Text("Events are detected when PPG IR exceeds a percentage above your calibrated baseline. This works consistently across different users and sensor placements.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             } header: {
                 Text("Detection Mode")
             } footer: {
-                Text(detectionModeFooter)
+                Text("Calibration is required before each recording session (15 seconds).")
             }
 
-            // Threshold Section - varies by mode
-            if settings.detectionMode == .normalized {
-                // Normalized mode - percentage threshold
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Threshold Percentage")
-                            .font(.headline)
+            // Normalized Threshold Section
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Threshold Percentage")
+                        .font(.headline)
 
-                        Text("Events are detected when PPG IR exceeds this percentage above your calibrated baseline. Lower values detect more events.")
+                    Text("Lower values detect more events, higher values detect only stronger activity.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    HStack {
+                        Text("\(Int(EventSettings.minNormalizedThreshold))%")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .frame(width: 40, alignment: .leading)
 
-                        HStack {
-                            Text("\(Int(EventSettings.minNormalizedThreshold))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, alignment: .leading)
+                        Slider(
+                            value: $settings.normalizedThresholdPercent,
+                            in: EventSettings.minNormalizedThreshold...EventSettings.maxNormalizedThreshold,
+                            step: 5.0
+                        )
+                        .tint(.orange)
 
-                            Slider(
-                                value: $settings.normalizedThresholdPercent,
-                                in: EventSettings.minNormalizedThreshold...EventSettings.maxNormalizedThreshold,
-                                step: 5.0
-                            )
-                            .tint(.orange)
-
-                            Text("\(Int(EventSettings.maxNormalizedThreshold))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, alignment: .trailing)
-                        }
-
-                        HStack {
-                            Spacer()
-                            Text("Current: \(settings.formattedNormalizedThreshold)")
-                                .font(.subheadline)
-                                .monospacedDigit()
-                                .foregroundColor(.primary)
-                            Spacer()
-                        }
-                        .padding(.top, 4)
-                    }
-                    .padding(.vertical, 8)
-                } header: {
-                    Text("Normalized Threshold")
-                }
-
-                Section {
-                    NormalizedPresetButton(
-                        title: "Sensitive",
-                        description: "Detects light muscle activity",
-                        value: 25.0,
-                        currentValue: settings.normalizedThresholdPercent
-                    ) {
-                        settings.normalizedThresholdPercent = 25.0
-                    }
-
-                    NormalizedPresetButton(
-                        title: "Normal",
-                        description: "Balanced detection",
-                        value: 40.0,
-                        currentValue: settings.normalizedThresholdPercent
-                    ) {
-                        settings.normalizedThresholdPercent = 40.0
-                    }
-
-                    NormalizedPresetButton(
-                        title: "Strong Only",
-                        description: "Detects only strong activity",
-                        value: 60.0,
-                        currentValue: settings.normalizedThresholdPercent
-                    ) {
-                        settings.normalizedThresholdPercent = 60.0
-                    }
-                } header: {
-                    Text("Presets")
-                }
-
-            } else {
-                // Absolute mode - fixed threshold
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("IR Threshold")
-                            .font(.headline)
-
-                        Text("Events are detected when PPG IR exceeds this fixed value. May need adjustment for different users.")
+                        Text("\(Int(EventSettings.maxNormalizedThreshold))%")
                             .font(.caption)
                             .foregroundColor(.secondary)
-
-                        HStack {
-                            Text(EventSettings.formattedMinAbsoluteThreshold)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, alignment: .leading)
-
-                            Slider(
-                                value: Binding(
-                                    get: { Double(settings.absoluteThreshold) },
-                                    set: { settings.absoluteThreshold = Int($0) }
-                                ),
-                                in: Double(EventSettings.minAbsoluteThreshold)...Double(EventSettings.maxAbsoluteThreshold),
-                                step: Double(EventSettings.thresholdStep)
-                            )
-                            .tint(.orange)
-
-                            Text(EventSettings.formattedMaxAbsoluteThreshold)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, alignment: .trailing)
-                        }
-
-                        HStack {
-                            Spacer()
-                            Text("Current: \(settings.formattedAbsoluteThreshold)")
-                                .font(.subheadline)
-                                .monospacedDigit()
-                                .foregroundColor(.primary)
-                            Spacer()
-                        }
-                        .padding(.top, 4)
+                            .frame(width: 40, alignment: .trailing)
                     }
-                    .padding(.vertical, 8)
-                } header: {
-                    Text("Absolute Threshold")
+
+                    HStack {
+                        Spacer()
+                        Text("Current: \(settings.formattedNormalizedThreshold)")
+                            .font(.subheadline)
+                            .monospacedDigit()
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(.vertical, 8)
+            } header: {
+                Text("Threshold")
+            }
+
+            // Presets Section
+            Section {
+                PresetButton(
+                    title: "Sensitive",
+                    description: "Detects light muscle activity",
+                    value: 25.0,
+                    currentValue: settings.normalizedThresholdPercent
+                ) {
+                    settings.normalizedThresholdPercent = 25.0
                 }
 
-                Section {
-                    AbsolutePresetButton(
-                        title: "Sensitive",
-                        description: "Detects light muscle activity",
-                        value: 75000,
-                        currentValue: settings.absoluteThreshold
-                    ) {
-                        settings.absoluteThreshold = 75000
-                    }
-
-                    AbsolutePresetButton(
-                        title: "Normal",
-                        description: "Balanced detection",
-                        value: 150000,
-                        currentValue: settings.absoluteThreshold
-                    ) {
-                        settings.absoluteThreshold = 150000
-                    }
-
-                    AbsolutePresetButton(
-                        title: "Strong Only",
-                        description: "Detects only strong activity",
-                        value: 250000,
-                        currentValue: settings.absoluteThreshold
-                    ) {
-                        settings.absoluteThreshold = 250000
-                    }
-                } header: {
-                    Text("Presets")
+                PresetButton(
+                    title: "Normal",
+                    description: "Balanced detection",
+                    value: 40.0,
+                    currentValue: settings.normalizedThresholdPercent
+                ) {
+                    settings.normalizedThresholdPercent = 40.0
                 }
+
+                PresetButton(
+                    title: "Strong Only",
+                    description: "Detects only strong activity",
+                    value: 60.0,
+                    currentValue: settings.normalizedThresholdPercent
+                ) {
+                    settings.normalizedThresholdPercent = 60.0
+                }
+            } header: {
+                Text("Presets")
             }
 
             // Memory Comparison Section
@@ -227,20 +152,11 @@ struct EventSettingsView: View {
         .navigationTitle("Event Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
-
-    private var detectionModeFooter: String {
-        switch settings.detectionMode {
-        case .normalized:
-            return "Normalized mode uses a percentage above your calibrated baseline. Works consistently across different users and sensor placements. Requires 15-second calibration before recording."
-        case .absolute:
-            return "Absolute mode uses a fixed threshold value. May need adjustment for different users or sensor placements. No calibration required."
-        }
-    }
 }
 
-// MARK: - Normalized Preset Button
+// MARK: - Preset Button
 
-private struct NormalizedPresetButton: View {
+private struct PresetButton: View {
     let title: String
     let description: String
     let value: Double
@@ -271,49 +187,6 @@ private struct NormalizedPresetButton: View {
                         .foregroundColor(.green)
                 } else {
                     Text("\(Int(value))%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - Absolute Preset Button
-
-private struct AbsolutePresetButton: View {
-    let title: String
-    let description: String
-    let value: Int
-    let currentValue: Int
-    let action: () -> Void
-
-    private var isSelected: Bool {
-        currentValue == value
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body)
-                        .foregroundColor(.primary)
-
-                    Text(description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                } else {
-                    Text("\(value / 1000)k")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .monospacedDigit()

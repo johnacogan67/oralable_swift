@@ -3,8 +3,10 @@
 //  OralableApp
 //
 //  Created: January 8, 2026
+//  Updated: January 15, 2026 - Color by validation status (valid=green, invalid=black)
+//
 //  Chart views for displaying muscle activity events
-//  Rest events: Green | Activity events: Red
+//  Valid events: Green | Invalid events: Black
 //
 
 import SwiftUI
@@ -12,10 +14,9 @@ import Charts
 import OralableCore
 
 /// Chart view that displays muscle activity events with IR values
-/// - Rest events: Green
-/// - Activity events: Red
+/// - Valid events: Green
+/// - Invalid events: Black
 struct EventChartView: View {
-
     let events: [MuscleActivityEvent]
 
     var body: some View {
@@ -27,8 +28,8 @@ struct EventChartView: View {
                     xEnd: .value("End", event.endTimestamp),
                     y: .value("IR", event.averageIR)
                 )
-                .foregroundStyle(event.eventType.color)
-                .opacity(0.8)
+                .foregroundStyle(event.displayColor)
+                .opacity(event.isValid ? 0.8 : 0.6)
             }
         }
         .chartXAxis {
@@ -49,16 +50,16 @@ struct EventChartView: View {
         }
         .chartLegend(position: .bottom) {
             HStack(spacing: 20) {
-                LegendItem(color: .green, label: "Rest")
-                LegendItem(color: .red, label: "Activity")
+                LegendItem(color: .green, label: "Valid")
+                LegendItem(color: .black, label: "Invalid")
             }
         }
     }
 }
 
 /// Timeline view showing events as colored segments
+/// Valid: Green | Invalid: Black
 struct EventTimelineView: View {
-
     let events: [MuscleActivityEvent]
 
     var body: some View {
@@ -70,7 +71,8 @@ struct EventTimelineView: View {
                     yStart: .value("Bottom", 0),
                     yEnd: .value("Top", 1)
                 )
-                .foregroundStyle(event.eventType.color)
+                .foregroundStyle(event.displayColor)
+                .opacity(event.isValid ? 0.8 : 0.6)
             }
         }
         .chartYAxis(.hidden)
@@ -85,8 +87,8 @@ struct EventTimelineView: View {
 }
 
 /// Point chart showing event durations over time
+/// Valid: Green | Invalid: Black
 struct EventPointChartView: View {
-
     let events: [MuscleActivityEvent]
 
     var body: some View {
@@ -96,8 +98,8 @@ struct EventPointChartView: View {
                     x: .value("Time", event.startTimestamp),
                     y: .value("Duration", event.durationMs)
                 )
-                .foregroundStyle(event.eventType.color)
-                .symbolSize(event.eventType == .activity ? 100 : 60)
+                .foregroundStyle(event.displayColor)
+                .symbolSize(event.isValid ? 100 : 60)
             }
         }
         .chartXAxis {
@@ -123,53 +125,52 @@ struct EventPointChartView: View {
     }
 }
 
-/// Combined chart showing event distribution by type
+/// Combined chart showing event distribution by validation status
 struct EventDistributionView: View {
-
     let events: [MuscleActivityEvent]
 
-    private var activityEvents: [MuscleActivityEvent] {
-        events.filter { $0.eventType == .activity }
+    private var validEvents: [MuscleActivityEvent] {
+        events.filter { $0.isValid }
     }
 
-    private var restEvents: [MuscleActivityEvent] {
-        events.filter { $0.eventType == .rest }
+    private var invalidEvents: [MuscleActivityEvent] {
+        events.filter { !$0.isValid }
     }
 
-    private var activityDuration: Int {
-        activityEvents.reduce(0) { $0 + $1.durationMs }
+    private var validDuration: Int {
+        validEvents.reduce(0) { $0 + $1.durationMs }
     }
 
-    private var restDuration: Int {
-        restEvents.reduce(0) { $0 + $1.durationMs }
+    private var invalidDuration: Int {
+        invalidEvents.reduce(0) { $0 + $1.durationMs }
     }
 
     var body: some View {
         VStack(spacing: 16) {
-            // Pie/Bar chart for distribution
+            // Summary stats
             HStack(spacing: 20) {
                 VStack {
-                    Text("\(activityEvents.count)")
+                    Text("\(validEvents.count)")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.red)
-                    Text("Activity")
+                        .foregroundColor(.green)
+                    Text("Valid")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(formatDuration(activityDuration))
+                    Text(formatDuration(validDuration))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
 
                 VStack {
-                    Text("\(restEvents.count)")
+                    Text("\(invalidEvents.count)")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.green)
-                    Text("Rest")
+                        .foregroundColor(.black)
+                    Text("Invalid")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(formatDuration(restDuration))
+                    Text(formatDuration(invalidDuration))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -177,17 +178,17 @@ struct EventDistributionView: View {
 
             // Progress bar showing ratio
             GeometryReader { geometry in
-                let total = activityDuration + restDuration
-                let activityRatio = total > 0 ? CGFloat(activityDuration) / CGFloat(total) : 0.5
+                let total = validEvents.count + invalidEvents.count
+                let validRatio = total > 0 ? CGFloat(validEvents.count) / CGFloat(total) : 0.5
 
                 HStack(spacing: 0) {
                     Rectangle()
-                        .fill(Color.red)
-                        .frame(width: geometry.size.width * activityRatio)
+                        .fill(Color.green)
+                        .frame(width: geometry.size.width * validRatio)
 
                     Rectangle()
-                        .fill(Color.green)
-                        .frame(width: geometry.size.width * (1 - activityRatio))
+                        .fill(Color.black.opacity(0.7))
+                        .frame(width: geometry.size.width * (1 - validRatio))
                 }
                 .cornerRadius(4)
             }
@@ -224,7 +225,7 @@ struct LegendItem: View {
 
 // MARK: - Preview
 
-#Preview("Event Timeline") {
+#Preview("Event Charts - Valid/Invalid") {
     let sampleEvents = [
         MuscleActivityEvent(
             eventNumber: 1,
@@ -241,7 +242,7 @@ struct LegendItem: View {
             heartRate: 70,
             spO2: 98,
             sleepState: .awake,
-            isValid: true
+            isValid: true  // VALID - green
         ),
         MuscleActivityEvent(
             eventNumber: 2,
@@ -255,10 +256,10 @@ struct LegendItem: View {
             accelY: 15180,
             accelZ: -1756,
             temperature: 34.0,
-            heartRate: 72,
-            spO2: 98,
-            sleepState: .awake,
-            isValid: true
+            heartRate: nil,  // No HR
+            spO2: nil,       // No SpO2
+            sleepState: nil,
+            isValid: false   // INVALID - black
         ),
         MuscleActivityEvent(
             eventNumber: 3,
@@ -275,7 +276,7 @@ struct LegendItem: View {
             heartRate: 70,
             spO2: 98,
             sleepState: .awake,
-            isValid: true
+            isValid: true  // VALID - green
         ),
         MuscleActivityEvent(
             eventNumber: 4,
@@ -288,30 +289,42 @@ struct LegendItem: View {
             accelX: -4200,
             accelY: 12500,
             accelZ: -2100,
-            temperature: 34.25,
-            heartRate: 68,
-            spO2: 97,
-            sleepState: .awake,
-            isValid: true
+            temperature: 30.0,  // Cold temp - invalid
+            heartRate: nil,
+            spO2: nil,
+            sleepState: nil,
+            isValid: false  // INVALID - black
         )
     ]
 
-    VStack(spacing: 20) {
-        Text("Event Timeline")
-            .font(.headline)
-        EventTimelineView(events: sampleEvents)
-            .padding()
+    ScrollView {
+        VStack(spacing: 20) {
+            Text("Event Timeline")
+                .font(.headline)
 
-        Text("Event Duration Chart")
-            .font(.headline)
-        EventPointChartView(events: sampleEvents)
-            .frame(height: 200)
-            .padding()
+            EventTimelineView(events: sampleEvents)
+                .padding()
 
-        Text("Event Distribution")
-            .font(.headline)
-        EventDistributionView(events: sampleEvents)
-            .padding()
+            Text("Event Duration Chart")
+                .font(.headline)
+
+            EventPointChartView(events: sampleEvents)
+                .frame(height: 200)
+                .padding()
+
+            Text("Event Distribution")
+                .font(.headline)
+
+            EventDistributionView(events: sampleEvents)
+                .padding()
+
+            Text("Event IR Chart")
+                .font(.headline)
+
+            EventChartView(events: sampleEvents)
+                .frame(height: 200)
+                .padding()
+        }
+        .padding()
     }
-    .padding()
 }

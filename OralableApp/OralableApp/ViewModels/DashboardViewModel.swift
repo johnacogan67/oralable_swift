@@ -221,8 +221,6 @@ class DashboardViewModel: ObservableObject {
 
         let settings = EventSettings.shared
         eventSession = EventRecordingSession(
-            detectionMode: settings.detectionMode,
-            absoluteThreshold: settings.absoluteThreshold,
             normalizedThresholdPercent: settings.normalizedThresholdPercent
         )
 
@@ -235,7 +233,7 @@ class DashboardViewModel: ObservableObject {
         liveEventCount = 0
         liveSamplesProcessed = 0
         liveMemoryUsage = "0 KB"
-        Logger.shared.info("[DashboardViewModel] Event recording started with mode: \(settings.detectionMode.rawValue)")
+        Logger.shared.info("[DashboardViewModel] Event recording started with threshold: \(settings.normalizedThresholdPercent)%")
     }
 
     /// Setup bindings for live event stats
@@ -251,8 +249,8 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &eventSessionCancellables)
 
-        // Observe discarded count
-        session.$discardedEventCount
+        // Observe invalid event count
+        session.$invalidEventCount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] count in
                 self?.discardedEventCount = count
