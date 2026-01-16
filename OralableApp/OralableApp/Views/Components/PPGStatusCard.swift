@@ -17,6 +17,20 @@ struct PPGStatusCard: View {
     let isCalibrating: Bool
     let calibrationProgress: Double
 
+    /// Whether the state is calibrating (from enum or explicit flag)
+    private var isInCalibration: Bool {
+        if case .calibrating = state { return true }
+        return isCalibrating
+    }
+
+    /// Get calibration progress from state or explicit parameter
+    private var effectiveCalibrationProgress: Double {
+        if case .calibrating(let progress) = state {
+            return progress
+        }
+        return calibrationProgress
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main status area
@@ -37,7 +51,7 @@ struct PPGStatusCard: View {
 
     private var mainStatusArea: some View {
         VStack(spacing: 16) {
-            if isCalibrating {
+            if isInCalibration {
                 // Calibration progress
                 calibrationView
             } else {
@@ -47,26 +61,22 @@ struct PPGStatusCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
-        .background(isCalibrating ? Color.blue : state.backgroundColor)
+        .background(state.backgroundColor)
     }
 
     private var calibrationView: some View {
         VStack(spacing: 16) {
-            ProgressView(value: calibrationProgress)
+            ProgressView(value: effectiveCalibrationProgress)
                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 .scaleEffect(1.5)
 
-            Text("Calibrating...")
+            Text(state.statusText)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.white)
 
-            Text("Please remain still")
+            Text(state.description)
                 .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.8))
-
-            Text("\(Int(calibrationProgress * 100))%")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
         }
     }
 
@@ -149,11 +159,11 @@ struct PPGStatusCard_Previews: PreviewProvider {
             )
 
             PPGStatusCard(
-                state: .notPositioned,
-                temperature: 30.0,
+                state: .calibrating(progress: 0.6),
+                temperature: 33.0,
                 isConnected: true,
-                isCalibrating: true,
-                calibrationProgress: 0.6
+                isCalibrating: false,
+                calibrationProgress: 0
             )
         }
         .padding()

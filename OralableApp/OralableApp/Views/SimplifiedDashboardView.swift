@@ -21,9 +21,10 @@ struct SimplifiedDashboardView: View {
         PositioningState.from(
             temperature: viewModel.temperature,
             irValue: Int(viewModel.ppgIRValue),
-            threshold: Int(EventSettings.shared.normalizedThresholdPercent),
+            thresholdPercent: EventSettings.shared.normalizedThresholdPercent,
             isCalibrated: viewModel.eventSession?.isCalibrated ?? false,
-            normalizedPercent: nil
+            calibrationProgress: viewModel.eventSession?.calibrationProgress ?? 0,
+            baseline: viewModel.eventSession?.baseline ?? 0
         )
     }
 

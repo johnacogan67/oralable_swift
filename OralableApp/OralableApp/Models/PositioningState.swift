@@ -3,7 +3,7 @@
 //  OralableApp
 //
 //  Device positioning and activity state for simplified dashboard.
-//  Color-coded: Black (not positioned), Green (rest), Red (activity)
+//  Color-coded: Black (not positioned/calibrating), Green (rest), Red (activity)
 //
 
 import SwiftUI
@@ -12,6 +12,9 @@ import SwiftUI
 public enum PositioningState: Equatable {
     /// Device not correctly positioned (temp < 32°C)
     case notPositioned
+
+    /// Calibrating (temp ≥ 32°C but baseline not yet established)
+    case calibrating(progress: Double)
 
     /// Correctly positioned, muscle at rest
     case rest
@@ -24,7 +27,7 @@ public enum PositioningState: Equatable {
     /// Background color for the PPG card
     public var backgroundColor: Color {
         switch self {
-        case .notPositioned:
+        case .notPositioned, .calibrating:
             return .black
         case .rest:
             return Color(red: 0.2, green: 0.78, blue: 0.35)  // Apple green
@@ -43,6 +46,8 @@ public enum PositioningState: Equatable {
         switch self {
         case .notPositioned:
             return "exclamationmark.triangle"
+        case .calibrating:
+            return "circle.dotted"
         case .rest:
             return "checkmark.circle"
         case .activity:
@@ -55,6 +60,8 @@ public enum PositioningState: Equatable {
         switch self {
         case .notPositioned:
             return "Position Device"
+        case .calibrating(let progress):
+            return "Calibrating \(Int(progress * 100))%"
         case .rest:
             return "Monitoring"
         case .activity:
@@ -67,10 +74,22 @@ public enum PositioningState: Equatable {
         switch self {
         case .notPositioned:
             return "Place device on skin"
+        case .calibrating:
+            return "Keep jaw relaxed"
         case .rest:
             return "Muscle at rest"
         case .activity:
             return "Muscle contraction"
+        }
+    }
+
+    /// Whether state should show as black
+    public var isBlack: Bool {
+        switch self {
+        case .notPositioned, .calibrating:
+            return true
+        case .rest, .activity:
+            return false
         }
     }
 
@@ -80,29 +99,31 @@ public enum PositioningState: Equatable {
     /// - Parameters:
     ///   - temperature: Current temperature in °C
     ///   - irValue: Current PPG IR value
-    ///   - threshold: Activity threshold
+    ///   - thresholdPercent: Normalized threshold percentage (e.g., 40.0)
     ///   - isCalibrated: Whether calibration is complete
-    ///   - normalizedPercent: Normalized IR as percentage (if calibrated)
+    ///   - calibrationProgress: Progress 0.0 to 1.0
+    ///   - baseline: Calibrated baseline IR value
     /// - Returns: Current positioning state
     public static func from(
         temperature: Double,
         irValue: Int,
-        threshold: Int,
-        isCalibrated: Bool = false,
-        normalizedPercent: Double? = nil
+        thresholdPercent: Double,
+        isCalibrated: Bool,
+        calibrationProgress: Double,
+        baseline: Double
     ) -> PositioningState {
         // Check if device is positioned (temp >= 32°C)
         guard temperature >= 32.0 else {
             return .notPositioned
         }
 
-        // If calibrated, use normalized percentage
-        if isCalibrated, let normalized = normalizedPercent {
-            // Assuming threshold is stored as percentage (e.g., 40 = 40%)
-            return normalized > Double(threshold) ? .activity : .rest
+        // Check if calibrated
+        guard isCalibrated else {
+            return .calibrating(progress: calibrationProgress)
         }
 
-        // Fallback to absolute threshold
-        return irValue > threshold ? .activity : .rest
+        // Calculate absolute threshold from baseline
+        let absoluteThreshold = baseline * (1.0 + thresholdPercent / 100.0)
+        return Double(irValue) >= absoluteThreshold ? .activity : .rest
     }
 }

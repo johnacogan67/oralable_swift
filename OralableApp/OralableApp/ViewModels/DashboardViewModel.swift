@@ -219,7 +219,7 @@ class DashboardViewModel: ObservableObject {
 
     // MARK: - Event Recording
 
-    /// Start event recording with current threshold settings
+    /// Start event recording - begins immediately, calibration auto-starts when positioned
     func startEventRecording() {
         // Clean up previous session
         eventSessionCancellables.removeAll()
@@ -232,13 +232,51 @@ class DashboardViewModel: ObservableObject {
         // Setup live stats bindings
         setupEventSessionBindings()
 
-        eventSession?.startRecording()
+        // Setup auto-calibration when device is positioned
+        setupAutoCalibration()
+
+        // Reset counts
         eventCount = 0
         discardedEventCount = 0
         liveEventCount = 0
         liveSamplesProcessed = 0
         liveMemoryUsage = "0 KB"
-        Logger.shared.info("[DashboardViewModel] Event recording started with threshold: \(settings.normalizedThresholdPercent)%")
+
+        Logger.shared.info("[DashboardViewModel] Event recording started - waiting for device positioning")
+    }
+
+    /// Setup auto-calibration when temperature indicates device is positioned
+    private func setupAutoCalibration() {
+        guard let session = eventSession else { return }
+
+        // Watch for temperature reaching 32°C to start calibration
+        $temperature
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak session] temp in
+                guard let self = self, let session = session else { return }
+
+                // Start calibration when device is positioned and not already calibrating/calibrated
+                if temp >= 32.0 &&
+                   !session.isCalibrated &&
+                   !session.isCalibrating &&
+                   session.sessionState == .idle {
+                    session.startCalibration()
+                    Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device positioned (temp: \(temp)°C)")
+                }
+            }
+            .store(in: &eventSessionCancellables)
+
+        // Setup calibration complete callback to auto-start recording
+        session.onCalibrationComplete = { [weak self] baseline in
+            guard let self = self, let session = self.eventSession else { return }
+            Logger.shared.info("[DashboardViewModel] Calibration complete - baseline: \(Int(baseline)), starting recording")
+            session.startRecording()
+        }
+
+        session.onCalibrationFailed = { reason in
+            Logger.shared.warning("[DashboardViewModel] Calibration failed: \(reason) - will retry when stable")
+        }
     }
 
     /// Setup bindings for live event stats
@@ -561,7 +599,8 @@ class DashboardViewModel: ObservableObject {
 
     /// Feed sample data to the event detector
     private func feedSampleToEventDetector(irValue: Int) {
-        guard let session = eventSession, session.isRecording else { return }
+        guard let session = eventSession else { return }
+        guard session.isRecording || session.isCalibrating else { return }
 
         session.processSample(
             irValue: irValue,
