@@ -2,28 +2,35 @@
 //  HistoricalView.swift
 //  OralableApp
 //
-//  Historical data visualization from exported CSV sessions.
+//  Historical data visualization with Hour/Day tabs and navigation.
 //
 //  Features:
+//  - Two-tab selector (Hour, Day)
+//  - Hour tab: Hour-by-hour chart with hourly navigation
+//  - Day tab: Day-by-day chart with daily navigation
 //  - Metric tab selector (EMG, IR, Movement, Temperature)
-//  - Chart displaying data over time
-//  - X-axis spans full day (midnight to midnight)
 //  - Data summary card (min, max, average)
-//  - Loads from most recent CSV export file
 //
-//  Chart Types:
-//  - Activity chart: Line chart for PPG data
-//  - Movement chart: Point chart with rest/active coloring
-//  - Temperature chart: Line chart with 30-42°C range
+//  Design: Apple-inspired black/white, light mode default
 //
-//  Data Source: CSV files in Documents directory
-//
-//  Updated: December 8, 2025 - Load from ShareView exports instead of RecordingSessions
-//  Updated: December 8, 2025 - Fixed movement chart to use movementIntensity directly (already in g units)
+//  Updated: January 16, 2026 - Added Hour/Day tabs with navigation
 //
 
 import SwiftUI
 import Charts
+
+/// Time period for historical view
+enum HistoricalTimePeriod: String, CaseIterable {
+    case hour = "Hour"
+    case day = "Day"
+
+    var icon: String {
+        switch self {
+        case .hour: return "clock"
+        case .day: return "calendar"
+        }
+    }
+}
 
 /// Metric types available for viewing
 enum HistoryMetricTab: String, CaseIterable {
@@ -31,7 +38,7 @@ enum HistoryMetricTab: String, CaseIterable {
     case ir = "IR"
     case move = "Move"
     case temp = "Temp"
-    
+
     var metricType: String {
         switch self {
         case .emg: return "EMG Activity"
@@ -40,7 +47,7 @@ enum HistoryMetricTab: String, CaseIterable {
         case .temp: return "Temperature"
         }
     }
-    
+
     var chartColor: Color {
         switch self {
         case .emg: return .blue
@@ -49,7 +56,7 @@ enum HistoryMetricTab: String, CaseIterable {
         case .temp: return .orange
         }
     }
-    
+
     var icon: String {
         switch self {
         case .emg: return "bolt.horizontal.circle.fill"
@@ -58,7 +65,7 @@ enum HistoryMetricTab: String, CaseIterable {
         case .temp: return "thermometer"
         }
     }
-    
+
     var unit: String {
         switch self {
         case .emg: return "µV"
@@ -72,15 +79,21 @@ enum HistoryMetricTab: String, CaseIterable {
 struct HistoricalView: View {
     @EnvironmentObject var designSystem: DesignSystem
 
+    // Time period tab (Hour/Day)
+    @State private var selectedTimePeriod: HistoricalTimePeriod = .day
+
     // Selected metric tab
     @State private var selectedTab: HistoryMetricTab = .emg
-    
+
+    // Navigation date
+    @State private var selectedDate: Date = Date()
+
     // Session data points loaded from CSV
     @State private var dataPoints: [HistoricalDataPoint] = []
-    
+
     // Export file info
     @State private var loadedExportFile: SessionDataLoader.ExportFileInfo?
-    
+
     // Loading state
     @State private var isLoading: Bool = false
 
@@ -91,13 +104,13 @@ struct HistoricalView: View {
         self.initialMetricType = metricType
         Logger.shared.info("[HistoricalView] Initialized with metricType: \(metricType ?? "none")")
     }
-    
+
     // MARK: - Computed Properties
-    
+
     private var hasData: Bool {
         !dataPoints.isEmpty
     }
-    
+
     private var hasExportFiles: Bool {
         loadedExportFile != nil || SessionDataLoader.shared.getMostRecentExportFile() != nil
     }
@@ -136,64 +149,118 @@ struct HistoricalView: View {
         return tabs.isEmpty ? HistoryMetricTab.allCases : tabs
     }
 
-    /// Date format for x-axis labels
-    private var xAxisDateFormat: Date.FormatStyle {
-        if loadedExportFile != nil {
-            // Check data span to determine format
-            if let first = dataPoints.first?.timestamp, let last = dataPoints.last?.timestamp {
-                let duration = last.timeIntervalSince(first)
-                if duration > 3600 * 24 { // More than a day
-                    return .dateTime.month().day()
-                } else if duration > 3600 { // More than an hour
-                    return .dateTime.hour().minute()
-                }
-            }
-        }
-        return .dateTime.hour().minute().second()
-    }
-
-    /// X-axis domain - always show full day (midnight to midnight)
+    /// X-axis domain based on selected time period
     private var xAxisDomain: ClosedRange<Date> {
         let calendar = Calendar.current
 
-        // Use first data point's date, or today if no data
-        let referenceDate = dataPoints.first?.timestamp ?? Date()
+        switch selectedTimePeriod {
+        case .hour:
+            // Show one hour
+            guard let hourStart = calendar.dateInterval(of: .hour, for: selectedDate)?.start else {
+                return selectedDate...selectedDate.addingTimeInterval(3600)
+            }
+            let hourEnd = calendar.date(byAdding: .hour, value: 1, to: hourStart) ?? hourStart
+            return hourStart...hourEnd
 
-        let startOfDay = calendar.startOfDay(for: referenceDate)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-
-        return startOfDay...endOfDay
+        case .day:
+            // Show one day (midnight to midnight)
+            let startOfDay = calendar.startOfDay(for: selectedDate)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+            return startOfDay...endOfDay
+        }
     }
+
+    /// Filtered data points for the selected time period
+    private var filteredDataPoints: [HistoricalDataPoint] {
+        let calendar = Calendar.current
+
+        switch selectedTimePeriod {
+        case .hour:
+            guard let hourInterval = calendar.dateInterval(of: .hour, for: selectedDate) else {
+                return []
+            }
+            return dataPoints.filter { hourInterval.contains($0.timestamp) }
+
+        case .day:
+            return dataPoints.filter { calendar.isDate($0.timestamp, inSameDayAs: selectedDate) }
+        }
+    }
+
+    /// Display text for current navigation
+    private var navigationDisplayText: String {
+        let formatter = DateFormatter()
+
+        switch selectedTimePeriod {
+        case .hour:
+            formatter.dateFormat = "HH:00 - HH:59, dd MMM"
+            return formatter.string(from: selectedDate)
+
+        case .day:
+            formatter.dateFormat = "EEEE, dd MMMM yyyy"
+            return formatter.string(from: selectedDate)
+        }
+    }
+
+    /// Check if can navigate forward (don't go past current time)
+    private var canNavigateForward: Bool {
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch selectedTimePeriod {
+        case .hour:
+            guard let currentHourStart = calendar.dateInterval(of: .hour, for: selectedDate)?.start,
+                  let nowHourStart = calendar.dateInterval(of: .hour, for: now)?.start else {
+                return false
+            }
+            return currentHourStart < nowHourStart
+
+        case .day:
+            return !calendar.isDate(selectedDate, inSameDayAs: now)
+        }
+    }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
+            // Time period selector (Hour/Day)
+            timePeriodSelector
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+            // Navigation (back/forward)
+            navigationBar
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
             // Metric tab selector
             metricTabSelector
-                .padding(.horizontal, designSystem.spacing.md)
-                .padding(.top, designSystem.spacing.sm)
-            
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
             ScrollView {
-                VStack(spacing: designSystem.spacing.lg) {
+                VStack(spacing: 20) {
                     // Export file info banner
                     if let exportFile = loadedExportFile {
                         exportInfoBanner(exportFile: exportFile)
                     }
-                    
+
                     // Chart or empty state
                     if isLoading {
                         loadingView
-                    } else if hasData {
+                    } else if hasData && !filteredDataPoints.isEmpty {
                         metricChart
                         dataSummaryCard
                     } else {
                         emptyStateView
                     }
                 }
-                .padding(designSystem.spacing.md)
+                .padding(16)
             }
         }
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.large)
+        .background(Color(.systemBackground))
         .onAppear {
             setInitialTab()
             loadExportData()
@@ -207,9 +274,104 @@ struct HistoricalView: View {
             }
         }
     }
-    
+
+    // MARK: - Time Period Selector
+
+    private var timePeriodSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(HistoricalTimePeriod.allCases, id: \.self) { period in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTimePeriod = period
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: period.icon)
+                            .font(.system(size: 14))
+                        Text(period.rawValue)
+                            .font(.system(size: 15, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(selectedTimePeriod == period ? Color.black : Color.clear)
+                    .foregroundColor(selectedTimePeriod == period ? .white : .primary)
+                }
+            }
+        }
+        .background(Color(.systemGray5))
+        .cornerRadius(10)
+    }
+
+    // MARK: - Navigation Bar
+
+    private var navigationBar: some View {
+        HStack {
+            // Back button
+            Button(action: navigateBackward) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Color(.systemGray6))
+                    .clipShape(Circle())
+            }
+
+            Spacer()
+
+            // Current period display
+            VStack(spacing: 2) {
+                Text(navigationDisplayText)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(selectedTimePeriod == .hour ? "Hour View" : "Day View")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Forward button
+            Button(action: navigateForward) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(canNavigateForward ? .primary : .gray)
+                    .frame(width: 44, height: 44)
+                    .background(Color(.systemGray6))
+                    .clipShape(Circle())
+            }
+            .disabled(!canNavigateForward)
+        }
+    }
+
+    // MARK: - Navigation Actions
+
+    private func navigateBackward() {
+        let calendar = Calendar.current
+
+        switch selectedTimePeriod {
+        case .hour:
+            selectedDate = calendar.date(byAdding: .hour, value: -1, to: selectedDate) ?? selectedDate
+        case .day:
+            selectedDate = calendar.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+        }
+    }
+
+    private func navigateForward() {
+        guard canNavigateForward else { return }
+
+        let calendar = Calendar.current
+
+        switch selectedTimePeriod {
+        case .hour:
+            selectedDate = calendar.date(byAdding: .hour, value: 1, to: selectedDate) ?? selectedDate
+        case .day:
+            selectedDate = calendar.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+        }
+    }
+
     // MARK: - Metric Tab Selector
-    
+
     private var metricTabSelector: some View {
         HStack(spacing: 0) {
             ForEach(availableTabs, id: \.self) { tab in
@@ -223,93 +385,72 @@ struct HistoricalView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(selectedTab == tab ? tab.chartColor.opacity(0.15) : Color.clear)
-                    .foregroundColor(selectedTab == tab ? tab.chartColor : designSystem.colors.textSecondary)
+                    .foregroundColor(selectedTab == tab ? tab.chartColor : .secondary)
                 }
             }
         }
-        .background(designSystem.colors.backgroundSecondary)
-        .cornerRadius(designSystem.cornerRadius.medium)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
     }
-    
+
     // MARK: - Export Info Banner
-    
+
     private func exportInfoBanner(exportFile: SessionDataLoader.ExportFileInfo) -> some View {
-        VStack(spacing: designSystem.spacing.xs) {
-            HStack {
-                // File icon
-                Image(systemName: "doc.text.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(designSystem.colors.textSecondary)
-                
-                // File name
+        HStack {
+            Image(systemName: "doc.text")
+                .foregroundColor(.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(exportFile.url.lastPathComponent)
-                    .font(.caption.bold())
-                    .foregroundColor(designSystem.colors.textPrimary)
+                    .font(.caption)
+                    .fontWeight(.medium)
                     .lineLimit(1)
-                
-                Spacer()
-                
-                // Data points count
-                Text("\(dataPoints.count) points")
-                    .font(.caption)
-                    .foregroundColor(designSystem.colors.textTertiary)
+
+                Text("\(filteredDataPoints.count) points in view")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
-            
-            HStack {
-                // Export date
-                let formatter: DateFormatter = {
-                    let f = DateFormatter()
-                    f.dateStyle = .medium
-                    f.timeStyle = .short
-                    return f
-                }()
-                Text("Exported: \(formatter.string(from: exportFile.creationDate))")
-                    .font(.caption)
-                    .foregroundColor(designSystem.colors.textSecondary)
-                
-                Spacer()
-                
-                // File size
-                let sizeKB = Double(exportFile.fileSize) / 1024.0
-                Text(String(format: "%.1f KB", sizeKB))
-                    .font(.caption)
-                    .foregroundColor(designSystem.colors.textTertiary)
-            }
+
+            Spacer()
+
+            let sizeKB = Double(exportFile.fileSize) / 1024.0
+            Text(String(format: "%.1f KB", sizeKB))
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
-        .padding(designSystem.spacing.sm)
-        .background(designSystem.colors.backgroundSecondary)
-        .cornerRadius(designSystem.cornerRadius.medium)
+        .padding(12)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
     }
-    
+
     // MARK: - Metric Chart
-    
+
     private var metricChart: some View {
-        VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+        VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
                 Text(selectedTab.metricType)
-                    .font(designSystem.typography.headline)
-                    .foregroundColor(designSystem.colors.textPrimary)
-                
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
                 Spacer()
-                
-                // Latest value
+
                 if let latestValue = getLatestValue() {
                     Text(formatValue(latestValue))
                         .font(.system(.subheadline, design: .monospaced))
-                        .foregroundColor(designSystem.colors.textSecondary)
+                        .foregroundColor(.secondary)
                 }
             }
-            
+
             // Chart
             chartForSelectedTab
                 .frame(height: 250)
         }
-        .padding(designSystem.spacing.md)
-        .background(designSystem.colors.backgroundSecondary)
-        .cornerRadius(designSystem.cornerRadius.large)
+        .padding(16)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
-    
+
     @ViewBuilder
     private var chartForSelectedTab: some View {
         switch selectedTab {
@@ -321,9 +462,9 @@ struct HistoricalView: View {
             temperatureChart
         }
     }
-    
+
     private var activityChart: some View {
-        Chart(dataPoints) { point in
+        Chart(filteredDataPoints) { point in
             if let value = point.averagePPGIR {
                 LineMark(
                     x: .value("Time", point.timestamp),
@@ -337,21 +478,20 @@ struct HistoricalView: View {
             AxisMarks(position: .leading)
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
+            AxisMarks(values: xAxisValues) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: xAxisDateFormat)
             }
         }
     }
-    
-    // FIXED: Use movementIntensity directly (already in g units from SessionDataLoader)
+
     private var movementChart: some View {
-        Chart(dataPoints) { point in
+        Chart(filteredDataPoints) { point in
             PointMark(
                 x: .value("Time", point.timestamp),
-                y: .value("Acceleration", point.movementIntensity)  // ← FIXED: was movementIntensityInG
+                y: .value("Acceleration", point.movementIntensity)
             )
-            .foregroundStyle(point.isAtRest ? Color.blue.opacity(0.6) : Color.green.opacity(0.8))
+            .foregroundStyle(point.isAtRest ? Color.green.opacity(0.6) : Color.orange)
             .symbolSize(10)
         }
         .chartXScale(domain: xAxisDomain)
@@ -367,15 +507,15 @@ struct HistoricalView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
+            AxisMarks(values: xAxisValues) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: xAxisDateFormat)
             }
         }
     }
-    
+
     private var temperatureChart: some View {
-        Chart(dataPoints) { point in
+        Chart(filteredDataPoints) { point in
             if point.averageTemperature > 0 {
                 LineMark(
                     x: .value("Time", point.timestamp),
@@ -387,7 +527,7 @@ struct HistoricalView: View {
         .chartXScale(domain: xAxisDomain)
         .chartYScale(domain: 30...42)
         .chartYAxis {
-            AxisMarks(position: .leading) { value in
+            AxisMarks(position: .leading, values: [30, 32, 34, 36, 38, 40, 42]) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if let temp = value.as(Double.self) {
@@ -397,97 +537,119 @@ struct HistoricalView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 3)) { _ in
+            AxisMarks(values: xAxisValues) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: xAxisDateFormat)
             }
         }
     }
-    
+
+    /// X-axis values based on time period
+    private var xAxisValues: AxisMarkValues {
+        switch selectedTimePeriod {
+        case .hour:
+            return .stride(by: .minute, count: 10)
+        case .day:
+            return .stride(by: .hour, count: 3)
+        }
+    }
+
+    /// X-axis date format based on time period
+    private var xAxisDateFormat: Date.FormatStyle {
+        switch selectedTimePeriod {
+        case .hour:
+            return .dateTime.minute()
+        case .day:
+            return .dateTime.hour()
+        }
+    }
+
     // MARK: - Data Summary Card
-    
+
     private var dataSummaryCard: some View {
-        VStack(spacing: designSystem.spacing.sm) {
-            HStack {
-                Text("Summary")
-                    .font(designSystem.typography.headline)
-                    .foregroundColor(designSystem.colors.textPrimary)
-                Spacer()
-            }
-            
-            HStack(spacing: designSystem.spacing.md) {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Summary")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            HStack(spacing: 16) {
                 summaryItem(title: "Min", value: formatValue(getMinValue()))
-                summaryItem(title: "Max", value: formatValue(getMaxValue()))
+                Divider().frame(height: 40)
                 summaryItem(title: "Avg", value: formatValue(getAverageValue()))
+                Divider().frame(height: 40)
+                summaryItem(title: "Max", value: formatValue(getMaxValue()))
             }
         }
-        .padding(designSystem.spacing.md)
-        .background(designSystem.colors.backgroundSecondary)
-        .cornerRadius(designSystem.cornerRadius.large)
+        .padding(16)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
-    
+
     private func summaryItem(title: String, value: String) -> some View {
         VStack(spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(designSystem.colors.textTertiary)
+                .foregroundColor(.secondary)
             Text(value)
-                .font(.system(.body, design: .monospaced).bold())
-                .foregroundColor(designSystem.colors.textPrimary)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.medium)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, designSystem.spacing.sm)
-        .background(designSystem.colors.backgroundTertiary)
-        .cornerRadius(designSystem.cornerRadius.small)
     }
-    
+
     // MARK: - Loading View
-    
+
     private var loadingView: some View {
-        VStack(spacing: designSystem.spacing.md) {
+        VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.5)
             Text("Loading data...")
-                .font(designSystem.typography.body)
-                .foregroundColor(designSystem.colors.textSecondary)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(designSystem.spacing.xl)
+        .padding(40)
     }
-    
+
     // MARK: - Empty State
-    
+
     private var emptyStateView: some View {
-        VStack(spacing: designSystem.spacing.lg) {
-            Image(systemName: "chart.line.uptrend.xyaxis.circle")
-                .font(.system(size: 60))
-                .foregroundColor(designSystem.colors.textTertiary)
+        VStack(spacing: 16) {
+            Image(systemName: "chart.line.downtrend.xyaxis")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
 
             Text(emptyStateTitle)
-                .font(designSystem.typography.h2)
-                .foregroundColor(designSystem.colors.textPrimary)
+                .font(.headline)
 
             Text(emptyStateMessage)
-                .font(designSystem.typography.body)
-                .foregroundColor(designSystem.colors.textSecondary)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
         }
-        .padding(designSystem.spacing.xl)
+        .frame(maxWidth: .infinity)
+        .padding(40)
     }
-    
+
     private var emptyStateTitle: String {
         if !hasExportFiles {
             return "No Exports"
         }
+        if filteredDataPoints.isEmpty && hasData {
+            return "No Data for This Period"
+        }
         return "No \(selectedTab.rawValue) Data"
     }
-    
+
     private var emptyStateMessage: String {
         if !hasExportFiles {
             return "Use the Share tab to export sensor data, then view it here."
         }
-        
+
+        if filteredDataPoints.isEmpty && hasData {
+            return "Navigate to a different \(selectedTimePeriod.rawValue.lowercased()) to view data."
+        }
+
         switch selectedTab {
         case .emg:
             return "No EMG data found in the export. Connect an ANR M40 device and export data."
@@ -499,9 +661,9 @@ struct HistoricalView: View {
             return "No temperature data found in the export. Temperature is only recorded by the Oralable device."
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func setInitialTab() {
         // If initial metric type specified, try to use it
         if let initial = initialMetricType {
@@ -536,110 +698,97 @@ struct HistoricalView: View {
             selectedTab = firstTab
         }
     }
-    
+
     private func loadExportData() {
         isLoading = true
         dataPoints = []
-        
+
         // DEBUG: List files
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        Logger.shared.info("[HistoricalView] 📁 Documents path: \(documentsPath.path)")
-        
+        Logger.shared.info("[HistoricalView] Documents path: \(documentsPath.path)")
+
         do {
             let files = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
-            Logger.shared.info("[HistoricalView] 📁 Found \(files.count) files in Documents:")
-            
+            Logger.shared.info("[HistoricalView] Found \(files.count) files in Documents")
+
             let csvFiles = files.filter {
                 $0.pathExtension == "csv" && $0.lastPathComponent.hasPrefix("oralable_data_")
             }
-            Logger.shared.info("[HistoricalView] 📊 Matching CSV files: \(csvFiles.count)")
+            Logger.shared.info("[HistoricalView] Matching CSV files: \(csvFiles.count)")
         } catch {
-            Logger.shared.error("[HistoricalView] ❌ Failed to list documents: \(error)")
+            Logger.shared.error("[HistoricalView] Failed to list documents: \(error)")
         }
-        
+
         // Get export file
         loadedExportFile = SessionDataLoader.shared.getMostRecentExportFile()
-        Logger.shared.info("[HistoricalView] 🔍 Export file found: \(loadedExportFile?.url.lastPathComponent ?? "NONE")")
-        
-        if let exportFile = loadedExportFile {
-            Logger.shared.info("[HistoricalView] 📂 Calling loadFromMostRecentExport for metric: \(selectedTab.metricType)")
+        Logger.shared.info("[HistoricalView] Export file found: \(loadedExportFile?.url.lastPathComponent ?? "NONE")")
+
+        if let _ = loadedExportFile {
+            Logger.shared.info("[HistoricalView] Calling loadFromMostRecentExport for metric: \(selectedTab.metricType)")
             let points = SessionDataLoader.shared.loadFromMostRecentExport(metricType: selectedTab.metricType)
-            Logger.shared.info("[HistoricalView] ✅ Loaded \(points.count) data points")
-            
-            if points.isEmpty {
-                Logger.shared.warning("[HistoricalView] ⚠️ No data points returned - checking file directly...")
-                // Try loading file directly to debug
-                do {
-                    let content = try String(contentsOf: exportFile.url, encoding: .utf8)
-                    let lines = content.components(separatedBy: .newlines)
-                    Logger.shared.info("[HistoricalView] 📄 File has \(lines.count) lines")
-                    if lines.count > 1 {
-                        Logger.shared.info("[HistoricalView] 📄 Header: \(lines[0])")
-                        Logger.shared.info("[HistoricalView] 📄 First data: \(lines[1])")
-                    }
-                } catch {
-                    Logger.shared.error("[HistoricalView] ❌ Failed to read file: \(error)")
-                }
-            }
-            
+            Logger.shared.info("[HistoricalView] Loaded \(points.count) data points")
+
             dataPoints = points
+
+            // Set selected date to the date of the data
+            if let firstPoint = points.first {
+                selectedDate = firstPoint.timestamp
+            }
 
             // Update selected tab if current selection has no data
             if !availableTabs.contains(selectedTab), let firstTab = availableTabs.first {
                 selectedTab = firstTab
             }
         } else {
-            Logger.shared.warning("[HistoricalView] ⚠️ No export files found")
+            Logger.shared.warning("[HistoricalView] No export files found")
         }
 
         isLoading = false
     }
-    
-    // FIXED: Use movementIntensity directly (already in g units from SessionDataLoader)
+
     private func getLatestValue() -> Double? {
-        guard let lastPoint = dataPoints.last else { return nil }
-        
+        guard let lastPoint = filteredDataPoints.last else { return nil }
+
         switch selectedTab {
         case .emg, .ir:
             return lastPoint.averagePPGIR
         case .move:
-            return lastPoint.movementIntensity  // ← FIXED: was movementIntensityInG
+            return lastPoint.movementIntensity
         case .temp:
             return lastPoint.averageTemperature > 0 ? lastPoint.averageTemperature : nil
         }
     }
-    
+
     private func getMinValue() -> Double? {
         let values = getValuesForSelectedTab()
         return values.min()
     }
-    
+
     private func getMaxValue() -> Double? {
         let values = getValuesForSelectedTab()
         return values.max()
     }
-    
+
     private func getAverageValue() -> Double? {
         let values = getValuesForSelectedTab()
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
     }
-    
-    // FIXED: Use movementIntensity directly (already in g units from SessionDataLoader)
+
     private func getValuesForSelectedTab() -> [Double] {
         switch selectedTab {
         case .emg, .ir:
-            return dataPoints.compactMap { $0.averagePPGIR }
+            return filteredDataPoints.compactMap { $0.averagePPGIR }
         case .move:
-            return dataPoints.map { $0.movementIntensity }  // ← FIXED: was movementIntensityInG
+            return filteredDataPoints.map { $0.movementIntensity }
         case .temp:
-            return dataPoints.map { $0.averageTemperature }.filter { $0 > 0 }
+            return filteredDataPoints.map { $0.averageTemperature }.filter { $0 > 0 }
         }
     }
-    
+
     private func formatValue(_ value: Double?) -> String {
         guard let value = value else { return "--" }
-        
+
         switch selectedTab {
         case .emg:
             return String(format: "%.0f %@", value, selectedTab.unit)
@@ -649,6 +798,17 @@ struct HistoricalView: View {
             return String(format: "%.2f %@", value, selectedTab.unit)
         case .temp:
             return String(format: "%.1f%@", value, selectedTab.unit)
+        }
+    }
+}
+
+// MARK: - Preview
+
+struct HistoricalView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            HistoricalView()
+                .environmentObject(DesignSystem())
         }
     }
 }
