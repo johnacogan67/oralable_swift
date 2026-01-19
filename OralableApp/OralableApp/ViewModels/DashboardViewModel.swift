@@ -654,6 +654,11 @@ class DashboardViewModel: ObservableObject {
         // Update event counts
         eventCount = session.eventCount
         discardedCount = session.discardedEventCount
+
+        // Log progress periodically
+        if session.samplesProcessed % 500 == 0 && session.samplesProcessed > 0 {
+            Logger.shared.info("[DashboardViewModel] feedSample - processed \(session.samplesProcessed) samples, events: \(session.eventCount)")
+        }
     }
 
     /// Discarded event count (alias for consistency)
