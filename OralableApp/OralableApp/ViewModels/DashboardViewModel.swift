@@ -249,6 +249,9 @@ class DashboardViewModel: ObservableObject {
     private func setupAutoCalibration() {
         guard let session = eventSession else { return }
 
+        // Log current temperature for debugging
+        Logger.shared.info("[DashboardViewModel] setupAutoCalibration - current temp: \(temperature)°C, session state: \(session.sessionState)")
+
         // Watch for temperature reaching 32°C to start calibration
         $temperature
             .removeDuplicates()
@@ -276,6 +279,16 @@ class DashboardViewModel: ObservableObject {
 
         session.onCalibrationFailed = { reason in
             Logger.shared.warning("[DashboardViewModel] Calibration failed: \(reason) - will retry when stable")
+        }
+
+        // IMMEDIATE CHECK: If device is already positioned, start calibration now
+        // This handles the case where temp is already ≥32°C when recording starts
+        if temperature >= 32.0 &&
+           !session.isCalibrated &&
+           !session.isCalibrating &&
+           session.sessionState == .idle {
+            session.startCalibration()
+            Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device already positioned (temp: \(temperature)°C)")
         }
     }
 
