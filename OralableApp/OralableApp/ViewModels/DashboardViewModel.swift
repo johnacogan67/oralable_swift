@@ -586,6 +586,23 @@ class DashboardViewModel: ObservableObject {
                 self?.updateHeartRate(with: irSamples, accelMagnitudes: accelMagnitudes)
             }
             .store(in: &cancellables)
+
+        // Subscribe to PPG batch data for calibration/event detection
+        // This ensures ALL samples (50Hz) reach the event detector, not just latest values
+        deviceManager.readingsBatchPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] readings in
+                guard let self = self else { return }
+
+                // Filter for PPG IR readings only
+                let irReadings = readings.filter { $0.sensorType == .ppgInfrared }
+
+                // Feed each sample to the event detector
+                for reading in irReadings {
+                    self.feedSampleToEventDetector(irValue: Int(reading.value))
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - PPG IR Data Processing (Oralable)
@@ -606,8 +623,8 @@ class DashboardViewModel: ObservableObject {
             }
         }
 
-        // Feed data to event detector for event-based recording
-        feedSampleToEventDetector(irValue: Int(value))
+        // Note: feedSampleToEventDetector is called from batch subscription (readingsBatchPublisher)
+        // to ensure all 50Hz samples reach calibration, not just throttled latest values
     }
 
     /// Feed sample data to the event detector
