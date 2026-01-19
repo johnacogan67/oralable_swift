@@ -877,7 +877,11 @@ class DashboardViewModel: ObservableObject {
 extension DashboardViewModel {
     
     func toggleRecording() {
-        recordingStateCoordinator.toggleRecording()
+        if recordingStateCoordinator.isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
     }
     
     // Call this inside your SensorDataProcessor subscription
