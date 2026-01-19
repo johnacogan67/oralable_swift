@@ -38,6 +38,9 @@ final class AppDependencies: ObservableObject {
     let designSystem: DesignSystem
     let recordingStateCoordinator: RecordingStateCoordinator
 
+    // Cached view models to preserve state across views
+    private var _cachedDashboardViewModel: DashboardViewModel?
+
     init(authenticationManager: AuthenticationManager,
          recordingSessionManager: RecordingSessionManager,
          historicalDataManager: HistoricalDataManager,
@@ -65,13 +68,30 @@ final class AppDependencies: ObservableObject {
     }
 
     // MARK: - Factory Methods
+
+    /// Returns cached DashboardViewModel to preserve recorded events across views
     func makeDashboardViewModel() -> DashboardViewModel {
-        return DashboardViewModel(
+        if let cached = _cachedDashboardViewModel {
+            Logger.shared.debug("[AppDependencies] Returning cached DashboardViewModel")
+            return cached
+        }
+
+        Logger.shared.info("[AppDependencies] Creating new DashboardViewModel")
+        let vm = DashboardViewModel(
             deviceManagerAdapter: deviceManagerAdapter,
             deviceManager: deviceManager,
             appStateManager: appStateManager,
             recordingStateCoordinator: recordingStateCoordinator
         )
+        _cachedDashboardViewModel = vm
+        return vm
+    }
+
+    /// Reset cached DashboardViewModel (call on logout or when fresh state needed)
+    func resetDashboardViewModel() {
+        Logger.shared.info("[AppDependencies] Resetting cached DashboardViewModel")
+        _cachedDashboardViewModel?.stopMonitoring()
+        _cachedDashboardViewModel = nil
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
