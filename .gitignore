@@ -12,3 +12,4 @@
 
 # OS-specific
 .DS_Store
+/OralableApp/.build/
