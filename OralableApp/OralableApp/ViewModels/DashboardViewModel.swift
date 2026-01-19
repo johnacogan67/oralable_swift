@@ -124,6 +124,19 @@ class DashboardViewModel: ObservableObject {
     @Published var liveMemoryUsage: String = "0 KB"
     private var eventSessionCancellables = Set<AnyCancellable>()
 
+    // MARK: - Device Positioning Status
+
+    /// Whether the device is correctly positioned (HR in 3min AND temp > 32°C)
+    public var isDevicePositioned: Bool {
+        // Check for recent HR (heartRate > 0 means we have a reading)
+        let hasRecentHR = heartRate > 0
+
+        // Check for valid temperature (> 32°C)
+        let hasValidTemp = temperature >= 32.0
+
+        return hasRecentHR && hasValidTemp
+    }
+
     // MARK: - Heart Rate & Worn Status
     @Published var currentHRResult: HRResult?
     @Published var wornStatus: WornStatus = .initializing
