@@ -655,12 +655,15 @@ class DashboardViewModel: ObservableObject {
         )
 
         // Update metrics for event validation
+        // Any of HR, SpO2, or PI proves optical sensor is working
         if heartRate > 0 {
             session.updateHR(Double(heartRate))
         }
         if spO2 > 0 {
             session.updateSpO2(Double(spO2))
         }
+        // TODO: Add perfusion index when available from biometric processor
+        // session.updatePerfusionIndex(perfusionIndex)
         // Temperature is always passed - validation checks 32-38°C range
         session.updateTemperature(temperature)
 
