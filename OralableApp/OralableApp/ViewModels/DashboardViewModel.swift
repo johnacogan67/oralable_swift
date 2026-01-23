@@ -124,6 +124,11 @@ class DashboardViewModel: ObservableObject {
     @Published var liveMemoryUsage: String = "0 KB"
     private var eventSessionCancellables = Set<AnyCancellable>()
 
+    // MARK: - Perfusion Index Calculation
+    /// Buffer of recent IR values for PI calculation (keeps ~3 seconds at 50Hz)
+    private var irBufferForPI: [Double] = []
+    private let irBufferMaxSize = 150
+
     // MARK: - Device Positioning Status
 
     /// Whether the device is correctly positioned (HR in 3min AND temp > 32°C)
@@ -248,12 +253,13 @@ class DashboardViewModel: ObservableObject {
         // Setup auto-calibration when device is positioned
         setupAutoCalibration()
 
-        // Reset counts
+        // Reset counts and buffers
         eventCount = 0
         discardedEventCount = 0
         liveEventCount = 0
         liveSamplesProcessed = 0
         liveMemoryUsage = "0 KB"
+        irBufferForPI.removeAll()
 
         Logger.shared.info("[DashboardViewModel] Event recording started - waiting for device positioning")
     }
@@ -352,6 +358,9 @@ class DashboardViewModel: ObservableObject {
     /// Stop event recording
     func stopEventRecording() {
         eventSession?.stopRecording()
+
+        // Clear PI buffer
+        irBufferForPI.removeAll()
 
         // Log summary
         if let summary = eventSession?.summary {
@@ -662,8 +671,19 @@ class DashboardViewModel: ObservableObject {
         if spO2 > 0 {
             session.updateSpO2(Double(spO2))
         }
-        // TODO: Add perfusion index when available from biometric processor
-        // session.updatePerfusionIndex(perfusionIndex)
+
+        // Calculate and update perfusion index (AC/DC ratio from IR signal)
+        irBufferForPI.append(Double(irValue))
+        if irBufferForPI.count > irBufferMaxSize {
+            irBufferForPI.removeFirst()
+        }
+        if irBufferForPI.count >= 50 {
+            let perfusionIndex = calculatePerfusionIndex(from: irBufferForPI)
+            if perfusionIndex > 0 {
+                session.updatePerfusionIndex(perfusionIndex)
+            }
+        }
+
         // Temperature is always passed - validation checks 32-38°C range
         session.updateTemperature(temperature)
 
@@ -675,6 +695,24 @@ class DashboardViewModel: ObservableObject {
         if session.samplesProcessed % 500 == 0 && session.samplesProcessed > 0 {
             Logger.shared.info("[DashboardViewModel] feedSample - processed \(session.samplesProcessed) samples, events: \(session.eventCount)")
         }
+    }
+
+    /// Calculate perfusion index from IR signal buffer (AC/DC ratio)
+    /// PI indicates pulsatile blood flow - higher values mean better contact
+    private func calculatePerfusionIndex(from buffer: [Double]) -> Double {
+        guard !buffer.isEmpty else { return 0 }
+
+        // DC component (mean)
+        let dc = buffer.reduce(0, +) / Double(buffer.count)
+        guard dc > 0 else { return 0 }
+
+        // AC component (peak-to-peak amplitude)
+        let maxVal = buffer.max() ?? 0
+        let minVal = buffer.min() ?? 0
+        let ac = maxVal - minVal
+
+        // Perfusion Index = AC / DC
+        return ac / dc
     }
 
     /// Discarded event count (alias for consistency)
