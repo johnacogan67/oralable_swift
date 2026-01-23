@@ -332,10 +332,29 @@
             <!-- SECTION 5: RECORDING -->
             <h2 id="recording" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">5. Recording Sessions</h2>
 
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Device Positioning</h3>
+            <p style="color: var(--color-text-secondary);">The app shows different colors based on device status:</p>
+            <ul style="color: var(--color-text-secondary);">
+                <li><strong>Black background</strong> — Device not positioned (temperature below 32°C)</li>
+                <li><strong>Green background</strong> — Device positioned, muscles relaxed</li>
+                <li><strong>Red background</strong> — Device positioned, muscle activity detected</li>
+            </ul>
+            <p style="color: var(--color-text-secondary);">For accurate readings, ensure the sensor is in contact with your skin until the background turns green.</p>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Calibration</h3>
+            <p style="color: var(--color-text-secondary);">Before recording, the app performs a 15-second calibration:</p>
+            <ol class="steps">
+                <li>Position the device on your skin</li>
+                <li>Wait for temperature to reach 32°C (background will be black)</li>
+                <li>Keep your jaw relaxed during the countdown</li>
+                <li>Calibration completes when the background turns green</li>
+            </ol>
+
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Starting a Recording</h3>
             <ol class="steps">
                 <li>Ensure device is connected or Demo Mode is enabled</li>
                 <li>Tap the <strong>Record</strong> button</li>
+                <li>Wait for calibration to complete (15 seconds)</li>
                 <li>Button turns red, timer starts</li>
                 <li>Continue normal activities</li>
             </ol>
