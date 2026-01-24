@@ -616,8 +616,20 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] readings in
                 guard let self = self else { return }
 
+                // Debug: Log all sensor types in batch during calibration
+                if self.eventSession?.isCalibrating == true && readings.count > 0 {
+                    let typeValues = readings.map { "\($0.sensorType.rawValue)=\(Int($0.value))" }
+                    Logger.shared.debug("[DashboardViewModel] Batch types: \(typeValues.prefix(10))")
+                }
+
                 // Filter for PPG IR readings only
                 let irReadings = readings.filter { $0.sensorType == .ppgInfrared }
+
+                // Debug: Log IR values being sent to calibration
+                if self.eventSession?.isCalibrating == true && irReadings.count > 0 {
+                    let irValues = irReadings.map { Int($0.value) }
+                    Logger.shared.info("[DashboardViewModel] Calibration IR values: \(irValues.prefix(5))... (count: \(irValues.count))")
+                }
 
                 // Feed each sample to the event detector
                 for reading in irReadings {
@@ -681,6 +693,11 @@ class DashboardViewModel: ObservableObject {
             let perfusionIndex = calculatePerfusionIndex(from: irBufferForPI)
             if perfusionIndex > 0 {
                 session.updatePerfusionIndex(perfusionIndex)
+
+                // Log PI every 5 seconds (250 samples at 50Hz)
+                if session.samplesProcessed % 250 == 0 {
+                    Logger.shared.info("[DashboardViewModel] PI: \(String(format: "%.3f", perfusionIndex))%")
+                }
             }
         }
 

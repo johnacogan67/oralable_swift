@@ -35,14 +35,18 @@ class SessionDataLoader {
     // MARK: - Public Methods - ShareView Exports
     
     /// Load historical data points from the most recent ShareView export
-    /// - Parameter metricType: Filter by metric type ("EMG Activity", "IR Activity", "Movement", "Temperature")
+    /// - Parameter metricType: Filter by metric type ("EMG Activity", "IR Activity", "Movement", "Temperature", "Events")
     /// - Returns: Array of HistoricalDataPoint objects for charting
     func loadFromMostRecentExport(metricType: String) -> [HistoricalDataPoint] {
-        guard let exportFile = getMostRecentExportFile() else {
-            Logger.shared.info("[SessionDataLoader] No export files found")
+        // Select file type based on metric
+        let isEventMetric = metricType.lowercased().contains("event")
+        Logger.shared.info("[SessionDataLoader] Loading for metric: \(metricType) (isEventMetric: \(isEventMetric))")
+
+        guard let exportFile = getMostRecentExportFile(forEvents: isEventMetric) else {
+            Logger.shared.info("[SessionDataLoader] No export files found for metric: \(metricType)")
             return []
         }
-        
+
         Logger.shared.info("[SessionDataLoader] Loading from export: \(exportFile.url.lastPathComponent) for metric: \(metricType)")
         return loadFromExportFile(at: exportFile.url, metricType: metricType)
     }
@@ -65,22 +69,27 @@ class SessionDataLoader {
     }
     
     /// Get the most recent ShareView export file
+    /// - Parameter forEvents: If true, looks for event files (oralable_events_*), otherwise data files (oralable_data_*)
     /// - Returns: ExportFileInfo for the most recent export, or nil
-    func getMostRecentExportFile() -> ExportFileInfo? {
+    func getMostRecentExportFile(forEvents: Bool = false) -> ExportFileInfo? {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        
+
+        // Select file prefix based on type
+        let filePrefix = forEvents ? "oralable_events_" : "oralable_data_"
+        Logger.shared.info("[SessionDataLoader] Looking for \(forEvents ? "events" : "data") file with prefix: \(filePrefix)")
+
         do {
             let files = try FileManager.default.contentsOfDirectory(
                 at: documentsPath,
                 includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
                 options: .skipsHiddenFiles
             )
-            
+
             // Find CSV files that match the export pattern
             let csvFiles = files.filter { url in
-                url.pathExtension == "csv" && url.lastPathComponent.hasPrefix("oralable_data_")
+                url.pathExtension == "csv" && url.lastPathComponent.hasPrefix(filePrefix)
             }
-            
+
             // Get file info and sort by creation date
             let fileInfos: [ExportFileInfo] = csvFiles.compactMap { url in
                 guard let resourceValues = try? url.resourceValues(forKeys: [.creationDateKey, .fileSizeKey]),
@@ -90,10 +99,18 @@ class SessionDataLoader {
                 }
                 return ExportFileInfo(url: url, creationDate: creationDate, fileSize: Int64(fileSize))
             }
-            
+
+            if fileInfos.isEmpty {
+                Logger.shared.warning("[SessionDataLoader] No files found with prefix: \(filePrefix)")
+            }
+
             // Return most recent
-            return fileInfos.sorted { $0.creationDate > $1.creationDate }.first
-            
+            let mostRecent = fileInfos.sorted { $0.creationDate > $1.creationDate }.first
+            if let file = mostRecent {
+                Logger.shared.info("[SessionDataLoader] Selected file: \(file.url.lastPathComponent)")
+            }
+            return mostRecent
+
         } catch {
             Logger.shared.error("[SessionDataLoader] Failed to list documents: \(error)")
             return nil
