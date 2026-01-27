@@ -112,10 +112,8 @@ public enum PositioningState: Equatable {
         calibrationProgress: Double,
         baseline: Double
     ) -> PositioningState {
-        // Check if device is positioned (temp >= 32°C)
-        guard temperature >= 32.0 else {
-            return .notPositioned
-        }
+        // Temperature parameter kept for API compatibility but no longer used for positioning
+        // Optical metrics (HR, SpO2, PI) now determine positioning status
 
         // Check if calibrated
         guard isCalibrated else {

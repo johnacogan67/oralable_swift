@@ -131,15 +131,11 @@ class DashboardViewModel: ObservableObject {
 
     // MARK: - Device Positioning Status
 
-    /// Whether the device is correctly positioned (HR in 3min AND temp > 32°C)
+    /// Whether the device is correctly positioned (optical metrics prove skin contact)
     public var isDevicePositioned: Bool {
         // Check for recent HR (heartRate > 0 means we have a reading)
-        let hasRecentHR = heartRate > 0
-
-        // Check for valid temperature (> 32°C)
-        let hasValidTemp = temperature >= 32.0
-
-        return hasRecentHR && hasValidTemp
+        // Temperature removed as positioning indicator - optical metrics are sufficient
+        return heartRate > 0
     }
 
     // MARK: - Heart Rate & Worn Status
@@ -264,27 +260,27 @@ class DashboardViewModel: ObservableObject {
         Logger.shared.info("[DashboardViewModel] Event recording started - waiting for device positioning")
     }
 
-    /// Setup auto-calibration when temperature indicates device is positioned
+    /// Setup auto-calibration when optical metrics indicate device is positioned
     private func setupAutoCalibration() {
         guard let session = eventSession else { return }
 
-        // Log current temperature for debugging
-        Logger.shared.info("[DashboardViewModel] setupAutoCalibration - current temp: \(temperature)°C, session state: \(session.sessionState)")
+        // Log current state for debugging
+        Logger.shared.info("[DashboardViewModel] setupAutoCalibration - current HR: \(heartRate), session state: \(session.sessionState)")
 
-        // Watch for temperature reaching 32°C to start calibration
-        $temperature
+        // Watch for heart rate > 0 to start calibration (optical proof of positioning)
+        $heartRate
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self, weak session] temp in
+            .sink { [weak self, weak session] hr in
                 guard let self = self, let session = session else { return }
 
-                // Start calibration when device is positioned and not already calibrating/calibrated
-                if temp >= 32.0 &&
+                // Start calibration when device is positioned (HR > 0) and not already calibrating/calibrated
+                if hr > 0 &&
                    !session.isCalibrated &&
                    !session.isCalibrating &&
                    session.sessionState == .idle {
                     session.startCalibration()
-                    Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device positioned (temp: \(temp)°C)")
+                    Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device positioned (HR: \(hr))")
                 }
             }
             .store(in: &eventSessionCancellables)
@@ -301,13 +297,13 @@ class DashboardViewModel: ObservableObject {
         }
 
         // IMMEDIATE CHECK: If device is already positioned, start calibration now
-        // This handles the case where temp is already ≥32°C when recording starts
-        if temperature >= 32.0 &&
+        // This handles the case where HR is already detected when recording starts
+        if heartRate > 0 &&
            !session.isCalibrated &&
            !session.isCalibrating &&
            session.sessionState == .idle {
             session.startCalibration()
-            Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device already positioned (temp: \(temperature)°C)")
+            Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device already positioned (HR: \(heartRate))")
         }
     }
 
