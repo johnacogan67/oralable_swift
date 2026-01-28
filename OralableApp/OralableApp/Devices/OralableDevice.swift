@@ -548,27 +548,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         Logger.shared.info("[OralableDevice] Device info update requested")
     }
 
-    // MARK: - Data Parsing (Fix 2: Proper timestamps, Fix 6: Fixed firmware byte order)
-
-    /// Maps byte offset index (0, 1, 2) to SensorType based on ACTUAL firmware byte order
-    ///
-    /// IMPORTANT: The firmware struct definition in tgm_service.h says { red, ir, green }
-    /// but the ACTUAL FIFO data order observed from live logs is [Green, IR, Red]:
-    /// - Offset 0: Green LED data (PA=0 when worn, produces ~0-10)
-    /// - Offset 4: IR LED data (PA=128, produces ~14000-15000)
-    /// - Offset 8: Red LED data (PA=32, produces ~2000-2500)
-    ///
-    /// - Parameter offsetIndex: 0 = first uint32, 1 = second uint32, 2 = third uint32
-    /// - Returns: The correct SensorType for that byte position
-    private func sensorTypeForOffset(_ offsetIndex: Int) -> SensorType {
-        // ACTUAL firmware order: [Green, IR, Red]
-        switch offsetIndex {
-        case 0: return .ppgGreen    // First uint32 = Green LED data
-        case 1: return .ppgInfrared // Second uint32 = IR LED data
-        case 2: return .ppgRed      // Third uint32 = Red LED data
-        default: return .ppgInfrared
-        }
-    }
+    // MARK: - Data Parsing (Fix 2: Proper timestamps)
 
     private func parseSensorData(_ data: Data) {
         // Update packet statistics
