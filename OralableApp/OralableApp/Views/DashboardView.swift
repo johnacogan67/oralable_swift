@@ -2,23 +2,27 @@
 //  DashboardView.swift
 //  OralableApp
 //
-//  Main dashboard displaying real-time sensor data and recording controls.
+//  Main dashboard displaying real-time sensor data.
 //
 //  Features:
-//  - Device connection status indicator
-//  - Recording start/stop button with duration display
+//  - Device connection status indicator with recording state
 //  - PPG sensor card (IR waveform)
 //  - Optional metric cards (EMG, Movement, Temperature, HR, SpO2, Battery)
 //  - Demo mode banner when using virtual device
+//  - Automatic recording status display (no manual button)
 //
 //  Data Flow:
 //  Device → DeviceManager → DashboardViewModel → DashboardView
+//
+//  Recording:
+//  - Recording is automatic - starts on BLE connect, stops on disconnect
+//  - State indicator shows: DataStreaming (Black), Positioned (Green), Activity (Red)
 //
 //  Navigation:
 //  - Tapping metric cards navigates to HistoricalView
 //  - Profile icon opens ProfileView
 //
-//  Updated: December 8, 2025 - Added Movement to connection indicator, show g-units
+//  Updated: January 29, 2026 - Removed manual recording button (automatic recording)
 //
 
 import SwiftUI
@@ -96,16 +100,17 @@ struct DashboardView: View {
                     // Dual device connection status indicator (now includes Movement)
                     deviceStatusIndicator(viewModel: viewModel)
 
-                    // Recording Button - at top for easy access
-                    RecordingButton(
-                        isRecording: viewModel.isRecording,
-                        isConnected: viewModel.isConnected,
-                        duration: viewModel.formattedDuration,
-                        eventCount: viewModel.liveEventCount,
-                        memoryUsage: viewModel.liveMemoryUsage,
-                        action: { viewModel.toggleRecording() }
-                    )
-                    .padding(.vertical, 8)
+                    // Recording State Indicator (automatic recording)
+                    if viewModel.isConnected {
+                        RecordingStateIndicator(
+                            state: viewModel.currentRecordingState,
+                            isCalibrated: viewModel.isCalibrated,
+                            calibrationProgress: viewModel.calibrationProgress,
+                            eventCount: viewModel.eventCount,
+                            duration: viewModel.formattedDuration
+                        )
+                        .padding(.vertical, 8)
+                    }
 
                     // PPG Card (Oralable) - Shows IR sensor data
                     NavigationLink(destination: LazyView(
@@ -533,79 +538,82 @@ struct MovementSparkline: View {
     }
 }
 
-// MARK: - Recording Button
-struct RecordingButton: View {
-    let isRecording: Bool
-    let isConnected: Bool
-    let duration: String
+// MARK: - Recording State Indicator (Automatic Recording)
+struct RecordingStateIndicator: View {
+    let state: DeviceRecordingState
+    let isCalibrated: Bool
+    let calibrationProgress: Double
     let eventCount: Int
-    let memoryUsage: String
-    let action: () -> Void
+    let duration: String
 
-    init(
-        isRecording: Bool,
-        isConnected: Bool,
-        duration: String,
-        eventCount: Int = 0,
-        memoryUsage: String = "0 KB",
-        action: @escaping () -> Void
-    ) {
-        self.isRecording = isRecording
-        self.isConnected = isConnected
-        self.duration = duration
-        self.eventCount = eventCount
-        self.memoryUsage = memoryUsage
-        self.action = action
+    private var stateColor: Color {
+        switch state {
+        case .dataStreaming:
+            return .black
+        case .positioned:
+            return .green
+        case .activity:
+            return .red
+        }
     }
 
-    private var buttonColor: Color {
-        if !isConnected { return .gray }
-        return isRecording ? .red : .black
+    private var stateIcon: String {
+        switch state {
+        case .dataStreaming:
+            return "waveform"
+        case .positioned:
+            return "checkmark.circle.fill"
+        case .activity:
+            return "bolt.fill"
+        }
     }
 
-    private var iconName: String {
-        isRecording ? "stop.fill" : "circle.fill"
+    private var statusText: String {
+        if !isCalibrated && state == .positioned {
+            return "Calibrating..."
+        }
+        return state.displayName
     }
 
     var body: some View {
         VStack(spacing: 8) {
-            Button(action: action) {
-                VStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(buttonColor)
-                            .frame(width: 70, height: 70)
-                            .shadow(color: buttonColor.opacity(0.3), radius: 8, x: 0, y: 4)
+            // State indicator circle
+            ZStack {
+                Circle()
+                    .fill(stateColor)
+                    .frame(width: 50, height: 50)
+                    .shadow(color: stateColor.opacity(0.3), radius: 6, x: 0, y: 3)
 
-                        Image(systemName: iconName)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-
-                    if isRecording {
-                        Text(duration)
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundColor(.red)
-                    } else {
-                        Text(isConnected ? "Record" : "Not Connected")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(isConnected ? .primary : .secondary)
-                    }
-                }
+                Image(systemName: stateIcon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
             }
-            .disabled(!isConnected)
-            .opacity(isConnected ? 1.0 : 0.5)
 
-            // Live statistics during recording
-            if isRecording {
-                HStack(spacing: 16) {
-                    StatBadge(label: "Events", value: "\(eventCount)")
-                    StatBadge(label: "Memory", value: memoryUsage)
-                }
-                .transition(.opacity)
+            // Status text
+            Text(statusText)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(stateColor)
+
+            // Calibration progress (if calibrating)
+            if !isCalibrated && state == .positioned && calibrationProgress > 0 {
+                ProgressView(value: calibrationProgress)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .green))
+                    .frame(width: 100)
+                Text("\(Int(calibrationProgress * 100))%")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            // Duration and events
+            HStack(spacing: 16) {
+                StatBadge(label: "Time", value: duration)
+                StatBadge(label: "Events", value: "\(eventCount)")
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isRecording)
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 

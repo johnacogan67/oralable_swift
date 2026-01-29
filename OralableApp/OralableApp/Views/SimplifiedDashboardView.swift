@@ -6,12 +6,15 @@
 //  - Battery status (top right)
 //  - Single PPG card with color-coded status
 //  - Event count
-//  - Recording button
+//  - Automatic recording state indicator
 //
 //  Design: Apple-inspired black/white, light mode default
 //
+//  Updated: January 29, 2026 - Automatic recording (no manual button)
+//
 
 import SwiftUI
+import OralableCore
 
 struct SimplifiedDashboardView: View {
     @ObservedObject var viewModel: DashboardViewModel
@@ -22,9 +25,9 @@ struct SimplifiedDashboardView: View {
             temperature: viewModel.temperature,
             irValue: Int(viewModel.ppgIRValue),
             thresholdPercent: EventSettings.shared.normalizedThresholdPercent,
-            isCalibrated: viewModel.eventSession?.isCalibrated ?? false,
-            calibrationProgress: viewModel.eventSession?.calibrationProgress ?? 0,
-            baseline: viewModel.eventSession?.baseline ?? 0
+            isCalibrated: viewModel.isCalibrated,
+            calibrationProgress: viewModel.calibrationProgress,
+            baseline: viewModel.automaticRecordingSession?.stateDetector.baseline ?? 0
         )
     }
 
@@ -47,15 +50,15 @@ struct SimplifiedDashboardView: View {
                             state: positioningState,
                             temperature: viewModel.temperature,
                             isConnected: viewModel.isConnected,
-                            isCalibrating: viewModel.eventSession?.isCalibrating ?? false,
-                            calibrationProgress: viewModel.eventSession?.calibrationProgress ?? 0
+                            isCalibrating: viewModel.isCalibrating,
+                            calibrationProgress: viewModel.calibrationProgress
                         )
 
                         // Event summary
                         eventSummary
 
-                        // Recording button
-                        recordingButton
+                        // Recording state indicator (automatic recording)
+                        recordingStateIndicator
                     }
                     .padding(20)
                 }
@@ -125,40 +128,27 @@ struct SimplifiedDashboardView: View {
     private var eventSummary: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Events")
+                Text("State Transitions")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
 
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(viewModel.eventCount)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    if viewModel.discardedEventCount > 0 {
-                        Text("(\(viewModel.discardedEventCount) unvalidated)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
+                Text("\(viewModel.eventCount)")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
             }
 
             Spacer()
 
-            // Recording indicator
+            // Duration
             if viewModel.isRecording {
                 VStack(alignment: .trailing, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 8, height: 8)
-                        Text("Recording")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.red)
-                    }
+                    Text("Duration")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
 
                     Text(viewModel.formattedDuration)
                         .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundColor(.red)
+                        .foregroundColor(.primary)
                 }
             }
         }
@@ -167,26 +157,55 @@ struct SimplifiedDashboardView: View {
         .cornerRadius(12)
     }
 
-    // MARK: - Recording Button
+    // MARK: - Recording State Indicator (Automatic Recording)
 
-    private var recordingButton: some View {
-        Button(action: { viewModel.toggleRecording() }) {
-            HStack {
-                Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
-                    .font(.system(size: 18))
+    private var recordingStateIndicator: some View {
+        Group {
+            if viewModel.isConnected {
+                HStack(spacing: 12) {
+                    // State color indicator
+                    Circle()
+                        .fill(stateColor)
+                        .frame(width: 12, height: 12)
 
-                Text(viewModel.isRecording ? "Stop Recording" : "Start Recording")
-                    .font(.system(size: 16, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recording: \(stateDisplayName)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primary)
+
+                        Text("Automatic • \(viewModel.eventCount) events")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    if viewModel.isRecording {
+                        Text(viewModel.formattedDuration)
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(16)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity)
-            .background(viewModel.isRecording ? Color.red : Color.black)
-            .cornerRadius(12)
         }
-        .disabled(!viewModel.isConnected)
-        .opacity(viewModel.isConnected ? 1.0 : 0.5)
+    }
+
+    private var stateColor: Color {
+        switch viewModel.currentRecordingState {
+        case .dataStreaming:
+            return .black
+        case .positioned:
+            return .green
+        case .activity:
+            return .red
+        }
+    }
+
+    private var stateDisplayName: String {
+        viewModel.currentRecordingState.displayName
     }
 }
 

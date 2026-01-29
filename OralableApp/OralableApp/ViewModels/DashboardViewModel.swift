@@ -2,11 +2,11 @@
 //  DashboardViewModel.swift
 //  OralableApp
 //
-//  ViewModel for the Dashboard screen managing sensor data and recording.
+//  ViewModel for the Dashboard screen managing sensor data display.
 //
 //  Responsibilities:
 //  - Subscribes to DeviceManagerAdapter for sensor updates
-//  - Manages recording session state (start/stop/duration)
+//  - Routes sensor data to AutomaticRecordingSession for state-based recording
 //  - Processes PPG data for heart rate calculation
 //  - Processes accelerometer data for movement detection
 //  - Handles demo mode data flow
@@ -15,14 +15,19 @@
 //  Published Properties:
 //  - Sensor values (ppgIRValue, temperature, heartRate, etc.)
 //  - Connection state (isConnected, oralableConnected)
-//  - Recording state (isRecording, formattedDuration)
+//  - Recording state (automatic, based on connection)
 //  - Chart data (ppgHistory, muscleActivityHistory)
+//
+//  Recording:
+//  - Recording is automatic - starts on BLE connect, stops on disconnect
+//  - Uses state-based events (DataStreaming, Positioned, Activity)
+//  - See AutomaticRecordingSession in OralableCore
 //
 //  Demo Mode:
 //  - Subscribes to DemoDataProvider when demo mode enabled
 //  - Processes demo PPG, accelerometer, temperature data
 //
-//  Updated: December 7, 2025 - Added dual-device support (Oralable + ANR M40)
+//  Updated: January 29, 2026 - Switched to automatic state-based recording
 //
 
 import SwiftUI
@@ -100,29 +105,61 @@ class DashboardViewModel: ObservableObject {
     @Published var muscleActivity: Double = 0.0
     @Published var muscleActivityHistory: [Double] = []
 
-    // Recording state from coordinator (read-only binding)
-    @Published private(set) var isRecording: Bool = false
+    // MARK: - Automatic Recording State (read from DeviceManager)
 
-    /// Formatted duration string for recording button display (MM:SS)
-    var formattedDuration: String {
-        sessionDuration
+    /// Whether automatic recording is active (device connected and streaming)
+    var isRecording: Bool {
+        deviceManager.automaticRecordingSession?.isSessionActive ?? false
     }
 
-    // MARK: - Event Recording
-    @Published private(set) var eventCount: Int = 0
+    /// Current recording state for display
+    var currentRecordingState: DeviceRecordingState {
+        deviceManager.automaticRecordingSession?.currentState ?? .dataStreaming
+    }
+
+    /// Formatted session duration from automatic recording
+    var formattedDuration: String {
+        deviceManager.automaticRecordingSession?.formattedDuration ?? "00:00"
+    }
+
+    /// Event count from automatic recording session
+    var eventCount: Int {
+        deviceManager.automaticRecordingSession?.eventCount ?? 0
+    }
+
+    /// Whether calibration is in progress
+    var isCalibrating: Bool {
+        deviceManager.automaticRecordingSession?.stateDetector.calibrationManager.state.isCalibrating ?? false
+    }
+
+    /// Whether the device is calibrated
+    var isCalibrated: Bool {
+        deviceManager.automaticRecordingSession?.isCalibrated ?? false
+    }
+
+    /// Calibration progress (0.0 to 1.0)
+    var calibrationProgress: Double {
+        deviceManager.automaticRecordingSession?.calibrationProgress ?? 0
+    }
+
+    // MARK: - Legacy Event Recording (deprecated - kept for backward compatibility)
     @Published private(set) var discardedEventCount: Int = 0
     private var _eventSession: EventRecordingSession?
 
-    /// Public accessor for event session (used by SimplifiedDashboardView for calibration state)
+    /// Public accessor for legacy event session
+    @available(*, deprecated, message: "Use deviceManager.automaticRecordingSession instead")
     var eventSession: EventRecordingSession? {
         _eventSession
     }
 
-    // MARK: - Live Event Stats (for recording button display)
-    @Published var liveEventCount: Int = 0
-    @Published var liveSamplesProcessed: Int = 0
-    @Published var liveMemoryUsage: String = "0 KB"
-    private var eventSessionCancellables = Set<AnyCancellable>()
+    // MARK: - Legacy Live Event Stats (deprecated)
+    // These are now derived from automaticRecordingSession
+    @available(*, deprecated, message: "Use automaticRecordingSession.eventCount")
+    var liveEventCount: Int { eventCount }
+    @available(*, deprecated, message: "Not used in automatic recording")
+    var liveSamplesProcessed: Int { 0 }
+    @available(*, deprecated, message: "Use automaticRecordingSession.storageStats")
+    var liveMemoryUsage: String { "N/A" }
 
     // MARK: - Perfusion Index Calculation
     /// Buffer of recent IR values for PI calculation (keeps ~3 seconds at 50Hz)
@@ -184,7 +221,6 @@ class DashboardViewModel: ObservableObject {
     private let deviceManagerAdapter: DeviceManagerAdapter
     private let deviceManager: DeviceManager
     private let appStateManager: AppStateManager
-    private let recordingStateCoordinator: RecordingStateCoordinator
     private var cancellables = Set<AnyCancellable>()
     private let heartRateService = HeartRateService()
 
@@ -197,14 +233,12 @@ class DashboardViewModel: ObservableObject {
 
     init(deviceManagerAdapter: DeviceManagerAdapter,
          deviceManager: DeviceManager,
-         appStateManager: AppStateManager,
-         recordingStateCoordinator: RecordingStateCoordinator) {
+         appStateManager: AppStateManager) {
         self.deviceManagerAdapter = deviceManagerAdapter
         self.deviceManager = deviceManager
         self.appStateManager = appStateManager
-        self.recordingStateCoordinator = recordingStateCoordinator
         setupBindings()
-        Logger.shared.info("[DashboardViewModel] ✅ Initialized with RecordingStateCoordinator")
+        Logger.shared.info("[DashboardViewModel] ✅ Initialized with automatic recording support")
     }
 
     deinit {
@@ -221,169 +255,40 @@ class DashboardViewModel: ObservableObject {
         // Subscriptions cleaned up via cancellables
     }
 
-    func startRecording() {
-        recordingStateCoordinator.startRecording()
-        startEventRecording()
+    // MARK: - Automatic Recording
+
+    /// Access to automatic recording session (from DeviceManager)
+    var automaticRecordingSession: AutomaticRecordingSession? {
+        deviceManager.automaticRecordingSession
     }
 
-    func stopRecording() {
-        recordingStateCoordinator.stopRecording()
-        stopEventRecording()
+    /// Get storage statistics for recorded events
+    var storageStats: StateEventStorageStats? {
+        deviceManager.automaticRecordingSession?.storageStats
     }
 
-    // MARK: - Event Recording
-
-    /// Start event recording - begins immediately, calibration auto-starts when positioned
-    func startEventRecording() {
-        // Clean up previous session
-        eventSessionCancellables.removeAll()
-
-        let settings = EventSettings.shared
-        _eventSession = EventRecordingSession(
-            normalizedThresholdPercent: settings.normalizedThresholdPercent
-        )
-
-        // Setup live stats bindings
-        setupEventSessionBindings()
-
-        // Setup auto-calibration when device is positioned
-        setupAutoCalibration()
-
-        // Reset counts and buffers
-        eventCount = 0
-        discardedEventCount = 0
-        liveEventCount = 0
-        liveSamplesProcessed = 0
-        liveMemoryUsage = "0 KB"
-        irBufferForPI.removeAll()
-
-        Logger.shared.info("[DashboardViewModel] Event recording started - waiting for device positioning")
+    /// Get today's recorded events
+    func getTodayEvents() -> [StateTransitionEvent] {
+        deviceManager.automaticRecordingSession?.getTodayEvents() ?? []
     }
 
-    /// Setup auto-calibration when optical metrics indicate device is positioned
-    private func setupAutoCalibration() {
-        guard let session = eventSession else { return }
-
-        // Log current state for debugging
-        Logger.shared.info("[DashboardViewModel] setupAutoCalibration - current HR: \(heartRate), session state: \(session.sessionState)")
-
-        // Watch for heart rate > 0 to start calibration (optical proof of positioning)
-        $heartRate
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self, weak session] hr in
-                guard let self = self, let session = session else { return }
-
-                // Start calibration when device is positioned (HR > 0) and not already calibrating/calibrated
-                if hr > 0 &&
-                   !session.isCalibrated &&
-                   !session.isCalibrating &&
-                   session.sessionState == .idle {
-                    session.startCalibration()
-                    Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device positioned (HR: \(hr))")
-                }
-            }
-            .store(in: &eventSessionCancellables)
-
-        // Setup calibration complete callback to auto-start recording
-        session.onCalibrationComplete = { [weak self] baseline in
-            guard let self = self, let session = self.eventSession else { return }
-            Logger.shared.info("[DashboardViewModel] Calibration complete - baseline: \(Int(baseline)), starting recording")
-            session.startRecording()
-        }
-
-        session.onCalibrationFailed = { reason in
-            Logger.shared.warning("[DashboardViewModel] Calibration failed: \(reason) - will retry when stable")
-        }
-
-        // IMMEDIATE CHECK: If device is already positioned, start calibration now
-        // This handles the case where HR is already detected when recording starts
-        if heartRate > 0 &&
-           !session.isCalibrated &&
-           !session.isCalibrating &&
-           session.sessionState == .idle {
-            session.startCalibration()
-            Logger.shared.info("[DashboardViewModel] Auto-starting calibration - device already positioned (HR: \(heartRate))")
-        }
-    }
-
-    /// Setup bindings for live event stats
-    private func setupEventSessionBindings() {
-        guard let session = eventSession else { return }
-
-        // Observe event count changes
-        session.$eventCount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in
-                self?.liveEventCount = count
-                self?.eventCount = count
-            }
-            .store(in: &eventSessionCancellables)
-
-        // Observe invalid event count
-        session.$invalidEventCount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in
-                self?.discardedEventCount = count
-            }
-            .store(in: &eventSessionCancellables)
-
-        // Observe samples processed
-        session.$samplesProcessed
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in
-                self?.liveSamplesProcessed = count
-            }
-            .store(in: &eventSessionCancellables)
-
-        // Observe memory usage
-        session.$estimatedMemoryBytes
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] bytes in
-                if bytes < 1024 {
-                    self?.liveMemoryUsage = "\(bytes) B"
-                } else if bytes < 1024 * 1024 {
-                    self?.liveMemoryUsage = "\(bytes / 1024) KB"
-                } else {
-                    self?.liveMemoryUsage = String(format: "%.1f MB", Double(bytes) / 1024.0 / 1024.0)
-                }
-            }
-            .store(in: &eventSessionCancellables)
-    }
-
-    /// Stop event recording
-    func stopEventRecording() {
-        eventSession?.stopRecording()
-
-        // Clear PI buffer
-        irBufferForPI.removeAll()
-
-        // Log summary
-        if let summary = eventSession?.summary {
-            Logger.shared.info("[DashboardViewModel] Recording summary:")
-            Logger.shared.info("  Duration: \(summary.formattedDuration)")
-            Logger.shared.info("  Samples: \(summary.samplesProcessed)")
-            Logger.shared.info("  Events: \(summary.eventsDetected)")
-            Logger.shared.info("  Memory: \(summary.memoryEfficiency)")
-        }
-
-        Logger.shared.info("[DashboardViewModel] Event recording stopped. Events: \(eventCount), Discarded: \(discardedEventCount)")
-    }
+    // MARK: - Legacy Event Recording (deprecated)
 
     /// Get export options based on enabled dashboard cards
+    @available(*, deprecated, message: "Use automatic recording system")
     func getEventExportOptions() -> EventCSVExporter.ExportOptions {
         EventCSVExporter.ExportOptions(
             includeNormalized: true,
             includeTemperature: featureFlags.showTemperatureCard,
             includeHR: featureFlags.showHeartRateCard,
             includeSpO2: featureFlags.showSpO2Card,
-            includeSleep: false, // Sleep not currently tracked
+            includeSleep: false,
             includeAccelerometer: true
         )
     }
 
-    /// Export recorded events to a file
-    /// - Returns: URL of the exported file, or nil if no events
+    /// Export recorded events to a file (legacy)
+    @available(*, deprecated, message: "Use StateEventFileManager for automatic recordings")
     func exportEvents() throws -> URL? {
         guard let session = eventSession, !session.events.isEmpty else {
             Logger.shared.info("[DashboardViewModel] No events to export")
@@ -397,7 +302,8 @@ class DashboardViewModel: ObservableObject {
         return fileURL
     }
 
-    /// Get the current event session for direct access
+    /// Get the current event session for direct access (legacy)
+    @available(*, deprecated, message: "Use automaticRecordingSession instead")
     var currentEventSession: EventRecordingSession? {
         eventSession
     }
@@ -435,18 +341,8 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Bind recording state from coordinator (single source of truth)
-        recordingStateCoordinator.$isRecording
-            .assign(to: &$isRecording)
-
-        // Bind session duration from coordinator
-        recordingStateCoordinator.$sessionDuration
-            .map { duration -> String in
-                let minutes = Int(duration / 60)
-                let seconds = Int(duration) % 60
-                return String(format: "%02d:%02d", minutes, seconds)
-            }
-            .assign(to: &$sessionDuration)
+        // Note: Recording state is now automatic via DeviceManager.automaticRecordingSession
+        // No manual bindings needed - isRecording computed property reads directly from session
 
         // Connection state from DeviceManager - track both devices separately
         deviceManager.$connectedDevices
@@ -605,31 +501,42 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Subscribe to PPG batch data for calibration/event detection
-        // This ensures ALL samples (50Hz) reach the event detector, not just latest values
+        // Subscribe to PPG batch data for automatic state-based recording
+        // Routes sensor data to AutomaticRecordingSession for state detection
         deviceManager.readingsBatchPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] readings in
                 guard let self = self else { return }
+                guard let session = self.deviceManager.automaticRecordingSession,
+                      session.isSessionActive else { return }
 
-                // Debug: Log all sensor types in batch during calibration
-                if self.eventSession?.isCalibrating == true && readings.count > 0 {
-                    let typeValues = readings.map { "\($0.sensorType.rawValue)=\(Int($0.value))" }
-                    Logger.shared.debug("[DashboardViewModel] Batch types: \(typeValues.prefix(10))")
-                }
+                // Extract sensor values from batch
+                for reading in readings {
+                    switch reading.sensorType {
+                    case .ppgInfrared:
+                        // Route IR data to automatic recording session
+                        session.processSensorData(
+                            irValue: Int(reading.value),
+                            timestamp: reading.timestamp,
+                            heartRate: self.heartRate > 0 ? Double(self.heartRate) : nil,
+                            spO2: self.spO2 > 0 ? Double(self.spO2) : nil,
+                            perfusionIndex: self.calculatePerfusionIndex(from: self.irBufferForPI),
+                            temperature: self.temperature,
+                            accelX: Int(self.accelXRaw),
+                            accelY: Int(self.accelYRaw),
+                            accelZ: Int(self.accelZRaw),
+                            batteryMV: self.batteryLevel > 0 ? Int(self.batteryLevel * 10) : nil
+                        )
 
-                // Filter for PPG IR readings only
-                let irReadings = readings.filter { $0.sensorType == .ppgInfrared }
+                        // Update PI buffer for calculation
+                        self.irBufferForPI.append(reading.value)
+                        if self.irBufferForPI.count > self.irBufferMaxSize {
+                            self.irBufferForPI.removeFirst()
+                        }
 
-                // Debug: Log IR values being sent to calibration
-                if self.eventSession?.isCalibrating == true && irReadings.count > 0 {
-                    let irValues = irReadings.map { Int($0.value) }
-                    Logger.shared.info("[DashboardViewModel] Calibration IR values: \(irValues.prefix(5))... (count: \(irValues.count))")
-                }
-
-                // Feed each sample to the event detector
-                for reading in irReadings {
-                    self.feedSampleToEventDetector(irValue: Int(reading.value))
+                    default:
+                        break
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -657,7 +564,8 @@ class DashboardViewModel: ObservableObject {
         // to ensure all 50Hz samples reach calibration, not just throttled latest values
     }
 
-    /// Feed sample data to the event detector
+    /// Feed sample data to the legacy event detector (deprecated)
+    @available(*, deprecated, message: "Sensor data is now routed to AutomaticRecordingSession")
     private func feedSampleToEventDetector(irValue: Int) {
         guard let session = eventSession else { return }
         guard session.isRecording || session.isCalibrating else { return }
@@ -671,8 +579,6 @@ class DashboardViewModel: ObservableObject {
             temperature: temperature
         )
 
-        // Update metrics for event validation
-        // Any of HR, SpO2, or PI proves optical sensor is working
         if heartRate > 0 {
             session.updateHR(Double(heartRate))
         }
@@ -680,34 +586,7 @@ class DashboardViewModel: ObservableObject {
             session.updateSpO2(Double(spO2))
         }
 
-        // Calculate and update perfusion index (AC/DC ratio from IR signal)
-        irBufferForPI.append(Double(irValue))
-        if irBufferForPI.count > irBufferMaxSize {
-            irBufferForPI.removeFirst()
-        }
-        if irBufferForPI.count >= 50 {
-            let perfusionIndex = calculatePerfusionIndex(from: irBufferForPI)
-            if perfusionIndex > 0 {
-                session.updatePerfusionIndex(perfusionIndex)
-
-                // Log PI every 5 seconds (250 samples at 50Hz)
-                if session.samplesProcessed % 250 == 0 {
-                    Logger.shared.info("[DashboardViewModel] PI: \(String(format: "%.3f", perfusionIndex))%")
-                }
-            }
-        }
-
-        // Temperature is always passed - validation checks 32-38°C range
         session.updateTemperature(temperature)
-
-        // Update event counts
-        eventCount = session.eventCount
-        discardedCount = session.discardedEventCount
-
-        // Log progress periodically
-        if session.samplesProcessed % 500 == 0 && session.samplesProcessed > 0 {
-            Logger.shared.info("[DashboardViewModel] feedSample - processed \(session.samplesProcessed) samples, events: \(session.eventCount)")
-        }
     }
 
     /// Calculate perfusion index from IR signal buffer (AC/DC ratio)
@@ -977,15 +856,10 @@ class DashboardViewModel: ObservableObject {
 
 /// Extension to handle real-time HR integration in the Dashboard.
 extension DashboardViewModel {
-    
-    func toggleRecording() {
-        if recordingStateCoordinator.isRecording {
-            stopRecording()
-        } else {
-            startRecording()
-        }
-    }
-    
+
+    // Note: Recording is now automatic - starts on BLE connect, stops on disconnect
+    // No manual toggleRecording() method needed
+
     // Call this inside your SensorDataProcessor subscription
     func updateHeartRate(with rawIRSamples: [Double], accelMagnitudes: [Double]) {
         Task {

@@ -143,6 +143,12 @@ class DeviceManager: ObservableObject {
         return !connectedDevices.isEmpty || DemoDataProvider.shared.isConnected
     }
     
+    // MARK: - Automatic Recording Session
+
+    /// Automatic state-based recording session
+    /// Starts on device connect, stops on disconnect
+    public private(set) var automaticRecordingSession: AutomaticRecordingSession?
+
     // MARK: - Private Properties
 
     private var devices: [UUID: BLEDeviceProtocol] = [:]
@@ -188,6 +194,7 @@ class DeviceManager: ObservableObject {
         self.backgroundWorker = BLEBackgroundWorker()
         setupBLECallbacks()
         setupBackgroundWorker()
+        setupAutomaticRecordingSession()
         Logger.shared.info("[DeviceManager] Initialization complete")
     }
 
@@ -201,6 +208,7 @@ class DeviceManager: ObservableObject {
         self.backgroundWorker = backgroundWorker ?? BLEBackgroundWorker()
         setupBLECallbacks()
         setupBackgroundWorker()
+        setupAutomaticRecordingSession()
         Logger.shared.info("[DeviceManager] Initialization complete")
     }
 
@@ -220,6 +228,26 @@ class DeviceManager: ObservableObject {
             .store(in: &cancellables)
 
         Logger.shared.info("[DeviceManager] Background worker configured and started")
+    }
+
+    /// Setup automatic recording session for state-based event recording
+    private func setupAutomaticRecordingSession() {
+        let session = AutomaticRecordingSession()
+
+        session.onSessionStarted = {
+            Logger.shared.info("[DeviceManager] Automatic recording session started")
+        }
+
+        session.onSessionStopped = { eventCount in
+            Logger.shared.info("[DeviceManager] Automatic recording session stopped with \(eventCount) events")
+        }
+
+        session.onStateChanged = { newState in
+            Logger.shared.info("[DeviceManager] Recording state changed to: \(newState.rawValue)")
+        }
+
+        automaticRecordingSession = session
+        Logger.shared.info("[DeviceManager] Automatic recording session configured")
     }
 
     /// Handle events from background worker
@@ -640,7 +668,10 @@ class DeviceManager: ObservableObject {
             // Device is now ready!
             updateDeviceReadiness(peripheral.identifier, to: .ready)
             Logger.shared.info("[DeviceManager] ✅ Device fully ready - all notifications enabled, LEDs configured")
-            
+
+            // Start automatic recording session
+            automaticRecordingSession?.onDeviceConnected()
+
         } catch {
             Logger.shared.error("[DeviceManager] ❌ Discovery failed: \(error.localizedDescription)")
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
@@ -709,6 +740,9 @@ class DeviceManager: ObservableObject {
         }
 
         isConnecting = false
+
+        // Stop automatic recording session (saves events and triggers sync)
+        automaticRecordingSession?.onDeviceDisconnected()
 
         // Update readiness state
         updateDeviceReadiness(peripheral.identifier, to: .disconnected)

@@ -5,19 +5,25 @@
 //  Dependency injection container for app-wide services.
 //
 //  Provides:
-//  - DeviceManager: BLE device management
+//  - DeviceManager: BLE device management + automatic recording
 //  - DeviceManagerAdapter: Sensor data adaptation
 //  - SensorDataProcessor: Data processing and storage
-//  - RecordingSessionManager: Recording lifecycle
+//  - RecordingSessionManager: Recording lifecycle (legacy)
 //  - HistoricalDataManager: Historical data access
 //  - SubscriptionManager: In-app purchase handling
 //  - AuthenticationManager: Apple ID authentication
 //  - SharedDataManager: CloudKit data sharing
 //  - DesignSystem: UI styling configuration
 //
+//  Recording:
+//  - Recording is now automatic via DeviceManager.automaticRecordingSession
+//  - Starts on BLE connect, stops on disconnect
+//
 //  Usage:
 //  - Injected into SwiftUI via .environmentObject()
 //  - ViewModels created via factory methods
+//
+//  Updated: January 29, 2026 - Removed RecordingStateCoordinator (automatic recording)
 //
 
 import SwiftUI
@@ -36,7 +42,6 @@ final class AppDependencies: ObservableObject {
     let appStateManager: AppStateManager
     let sharedDataManager: SharedDataManager
     let designSystem: DesignSystem
-    let recordingStateCoordinator: RecordingStateCoordinator
 
     // Cached view models to preserve state across views
     private var _cachedDashboardViewModel: DashboardViewModel?
@@ -62,9 +67,8 @@ final class AppDependencies: ObservableObject {
         self.appStateManager = appStateManager
         self.sharedDataManager = sharedDataManager
         self.designSystem = designSystem
-        self.recordingStateCoordinator = RecordingStateCoordinator.shared
 
-        Logger.shared.info("[AppDependencies] Initialized (legacy OralableBLE removed)")
+        Logger.shared.info("[AppDependencies] Initialized with automatic recording support")
     }
 
     // MARK: - Factory Methods
@@ -80,8 +84,7 @@ final class AppDependencies: ObservableObject {
         let vm = DashboardViewModel(
             deviceManagerAdapter: deviceManagerAdapter,
             deviceManager: deviceManager,
-            appStateManager: appStateManager,
-            recordingStateCoordinator: recordingStateCoordinator
+            appStateManager: appStateManager
         )
         _cachedDashboardViewModel = vm
         return vm
@@ -118,7 +121,6 @@ struct DependenciesModifier: ViewModifier {
             .environmentObject(dependencies.appStateManager)
             .environmentObject(dependencies.sharedDataManager)
             .environmentObject(dependencies.designSystem)
-            .environmentObject(dependencies.recordingStateCoordinator)
     }
 }
 

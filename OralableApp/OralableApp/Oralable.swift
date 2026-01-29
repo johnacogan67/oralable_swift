@@ -3,7 +3,7 @@ import OralableCore
 
 @main
 struct OralableApp: App {
-    // Core managers - no legacy OralableBLE.
+    // Core managers - recording is automatic via DeviceManager.automaticRecordingSession
     @StateObject private var authenticationManager: AuthenticationManager
     @StateObject private var sensorDataStore: SensorDataStore
     @StateObject private var recordingSessionManager: RecordingSessionManager
@@ -15,7 +15,6 @@ struct OralableApp: App {
     @StateObject private var sharedDataManager: SharedDataManager
     @StateObject private var designSystem: DesignSystem
     @StateObject private var dependencies: AppDependencies
-    @StateObject private var recordingStateCoordinator: RecordingStateCoordinator
 
     init() {
         let authenticationManager = AuthenticationManager()
@@ -33,12 +32,15 @@ struct OralableApp: App {
             sensorDataProcessor: sensorDataProcessor
         )
         let designSystem = DesignSystem()
-        let recordingStateCoordinator = RecordingStateCoordinator.shared
 
-        // Set up RecordingStateCoordinator with SharedDataManager for auto-sync after recording
-        recordingStateCoordinator.sharedDataManager = sharedDataManager
+        // Configure automatic recording session to sync to CloudKit on disconnect
+        deviceManager.automaticRecordingSession?.onSyncRequested = {
+            Task {
+                await sharedDataManager.uploadCurrentDataForSharing()
+            }
+        }
 
-        // Create AppDependencies without legacy OralableBLE
+        // Create AppDependencies with automatic recording support
         let dependencies = AppDependencies(
             authenticationManager: authenticationManager,
             recordingSessionManager: recordingSessionManager,
@@ -63,7 +65,6 @@ struct OralableApp: App {
         _sharedDataManager = StateObject(wrappedValue: sharedDataManager)
         _designSystem = StateObject(wrappedValue: designSystem)
         _dependencies = StateObject(wrappedValue: dependencies)
-        _recordingStateCoordinator = StateObject(wrappedValue: recordingStateCoordinator)
     }
 
     @Environment(\.scenePhase) private var scenePhase
@@ -84,13 +85,12 @@ struct OralableApp: App {
         switch newPhase {
         case .background:
             Logger.shared.info("[OralableApp] App entering background")
-            // Stop recording if active to prevent data loss
-            if recordingStateCoordinator.isRecording {
-                recordingStateCoordinator.stopRecording()
-                Logger.shared.warning("[OralableApp] Recording stopped due to background transition")
-            }
+            // Note: Automatic recording continues in background
+            // Events are auto-saved every 3 minutes and on disconnect
             // Sync data when app goes to background
             Task {
+                // Save any pending events
+                deviceManager.automaticRecordingSession?.savePendingEvents()
                 await sharedDataManager.uploadCurrentDataForSharing()
             }
 
