@@ -174,12 +174,12 @@ actor UnifiedBiometricProcessor {
     private let motionCompensator: MotionCompensator
     private let activityClassifier: ActivityClassifier
 
-    // MARK: - Signal Buffers
+    // MARK: - Signal Buffers (CircularBuffer for O(1) append)
 
-    private var irBuffer: [Double]
-    private var redBuffer: [Double]
-    private var greenBuffer: [Double]
-    private var accelMagnitudeBuffer: [Double]
+    private var irBuffer: CircularBuffer<Double>
+    private var redBuffer: CircularBuffer<Double>
+    private var greenBuffer: CircularBuffer<Double>
+    private var accelMagnitudeBuffer: CircularBuffer<Double>
 
     // MARK: - Filter State (for real-time processing)
 
@@ -204,17 +204,12 @@ actor UnifiedBiometricProcessor {
         self.motionCompensator = MotionCompensator()
         self.activityClassifier = ActivityClassifier()
 
-        // Initialize buffers with capacity
+        // Initialize circular buffers with fixed capacity (O(1) append, no removeFirst)
         let capacity = config.hrWindowSize
-        self.irBuffer = []
-        self.redBuffer = []
-        self.greenBuffer = []
-        self.accelMagnitudeBuffer = []
-
-        irBuffer.reserveCapacity(capacity)
-        redBuffer.reserveCapacity(capacity)
-        greenBuffer.reserveCapacity(capacity)
-        accelMagnitudeBuffer.reserveCapacity(capacity)
+        self.irBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.redBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.greenBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.accelMagnitudeBuffer = CircularBuffer<Double>(capacity: capacity)
     }
 
     // MARK: - Real-time Processing
@@ -269,7 +264,7 @@ actor UnifiedBiometricProcessor {
         }
 
         // Stage 6: Calculate perfusion index
-        let perfusionIndex = calculatePerfusionIndex(signal: irBuffer)
+        let perfusionIndex = calculatePerfusionIndex(signal: irBuffer.all)
         let signalStrength = SignalStrength(perfusionIndex: perfusionIndex)
 
         // Stage 7: Calculate heart rate (skip if too much motion)
@@ -371,10 +366,10 @@ actor UnifiedBiometricProcessor {
 
     /// Reset all internal state (call when device reconnects or starting new session)
     func reset() {
-        irBuffer.removeAll(keepingCapacity: true)
-        redBuffer.removeAll(keepingCapacity: true)
-        greenBuffer.removeAll(keepingCapacity: true)
-        accelMagnitudeBuffer.removeAll(keepingCapacity: true)
+        irBuffer.removeAll()
+        redBuffer.removeAll()
+        greenBuffer.removeAll()
+        accelMagnitudeBuffer.removeAll()
 
         irLowPass = 0
         irHighPass = 0
@@ -419,19 +414,11 @@ actor UnifiedBiometricProcessor {
         greenHighPass = config.alphaHP * (greenHighPass + green - previousGreen)
         greenLowPass = greenLowPass + config.alphaLP * (greenHighPass - greenLowPass)
 
-        // Append filtered values
+        // Append filtered values (CircularBuffer automatically overwrites oldest when full)
         irBuffer.append(irLowPass)
         redBuffer.append(red)  // Red uses raw for SpO2 AC/DC calculation
         greenBuffer.append(greenLowPass)
         accelMagnitudeBuffer.append(motion)
-
-        // Trim to window size
-        if irBuffer.count > config.hrWindowSize {
-            irBuffer.removeFirst()
-            redBuffer.removeFirst()
-            greenBuffer.removeFirst()
-            accelMagnitudeBuffer.removeFirst()
-        }
     }
 
     // MARK: - Private: Perfusion Index
@@ -456,14 +443,14 @@ actor UnifiedBiometricProcessor {
 
     private func calculateHeartRate() -> (bpm: Int, quality: Double, source: HRSource) {
         // Try IR channel first (primary)
-        if let (bpm, quality) = calculateHeartRateFromSignal(irBuffer) {
+        if let (bpm, quality) = calculateHeartRateFromSignal(irBuffer.all) {
             if quality >= config.minHRQuality {
                 return (bpm, quality, .ir)
             }
         }
 
         // Try Green channel (backup)
-        if let (bpm, quality) = calculateHeartRateFromSignal(greenBuffer) {
+        if let (bpm, quality) = calculateHeartRateFromSignal(greenBuffer.all) {
             if quality >= config.minHRQuality {
                 return (bpm, quality, .green)
             }
@@ -545,18 +532,19 @@ actor UnifiedBiometricProcessor {
             return (0, 0)
         }
 
-        // Use raw (unfiltered) red buffer for SpO2
-        // Note: We're using redBuffer which stores raw values
+        // Snapshot buffers to arrays for efficient multi-pass calculation
+        let redValues = redBuffer.all
+        let irValues = irBuffer.all
 
         // DC components (mean)
-        let dcRed = redBuffer.reduce(0, +) / Double(redBuffer.count)
-        let dcIR = irBuffer.reduce(0, +) / Double(irBuffer.count)
+        let dcRed = redValues.reduce(0, +) / Double(redValues.count)
+        let dcIR = irValues.reduce(0, +) / Double(irValues.count)
 
         guard dcRed > 0, dcIR > 0 else { return (0, 0) }
 
         // AC components (peak-to-peak)
-        let acRed = (redBuffer.max() ?? 0) - (redBuffer.min() ?? 0)
-        let acIR = (irBuffer.max() ?? 0) - (irBuffer.min() ?? 0)
+        let acRed = (redValues.max() ?? 0) - (redValues.min() ?? 0)
+        let acIR = (irValues.max() ?? 0) - (irValues.min() ?? 0)
 
         guard acRed > 0, acIR > 0 else { return (0, 0) }
 

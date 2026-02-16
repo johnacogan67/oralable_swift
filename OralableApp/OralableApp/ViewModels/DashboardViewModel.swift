@@ -163,8 +163,7 @@ class DashboardViewModel: ObservableObject {
 
     // MARK: - Perfusion Index Calculation
     /// Buffer of recent IR values for PI calculation (keeps ~3 seconds at 50Hz)
-    private var irBufferForPI: [Double] = []
-    private let irBufferMaxSize = 150
+    private var irBufferForPI = CircularBuffer<Double>(capacity: 150)
 
     // MARK: - Device Positioning Status
 
@@ -523,7 +522,7 @@ class DashboardViewModel: ObservableObject {
                             timestamp: reading.timestamp,
                             heartRate: self.heartRate > 0 ? Double(self.heartRate) : nil,
                             spO2: self.spO2 > 0 ? Double(self.spO2) : nil,
-                            perfusionIndex: self.calculatePerfusionIndex(from: self.irBufferForPI),
+                            perfusionIndex: self.calculatePerfusionIndex(from: self.irBufferForPI.all),
                             temperature: self.temperature,
                             accelX: Int(self.accelXRaw),
                             accelY: Int(self.accelYRaw),
@@ -531,11 +530,8 @@ class DashboardViewModel: ObservableObject {
                             batteryMV: self.batteryLevel > 0 ? Int(self.batteryLevel * 10) : nil
                         )
 
-                        // Update PI buffer for calculation
+                        // Update PI buffer for calculation (CircularBuffer auto-overwrites oldest)
                         self.irBufferForPI.append(reading.value)
-                        if self.irBufferForPI.count > self.irBufferMaxSize {
-                            self.irBufferForPI.removeFirst()
-                        }
 
                     default:
                         break

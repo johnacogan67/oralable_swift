@@ -29,6 +29,84 @@
 import Foundation
 import Combine
 
+/// Pre-computed statistics cache to avoid redundant compactMap/reduce on every view render
+struct HistoricalStatisticsCache {
+    var averageHeartRate: String = "--"
+    var averageSpO2: String = "--"
+    var averageTemperature: String = "--"
+    var averageBattery: String = "--"
+    var activeTime: String = "--"
+    var dataPointsCount: String = "--"
+    var totalGrindingEvents: String = "--"
+
+    /// Recompute all statistics from data points in a single pass
+    static func compute(
+        from points: [HistoricalDataPoint],
+        metrics: HistoricalMetrics?,
+        isSessionPlayback: Bool
+    ) -> HistoricalStatisticsCache {
+        var cache = HistoricalStatisticsCache()
+        guard !points.isEmpty else { return cache }
+
+        // Heart rate
+        let hrValues = points.compactMap { $0.averageHeartRate }
+        if !hrValues.isEmpty {
+            let avg = hrValues.reduce(0, +) / Double(hrValues.count)
+            cache.averageHeartRate = avg > 0 ? String(format: "%.0f", avg) : "--"
+        }
+
+        // SpO2
+        let spo2Values = points.compactMap { $0.averageSpO2 }
+        if !spo2Values.isEmpty {
+            let avg = spo2Values.reduce(0, +) / Double(spo2Values.count)
+            cache.averageSpO2 = avg > 0 ? String(format: "%.0f", avg) : "--"
+        }
+
+        // Temperature
+        if isSessionPlayback {
+            let temps = points.map { $0.averageTemperature }.filter { $0 > 0 }
+            if !temps.isEmpty {
+                cache.averageTemperature = String(format: "%.1f", temps.reduce(0, +) / Double(temps.count))
+            }
+        } else if let metrics = metrics {
+            cache.averageTemperature = String(format: "%.1f", metrics.avgTemperature)
+        }
+
+        // Battery
+        if isSessionPlayback {
+            let batteries = points.map { $0.averageBattery }.filter { $0 > 0 }
+            if !batteries.isEmpty {
+                cache.averageBattery = String(format: "%.0f", Double(batteries.reduce(0, +)) / Double(batteries.count))
+            }
+        } else if let metrics = metrics {
+            cache.averageBattery = String(format: "%.0f", metrics.avgBatteryLevel)
+        }
+
+        // Active time
+        let totalActivity = points.map { $0.movementIntensity }.reduce(0, +)
+        let hours = Int(totalActivity)
+        let minutes = Int((totalActivity - Double(hours)) * 60)
+        cache.activeTime = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+
+        // Data points count
+        if isSessionPlayback {
+            cache.dataPointsCount = "\(points.count)"
+        } else if let metrics = metrics {
+            cache.dataPointsCount = "\(metrics.dataPoints.count)"
+        }
+
+        // Grinding events
+        if isSessionPlayback {
+            let events = points.compactMap { $0.grindingEvents }.reduce(0, +)
+            cache.totalGrindingEvents = "\(events)"
+        } else if let metrics = metrics {
+            cache.totalGrindingEvents = "\(metrics.totalGrindingEvents)"
+        }
+
+        return cache
+    }
+}
+
 @MainActor
 class HistoricalViewModel: ObservableObject {
     
@@ -50,7 +128,10 @@ class HistoricalViewModel: ObservableObject {
     /// Cached data points (debounced / computed off-main then published on main)
     /// Use this in views instead of calling the heavy computed getter repeatedly
     @Published private(set) var cachedDataPoints: [HistoricalDataPoint] = []
-    
+
+    /// Cached statistics (recomputed when data changes, not on every view render)
+    @Published private(set) var statisticsCache = HistoricalStatisticsCache()
+
     /// Whether metrics are being updated
     @Published var isUpdating: Bool = false
     
@@ -201,74 +282,15 @@ class HistoricalViewModel: ObservableObject {
         return "\(start) - \(end)"
     }
     
-    // MARK: - Metric Text Properties
-    
-    /// Average heart rate text
-    var averageHeartRateText: String {
-        let points = isSessionPlaybackMode ? sessionDataPoints : (currentMetrics?.dataPoints ?? [])
-        guard !points.isEmpty else { return "--" }
-        let avgHR = points.compactMap { $0.averageHeartRate }.reduce(0, +) / Double(max(points.compactMap { $0.averageHeartRate }.count, 1))
-        return avgHR > 0 ? String(format: "%.0f", avgHR) : "--"
-    }
-    
-    /// Average SpO2 text
-    var averageSpO2Text: String {
-        let points = isSessionPlaybackMode ? sessionDataPoints : (currentMetrics?.dataPoints ?? [])
-        guard !points.isEmpty else { return "--" }
-        let avgSpO2 = points.compactMap { $0.averageSpO2 }.reduce(0, +) / Double(max(points.compactMap { $0.averageSpO2 }.count, 1))
-        return avgSpO2 > 0 ? String(format: "%.0f", avgSpO2) : "--"
-    }
-    
-    /// Average temperature text
-    var averageTemperatureText: String {
-        if isSessionPlaybackMode {
-            let temps = sessionDataPoints.map { $0.averageTemperature }.filter { $0 > 0 }
-            guard !temps.isEmpty else { return "--" }
-            return String(format: "%.1f", temps.reduce(0, +) / Double(temps.count))
-        }
-        guard let metrics = currentMetrics else { return "--" }
-        return String(format: "%.1f", metrics.avgTemperature)
-    }
-    
-    /// Average battery text
-    var averageBatteryText: String {
-        if isSessionPlaybackMode {
-            let batteries = sessionDataPoints.map { $0.averageBattery }.filter { $0 > 0 }
-            guard !batteries.isEmpty else { return "--" }
-            return String(format: "%.0f", Double(batteries.reduce(0, +)) / Double(batteries.count))
-        }
-        guard let metrics = currentMetrics else { return "--" }
-        return String(format: "%.0f", metrics.avgBatteryLevel)
-    }
-    
-    /// Active time text
-    var activeTimeText: String {
-        let points = isSessionPlaybackMode ? sessionDataPoints : (currentMetrics?.dataPoints ?? [])
-        guard !points.isEmpty else { return "--" }
-        let totalActivity = points.map { $0.movementIntensity }.reduce(0, +)
-        let hours = Int(totalActivity)
-        let minutes = Int((totalActivity - Double(hours)) * 60)
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-    }
-    
-    /// Data points count text
-    var dataPointsCountText: String {
-        if isSessionPlaybackMode {
-            return "\(sessionDataPoints.count)"
-        }
-        guard let metrics = currentMetrics else { return "--" }
-        return "\(metrics.dataPoints.count)"
-    }
-    
-    /// Total grinding events text
-    var totalGrindingEventsText: String {
-        if isSessionPlaybackMode {
-            let events = sessionDataPoints.compactMap { $0.grindingEvents }.reduce(0, +)
-            return "\(events)"
-        }
-        guard let metrics = currentMetrics else { return "--" }
-        return "\(metrics.totalGrindingEvents)"
-    }
+    // MARK: - Metric Text Properties (cached, recomputed when data changes)
+
+    var averageHeartRateText: String { statisticsCache.averageHeartRate }
+    var averageSpO2Text: String { statisticsCache.averageSpO2 }
+    var averageTemperatureText: String { statisticsCache.averageTemperature }
+    var averageBatteryText: String { statisticsCache.averageBattery }
+    var activeTimeText: String { statisticsCache.activeTime }
+    var dataPointsCountText: String { statisticsCache.dataPointsCount }
+    var totalGrindingEventsText: String { statisticsCache.totalGrindingEvents }
     
     // MARK: - Initialization
 
@@ -403,18 +425,34 @@ class HistoricalViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Build a debounced cache pipeline: compute cachedDataPoints off-main then publish on main.
+        // Build a debounced cache pipeline: compute cachedDataPoints and statistics off-main then publish on main.
         metricsCacheCancellable = Publishers.CombineLatest($currentMetrics, $selectedTimeRange)
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.global(qos: .userInitiated))
-            .map { (metrics, _) -> [HistoricalDataPoint] in
-                return metrics?.dataPoints ?? []
+            .map { (metrics, _) -> ([HistoricalDataPoint], HistoricalStatisticsCache) in
+                let points = metrics?.dataPoints ?? []
+                let stats = HistoricalStatisticsCache.compute(from: points, metrics: metrics, isSessionPlayback: false)
+                return (points, stats)
             }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] points in
+            .sink { [weak self] (points, stats) in
                 guard let self = self, !self.isSessionPlaybackMode else { return }
                 self.cachedDataPoints = points
+                self.statisticsCache = stats
                 Logger.shared.debug("[HistoricalViewModel] Cached dataPoints updated: \(points.count) points")
             }
+
+        // Recalculate statistics when session data changes (playback mode)
+        $sessionDataPoints
+            .debounce(for: .milliseconds(200), scheduler: DispatchQueue.global(qos: .userInitiated))
+            .map { points in
+                HistoricalStatisticsCache.compute(from: points, metrics: nil, isSessionPlayback: true)
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] stats in
+                guard let self = self, self.isSessionPlaybackMode else { return }
+                self.statisticsCache = stats
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods - Session Playback
