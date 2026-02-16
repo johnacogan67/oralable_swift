@@ -17,7 +17,7 @@ struct DemoParticipantDetailView: View {
     @State private var isLoadingData = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
                     // Demo Banner

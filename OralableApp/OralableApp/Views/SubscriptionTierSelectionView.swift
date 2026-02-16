@@ -19,7 +19,7 @@ struct SubscriptionTierSelectionView: View {
     @State private var showRestoreSuccess = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: designSystem.spacing.xl) {
                     // Header

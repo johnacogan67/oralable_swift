@@ -15,7 +15,7 @@ struct PatientDetailView: View {
     @State private var isRemoving = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             PatientDashboardView(patient: patient)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {

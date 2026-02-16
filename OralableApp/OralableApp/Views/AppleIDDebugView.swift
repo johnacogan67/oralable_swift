@@ -9,7 +9,7 @@ struct AppleIDDebugView: View {
     @State private var alertMessage = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section("Current State") {
                     DebugRow(title: "Authenticated", value: authManager.isAuthenticated ? "Yes" : "No")

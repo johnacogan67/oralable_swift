@@ -26,7 +26,7 @@ struct DeviceDetailView: View {
     @State private var showingForgetAlert = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Device Name Section
                 Section {

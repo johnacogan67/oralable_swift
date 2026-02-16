@@ -381,7 +381,7 @@ struct LogsShareSheet: UIViewControllerRepresentable {
 
 struct LogsView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationView {
+        NavigationStack {
             LogsView()
                 .environmentObject(DesignSystem())
         }

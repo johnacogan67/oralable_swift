@@ -48,6 +48,7 @@ struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel?
     @State private var showingProfile = false
+    @State private var dismissedErrorDescription: String?
 
     var body: some View {
         Group {
@@ -69,13 +70,42 @@ struct DashboardView: View {
         .onDisappear {
             viewModel?.stopMonitoring()
         }
+        .onChange(of: deviceManager.lastError?.errorDescription) { newErrorDescription in
+            // Reset dismissed state when a new different error arrives
+            if newErrorDescription != dismissedErrorDescription {
+                dismissedErrorDescription = nil
+            }
+        }
     }
 
     @ViewBuilder
     private func dashboardContent(viewModel: DashboardViewModel) -> some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
+                    // Error Banner
+                    if let error = deviceManager.lastError,
+                       error.errorDescription != dismissedErrorDescription {
+                        ErrorBannerView(
+                            title: error.errorDescription ?? "Error",
+                            message: error.recoverySuggestion ?? "Please try again.",
+                            isRecoverable: error.isRecoverable,
+                            retryAction: error.isRecoverable ? {
+                                if let firstDevice = deviceManager.discoveredDevices.first {
+                                    Task {
+                                        try? await deviceManager.connect(to: firstDevice)
+                                    }
+                                }
+                                dismissedErrorDescription = error.errorDescription
+                            } : nil,
+                            dismissAction: {
+                                dismissedErrorDescription = error.errorDescription
+                            }
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.easeInOut(duration: 0.3), value: deviceManager.lastError?.errorDescription)
+                    }
+
                     // Demo Mode Banner
                     if featureFlags.demoModeEnabled {
                         HStack {
@@ -245,6 +275,7 @@ struct DashboardView: View {
                             .font(.system(size: 22))
                             .foregroundColor(.primary)
                     }
+                    .accessibilityLabel("Profile")
                 }
             }
             .sheet(isPresented: $showingProfile) {
@@ -254,7 +285,6 @@ struct DashboardView: View {
                     .environmentObject(dependencies.subscriptionManager)
             }
         }
-        .navigationViewStyle(.stack)
     }
 
     // MARK: - Device Status Indicator (Simplified - matches Devices screen)
@@ -279,6 +309,8 @@ struct DashboardView: View {
                         .font(.subheadline)
                         .foregroundColor(viewModel.oralableConnected ? .green : .secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Oralable device, \(viewModel.oralableConnected ? "Ready" : "Not Connected")")
             }
 
             // ANR M40 Device - only show if previously paired (not in demo mode)
@@ -297,6 +329,8 @@ struct DashboardView: View {
                         .font(.subheadline)
                         .foregroundColor(viewModel.anrConnected ? .green : .secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("ANR M40 device, \(viewModel.anrConnected ? "Ready" : "Not Connected")")
             }
         }
         .padding()
@@ -403,6 +437,7 @@ struct HealthMetricCard: View {
                 if !sparklineData.isEmpty {
                     MiniSparkline(data: sparklineData, color: color)
                         .frame(width: 50, height: 30)
+                        .accessibilityHidden(true)
                 }
             }
         }
@@ -410,6 +445,9 @@ struct HealthMetricCard: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value) \(unit)")
+        .accessibilityHint(showChevron ? "Double tap to view details" : "")
     }
 }
 
@@ -482,6 +520,7 @@ struct MovementMetricCard: View {
                         stillColor: .blue
                     )
                     .frame(width: 50, height: 30)
+                    .accessibilityHidden(true)
                 }
             }
         }
@@ -489,6 +528,9 @@ struct MovementMetricCard: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Movement, \(value) \(unit), \(statusText)")
+        .accessibilityHint(showChevron ? "Double tap to view details" : "")
     }
 }
 

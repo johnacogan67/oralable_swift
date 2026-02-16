@@ -32,7 +32,7 @@ struct SimplifiedDashboardView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Top bar
                 topBar

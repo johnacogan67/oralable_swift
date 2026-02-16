@@ -107,49 +107,50 @@ struct ColorSystem {
 // MARK: - Typography System
 
 struct TypographySystem {
-    // Using iOS system fonts (SF Pro) for better integration and no missing font errors
+    // Dynamic Type relative text styles for accessibility scaling
+    // Maps semantic roles to iOS text styles so fonts scale with user preferences
 
     // Headings
-    var h1: Font { .system(size: 34, weight: .bold) }
-    var h2: Font { .system(size: 28, weight: .semibold) }
-    var h3: Font { .system(size: 22, weight: .semibold) }
-    var h4: Font { .system(size: 18, weight: .medium) }
+    var h1: Font { .system(.largeTitle, weight: .bold) }           // was 34pt bold
+    var h2: Font { .system(.title, weight: .semibold) }            // was 28pt semibold
+    var h3: Font { .system(.title2, weight: .semibold) }           // was 22pt semibold
+    var h4: Font { .system(.headline, weight: .medium) }           // was 18pt medium
 
     // Large title and headline
-    var largeTitle: Font { .system(size: 34, weight: .bold) }
-    var headline: Font { .system(size: 17, weight: .semibold) }
+    var largeTitle: Font { .system(.largeTitle, weight: .bold) }   // was 34pt bold
+    var headline: Font { .system(.headline, weight: .semibold) }   // was 17pt semibold
 
     // Body variants
-    var body: Font { .system(size: 16, weight: .regular) }
-    var bodyBold: Font { .system(size: 16, weight: .bold) }
-    var bodyMedium: Font { .system(size: 16, weight: .medium) }
-    var bodyLarge: Font { .system(size: 18, weight: .regular) }
-    var bodySmall: Font { .system(size: 14, weight: .regular) }
+    var body: Font { .system(.body, weight: .regular) }            // was 16pt regular
+    var bodyBold: Font { .system(.body, weight: .bold) }           // was 16pt bold
+    var bodyMedium: Font { .system(.body, weight: .medium) }       // was 16pt medium
+    var bodyLarge: Font { .system(.headline, weight: .regular) }   // was 18pt regular
+    var bodySmall: Font { .system(.subheadline, weight: .regular) }// was 14pt regular
 
     // Label variants
-    var labelLarge: Font { .system(size: 16, weight: .medium) }
-    var labelMedium: Font { .system(size: 14, weight: .medium) }
-    var labelSmall: Font { .system(size: 12, weight: .medium) }
+    var labelLarge: Font { .system(.body, weight: .medium) }       // was 16pt medium
+    var labelMedium: Font { .system(.subheadline, weight: .medium) }// was 14pt medium
+    var labelSmall: Font { .system(.footnote, weight: .medium) }   // was 12pt medium
 
     // Small text
-    var caption: Font { .system(size: 14, weight: .regular) }
-    var caption2: Font { .system(size: 11, weight: .regular) }
-    var captionBold: Font { .system(size: 14, weight: .semibold) }
-    var captionSmall: Font { .system(size: 12, weight: .regular) }
-    var footnote: Font { .system(size: 12, weight: .regular) }
+    var caption: Font { .system(.subheadline, weight: .regular) }  // was 14pt regular
+    var caption2: Font { .system(.caption2, weight: .regular) }    // was 11pt regular
+    var captionBold: Font { .system(.subheadline, weight: .semibold) }// was 14pt semibold
+    var captionSmall: Font { .system(.footnote, weight: .regular) }// was 12pt regular
+    var footnote: Font { .system(.footnote, weight: .regular) }    // was 12pt regular
 
     // Display variants
-    var displaySmall: Font { .system(size: 24, weight: .bold) }
+    var displaySmall: Font { .system(.title2, weight: .bold) }     // was 24pt bold
 
     // Title variant
-    var title: Font { .system(size: 20, weight: .semibold) }
+    var title: Font { .system(.title3, weight: .semibold) }        // was 20pt semibold
 
     // Interactive
-    var button: Font { .system(size: 16, weight: .semibold) }
-    var buttonLarge: Font { .system(size: 18, weight: .semibold) }
-    var buttonMedium: Font { .system(size: 16, weight: .medium) }
-    var buttonSmall: Font { .system(size: 14, weight: .semibold) }
-    var link: Font { .system(size: 16, weight: .medium) }
+    var button: Font { .system(.body, weight: .semibold) }         // was 16pt semibold
+    var buttonLarge: Font { .system(.headline, weight: .semibold) }// was 18pt semibold
+    var buttonMedium: Font { .system(.body, weight: .medium) }     // was 16pt medium
+    var buttonSmall: Font { .system(.subheadline, weight: .semibold) }// was 14pt semibold
+    var link: Font { .system(.body, weight: .medium) }             // was 16pt medium
 }
 
 // MARK: - Spacing System

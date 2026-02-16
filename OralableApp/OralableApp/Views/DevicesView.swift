@@ -34,12 +34,38 @@ struct DevicesView: View {
     @State private var isScanning = false
     @State private var selectedDevice: DeviceRowItem?
     @State private var showingDeviceDetail = false
+    @State private var dismissedErrorDescription: String?
 
     private let persistenceManager = DevicePersistenceManager.shared
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
+                // Connection error banner
+                if let error = deviceManager.lastError,
+                   error.errorDescription != dismissedErrorDescription {
+                    Section {
+                        ErrorBannerView(
+                            title: error.errorDescription ?? "Connection Error",
+                            message: error.recoverySuggestion ?? "Please try again.",
+                            isRecoverable: error.isRecoverable,
+                            retryAction: error.isRecoverable ? {
+                                if let firstDevice = deviceManager.discoveredDevices.first {
+                                    Task {
+                                        try? await deviceManager.connect(to: firstDevice)
+                                    }
+                                }
+                                dismissedErrorDescription = error.errorDescription
+                            } : nil,
+                            dismissAction: {
+                                dismissedErrorDescription = error.errorDescription
+                            }
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    }
+                }
+
                 myDevicesSection
                 otherDevicesSection
             }
@@ -51,10 +77,13 @@ struct DevicesView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if isScanning {
                         ProgressView()
+                            .accessibilityLabel("Scanning for devices")
                     } else {
                         Button("Scan") {
                             startScanning()
                         }
+                        .accessibilityLabel("Scan for nearby devices")
+                        .accessibilityHint("Double tap to start scanning for Bluetooth devices")
                     }
                 }
             }
@@ -81,12 +110,17 @@ struct DevicesView: View {
             .onChange(of: deviceManager.bluetoothState) { newState in
                 // Auto-start scan when Bluetooth becomes ready
                 if newState == .poweredOn && deviceManager.connectedDevices.isEmpty && !isScanning {
-                    Logger.shared.info("[DevicesView] 📶 Bluetooth ready - auto-starting scan")
+                    Logger.shared.info("[DevicesView] Bluetooth ready - auto-starting scan")
                     startScanning()
                 }
             }
+            .onChange(of: deviceManager.lastError?.errorDescription) { newErrorDescription in
+                // Reset dismissed state when a new different error arrives
+                if newErrorDescription != dismissedErrorDescription {
+                    dismissedErrorDescription = nil
+                }
+            }
         }
-        .navigationViewStyle(.stack)
     }
 
     // MARK: - My Devices Section (Remembered)
@@ -367,12 +401,17 @@ struct DeviceRow: View {
                         .foregroundColor(.blue)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("Device info for \(name)")
+                .accessibilityHint("Double tap to view device details")
             }
         }
         .contentShape(Rectangle())
         .onTapGesture {
             onTap()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(name), \(statusText)")
+        .accessibilityHint(readinessState == .ready ? "Double tap to view device details" : "Double tap to connect")
     }
     
     // MARK: - Status Display Logic
@@ -456,7 +495,7 @@ struct DevicesView_Previews: PreviewProvider {
             designSystem: designSystem
         )
 
-        return NavigationView {
+        return NavigationStack {
             DevicesView()
         }
         .withDependencies(dependencies)

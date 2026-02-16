@@ -63,7 +63,7 @@ struct ShareView: View {
     @State private var exportType: ExportType = .events
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Share CSV section - ALWAYS SHOWN
                 shareCSVSection
@@ -88,7 +88,6 @@ struct ShareView: View {
                 Text(errorMessage)
             }
         }
-        .navigationViewStyle(.stack)
         .task {
             // Only generate share code if CloudKit sharing is enabled
             if featureFlags.showCloudKitShare {

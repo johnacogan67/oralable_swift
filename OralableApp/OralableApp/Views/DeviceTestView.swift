@@ -25,7 +25,7 @@ struct DeviceTestView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // MARK: - Scanning Section
                 Section {

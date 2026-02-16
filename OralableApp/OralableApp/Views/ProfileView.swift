@@ -33,7 +33,7 @@ struct ProfileView: View {
     @State private var deleteError: String?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: designSystem.spacing.xl) {
                     // Profile Header (name and email only)

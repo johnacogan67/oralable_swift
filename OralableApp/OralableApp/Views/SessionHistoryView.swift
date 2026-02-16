@@ -98,7 +98,7 @@ struct SessionHistoryView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // 4-segment picker
                 filterPicker

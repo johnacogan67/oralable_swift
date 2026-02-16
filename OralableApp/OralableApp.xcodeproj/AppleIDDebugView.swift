@@ -8,7 +8,7 @@ struct AppleIDDebugView: View {
     @State private var debugOutput = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Current Authentication State

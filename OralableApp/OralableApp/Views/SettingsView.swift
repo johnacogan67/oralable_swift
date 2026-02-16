@@ -40,7 +40,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Subscription Section - CONDITIONAL
                 if featureFlags.showSubscription {
@@ -96,7 +96,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .navigationViewStyle(.stack)
     }
 
     // MARK: - About Row (with hidden developer access)

@@ -182,7 +182,7 @@ struct UpgradeToShareMoreView: View {
     @EnvironmentObject var designSystem: DesignSystem
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 Image(systemName: "person.2.fill")
                     .font(.system(size: 60))

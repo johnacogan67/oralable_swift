@@ -20,7 +20,7 @@ struct MainDashboardView: View {
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 Text("Oralable Dashboard")
                     .font(.largeTitle)

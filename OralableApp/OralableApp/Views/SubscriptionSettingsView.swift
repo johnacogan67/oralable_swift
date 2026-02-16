@@ -298,7 +298,7 @@ struct SubscriptionInfoView: View {
     @State private var showSuccessAlert = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     headerSection
@@ -555,7 +555,7 @@ struct BLELogsView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if filteredLogs.isEmpty {
                     VStack(spacing: 16) {

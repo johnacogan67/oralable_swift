@@ -20,7 +20,7 @@ struct WithingsStyleHistoricalView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Withings-style header with time range picker
                 TimeRangeHeader(
@@ -596,7 +596,7 @@ struct DataInfoSheet: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Data Information")

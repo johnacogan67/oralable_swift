@@ -36,7 +36,7 @@ struct AuthenticationView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: designSystem.spacing.xl) {
                     // Profile Header
@@ -393,7 +393,7 @@ struct ProfileDetailView: View {
     let viewModel: AuthenticationViewModel
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section("Account Information") {
                     // FIXED: InfoRowView with correct parameters

@@ -32,7 +32,7 @@ struct PatientListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color(UIColor.systemGroupedBackground)
                     .ignoresSafeArea()
@@ -72,7 +72,7 @@ struct PatientListView: View {
                 AddPatientView()
             }
             .sheet(item: $viewModel.selectedPatient) { patient in
-                NavigationView {
+                NavigationStack {
                     PatientHistoricalView(patient: patient)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
@@ -142,7 +142,6 @@ struct PatientListView: View {
                 viewModel.loadPatients()
             }
         }
-        .navigationViewStyle(.stack)
     }
 
     private var patientList: some View {

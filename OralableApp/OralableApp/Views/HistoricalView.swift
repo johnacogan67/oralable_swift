@@ -296,10 +296,13 @@ struct HistoricalView: View {
                     .background(selectedTimePeriod == period ? Color.black : Color.clear)
                     .foregroundColor(selectedTimePeriod == period ? .white : .primary)
                 }
+                .accessibilityLabel("\(period.rawValue) view")
+                .accessibilityAddTraits(selectedTimePeriod == period ? .isSelected : [])
             }
         }
         .background(Color(.systemGray5))
         .cornerRadius(10)
+        .accessibilityLabel("Time period selector")
     }
 
     // MARK: - Navigation Bar
@@ -315,6 +318,8 @@ struct HistoricalView: View {
                     .background(Color(.systemGray6))
                     .clipShape(Circle())
             }
+            .accessibilityLabel("Previous \(selectedTimePeriod.rawValue.lowercased())")
+            .accessibilityHint("Double tap to go to the previous \(selectedTimePeriod.rawValue.lowercased())")
 
             Spacer()
 
@@ -328,6 +333,8 @@ struct HistoricalView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Currently viewing \(navigationDisplayText)")
 
             Spacer()
 
@@ -341,6 +348,8 @@ struct HistoricalView: View {
                     .clipShape(Circle())
             }
             .disabled(!canNavigateForward)
+            .accessibilityLabel("Next \(selectedTimePeriod.rawValue.lowercased())")
+            .accessibilityHint(canNavigateForward ? "Double tap to go to the next \(selectedTimePeriod.rawValue.lowercased())" : "No later data available")
         }
     }
 
@@ -387,10 +396,13 @@ struct HistoricalView: View {
                     .background(selectedTab == tab ? tab.chartColor.opacity(0.15) : Color.clear)
                     .foregroundColor(selectedTab == tab ? tab.chartColor : .secondary)
                 }
+                .accessibilityLabel("\(tab.metricType) tab")
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
         .background(Color(.systemGray6))
         .cornerRadius(10)
+        .accessibilityLabel("Metric selector")
     }
 
     // MARK: - Export Info Banner
@@ -806,7 +818,7 @@ struct HistoricalView: View {
 
 struct HistoricalView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationView {
+        NavigationStack {
             HistoricalView()
                 .environmentObject(DesignSystem())
         }

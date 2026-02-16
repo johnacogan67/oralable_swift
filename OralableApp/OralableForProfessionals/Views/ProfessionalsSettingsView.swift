@@ -26,7 +26,7 @@ struct ProfessionalSettingsView: View {
     @State private var deleteError: String?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Demo Mode Section - ALWAYS VISIBLE
                 Section {
@@ -242,7 +242,6 @@ struct ProfessionalSettingsView: View {
                 }
             }
         }
-        .navigationViewStyle(.stack)
     }
 
     // MARK: - Account Deletion

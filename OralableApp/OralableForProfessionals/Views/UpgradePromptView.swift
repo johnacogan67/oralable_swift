@@ -300,7 +300,7 @@ struct FeatureComparisonTable: View {
 // MARK: - Preview
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         UpgradePromptView()
             .environmentObject(ProfessionalSubscriptionManager.shared)
     }

@@ -197,7 +197,7 @@ struct SensorReadingPreview: View {
     ]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 sensorReadingsSection
                 arrayExtensionsSection
