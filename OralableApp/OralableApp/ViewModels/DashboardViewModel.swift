@@ -222,6 +222,7 @@ class DashboardViewModel: ObservableObject {
     private let deviceManager: DeviceManager
     private let appStateManager: AppStateManager
     private var cancellables = Set<AnyCancellable>()
+    private var bleCancellables = Set<AnyCancellable>()
     private let heartRateService = HeartRateService()
 
     // MARK: - Demo Mode Properties
@@ -247,6 +248,8 @@ class DashboardViewModel: ObservableObject {
 
     // MARK: - Public Methods
     func startMonitoring() {
+        // Cancel previous BLE subscriptions to prevent accumulation on reconnect
+        bleCancellables.removeAll()
         setupBLESubscriptions()
         Logger.shared.info("[DashboardViewModel] ✅ Monitoring started - waiting for real device data")
     }
@@ -418,7 +421,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] hr in
                 self?.heartRate = hr
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to SpO2
         deviceManagerAdapter.spO2Publisher
@@ -426,7 +429,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] spo2 in
                 self?.spO2 = spo2
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to PPG IR data for Oralable card
         deviceManagerAdapter.ppgIRValuePublisher
@@ -434,7 +437,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] value in
                 self?.processPPGIRData(value)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to PPG Red data for waveform (legacy)
         deviceManagerAdapter.ppgRedValuePublisher
@@ -442,7 +445,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] value in
                 self?.processPPGData(value)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to EMG data for ANR M40 card
         deviceManagerAdapter.emgValuePublisher
@@ -450,7 +453,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] value in
                 self?.processEMGData(value)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to accelerometer data
         deviceManagerAdapter.accelXPublisher
@@ -459,7 +462,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] x, y, z in
                 self?.processAccelerometerData(x: x, y: y, z: z)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to temperature
         deviceManagerAdapter.temperaturePublisher
@@ -467,7 +470,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] temp in
                 self?.temperature = temp
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to HR quality for signal quality display
         deviceManagerAdapter.heartRateQualityPublisher
@@ -475,7 +478,7 @@ class DashboardViewModel: ObservableObject {
             .sink { [weak self] quality in
                 self?.signalQuality = Int(quality * 100)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Create a publisher for accelerometer magnitude in G's
         let accelMagnitudePublisher = deviceManagerAdapter.accelXPublisher
@@ -499,7 +502,7 @@ class DashboardViewModel: ObservableObject {
                 let accelMagnitudes = samples.map { $0.1 }
                 self?.updateHeartRate(with: irSamples, accelMagnitudes: accelMagnitudes)
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
 
         // Subscribe to PPG batch data for automatic state-based recording
         // Routes sensor data to AutomaticRecordingSession for state detection
@@ -539,7 +542,7 @@ class DashboardViewModel: ObservableObject {
                     }
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &bleCancellables)
     }
 
     // MARK: - PPG IR Data Processing (Oralable)

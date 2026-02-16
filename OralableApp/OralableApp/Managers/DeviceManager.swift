@@ -628,34 +628,71 @@ class DeviceManager: ObservableObject {
             Logger.shared.error("[DeviceManager] ❌ Device not found in devices dictionary")
             return
         }
-        
+
+        // Guard against race condition: peripheral may disconnect before this task runs
+        guard peripheral.state == .connected else {
+            Logger.shared.warning("[DeviceManager] Peripheral disconnected before discovery could start")
+            updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+            return
+        }
+
         do {
             // Step 1: Discover services (10-second timeout)
             updateDeviceReadiness(peripheral.identifier, to: .discoveringServices)
             try await withTimeout(seconds: 10) {
                 try await device.discoverServices()
             }
+
+            guard peripheral.state == .connected else {
+                Logger.shared.warning("[DeviceManager] Peripheral disconnected during service discovery")
+                updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+                return
+            }
             updateDeviceReadiness(peripheral.identifier, to: .servicesDiscovered)
-            
+
             // Step 2: Discover characteristics (10-second timeout)
             updateDeviceReadiness(peripheral.identifier, to: .discoveringCharacteristics)
             try await withTimeout(seconds: 10) {
                 try await device.discoverCharacteristics()
             }
+
+            guard peripheral.state == .connected else {
+                Logger.shared.warning("[DeviceManager] Peripheral disconnected during characteristic discovery")
+                updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+                return
+            }
             updateDeviceReadiness(peripheral.identifier, to: .characteristicsDiscovered)
-            
+
             // Step 3: Enable notifications on main characteristic (10-second timeout)
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
             try await withTimeout(seconds: 10) {
                 try await device.enableNotifications()
             }
-            
-            // Step 4: Enable accelerometer notifications (non-blocking, no timeout)
-            if let oralableDevice = device as? OralableDevice {
-                await oralableDevice.enableAccelerometerNotifications()
 
-                // Step 4b: Enable temperature notifications on 3A0FF003
-                await oralableDevice.enableTemperatureNotifications()
+            guard peripheral.state == .connected else {
+                Logger.shared.warning("[DeviceManager] Peripheral disconnected during notification setup")
+                updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+                return
+            }
+
+            // Step 4: Enable accelerometer notifications (with timeout)
+            if let oralableDevice = device as? OralableDevice {
+                do {
+                    try await withTimeout(seconds: 10) {
+                        await oralableDevice.enableAccelerometerNotifications()
+                    }
+                } catch {
+                    Logger.shared.warning("[DeviceManager] ⚠️ Accelerometer notification timeout (non-critical): \(error.localizedDescription)")
+                }
+
+                // Step 4b: Enable temperature notifications on 3A0FF003 (with timeout)
+                do {
+                    try await withTimeout(seconds: 10) {
+                        await oralableDevice.enableTemperatureNotifications()
+                    }
+                } catch {
+                    Logger.shared.warning("[DeviceManager] ⚠️ Temperature notification timeout (non-critical): \(error.localizedDescription)")
+                }
 
                 // Step 5: Configure PPG LEDs to turn them on
                 do {

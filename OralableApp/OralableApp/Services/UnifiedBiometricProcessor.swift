@@ -568,6 +568,11 @@ actor UnifiedBiometricProcessor {
 
         let rValue = ratioRed / ratioIR
 
+        // Validate R-value bounds (physiological range: 0.4 to 3.4)
+        // R < 0.4 implies SpO2 > 100% (impossible), R > 3.4 implies SpO2 < 0% (impossible)
+        // Values outside this range indicate noise or motion artifact
+        guard rValue >= 0.4 && rValue <= 3.4 else { return (0, 0) }
+
         // Empirical calibration curve
         // SpO2 = -45.060 * R^2 + 30.354 * R + 94.845
         let spo2 = -45.060 * pow(rValue, 2) + 30.354 * rValue + 94.845
