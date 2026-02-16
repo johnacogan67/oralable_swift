@@ -82,7 +82,7 @@ struct DashboardView: View {
     private func dashboardContent(viewModel: DashboardViewModel) -> some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: designSystem.spacing.buttonPadding) {
                     // Error Banner
                     if let error = deviceManager.lastError,
                        error.errorDescription != dismissedErrorDescription {
@@ -112,19 +112,19 @@ struct DashboardView: View {
                             Image(systemName: "play.circle.fill")
                                 .foregroundColor(.orange)
                             Text("Demo Mode Active")
-                                .font(.caption)
+                                .font(designSystem.typography.caption)
                                 .fontWeight(.medium)
                             Spacer()
                             Button("Disable") {
                                 featureFlags.demoModeEnabled = false
                             }
-                            .font(.caption)
+                            .font(designSystem.typography.caption)
                             .foregroundColor(.orange)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, designSystem.spacing.buttonPadding)
+                        .padding(.vertical, designSystem.spacing.sm)
                         .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
+                        .cornerRadius(designSystem.cornerRadius.button)
                     }
 
                     // Dual device connection status indicator (now includes Movement)
@@ -262,17 +262,17 @@ struct DashboardView: View {
                         )
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, designSystem.spacing.md)
+                .padding(.top, designSystem.spacing.sm)
             }
-            .background(Color(UIColor.systemGroupedBackground))
+            .background(designSystem.colors.backgroundSecondary)
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingProfile = true }) {
                         Image(systemName: "person.circle")
-                            .font(.system(size: 22))
+                            .font(designSystem.typography.h3)
                             .foregroundColor(.primary)
                     }
                     .accessibilityLabel("Profile")
@@ -334,9 +334,9 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.card)
+        .designShadow(.small)
     }
 
     // MARK: - Helper Functions
@@ -383,300 +383,6 @@ struct DashboardView: View {
         } else {
             return String(format: "%.2f", value)
         }
-    }
-}
-
-// MARK: - Health Metric Card (Apple Health Style)
-struct HealthMetricCard: View {
-    let icon: String
-    let title: String
-    let value: String
-    let unit: String
-    let color: Color
-    let sparklineData: [Double]
-    let showChevron: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Top row: icon, title, chevron
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(color)
-
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                if showChevron {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
-                }
-            }
-
-            // Value row with optional sparkline
-            HStack(alignment: .bottom) {
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(value)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    if !unit.isEmpty {
-                        Text(unit)
-                            .font(.system(size: 17))
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                // Mini sparkline
-                if !sparklineData.isEmpty {
-                    MiniSparkline(data: sparklineData, color: color)
-                        .frame(width: 50, height: 30)
-                        .accessibilityHidden(true)
-                }
-            }
-        }
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(value) \(unit)")
-        .accessibilityHint(showChevron ? "Double tap to view details" : "")
-    }
-}
-
-// MARK: - Movement Metric Card (with threshold-colored sparkline)
-struct MovementMetricCard: View {
-    let value: String
-    let unit: String
-    let statusText: String  // "Active", "Still", or "Not Connected"
-    let isActive: Bool
-    let isConnected: Bool
-    let sparklineData: [Double]
-    let threshold: Double
-    let showChevron: Bool
-
-    private var color: Color {
-        guard isConnected else { return .gray }
-        return isActive ? .green : .blue
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Top row: icon, title, chevron
-            HStack {
-                Image(systemName: "gyroscope")
-                    .font(.system(size: 20))
-                    .foregroundColor(color)
-
-                Text("Movement")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                if showChevron {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
-                }
-            }
-
-            // Value row with movement sparkline
-            HStack(alignment: .bottom) {
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(value)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    if !unit.isEmpty {
-                        Text(unit)
-                            .font(.system(size: 17))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Status indicator (Active/Still/Not Connected)
-                    Text(statusText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isConnected ? (isActive ? .green : .blue) : .secondary)
-                        .padding(.leading, 8)
-                }
-
-                Spacer()
-
-                // Movement sparkline with per-point coloring
-                if !sparklineData.isEmpty && isConnected {
-                    MovementSparkline(
-                        data: sparklineData,
-                        threshold: threshold,
-                        isOverallActive: isActive,
-                        activeColor: .green,
-                        stillColor: .blue
-                    )
-                    .frame(width: 50, height: 30)
-                    .accessibilityHidden(true)
-                }
-            }
-        }
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Movement, \(value) \(unit), \(statusText)")
-        .accessibilityHint(showChevron ? "Double tap to view details" : "")
-    }
-}
-
-// MARK: - Mini Sparkline Chart
-struct MiniSparkline: View {
-    let data: [Double]
-    let color: Color
-
-    var body: some View {
-        Chart(Array(data.enumerated()), id: \.offset) { index, value in
-            LineMark(
-                x: .value("Index", index),
-                y: .value("Value", value)
-            )
-            .foregroundStyle(color.opacity(0.6))
-            .lineStyle(StrokeStyle(lineWidth: 2))
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-    }
-}
-
-// MARK: - Movement Sparkline with Threshold Coloring
-/// Sparkline that colors all points based on overall movement state
-/// Green when actively moving, blue when still
-struct MovementSparkline: View {
-    let data: [Double]
-    let threshold: Double  // Movement variability threshold from settings (500-5000)
-    let isOverallActive: Bool  // Whether the overall state is "Active" (variability > threshold)
-    let activeColor: Color
-    let stillColor: Color
-
-    var body: some View {
-        // All points use the same color based on overall active/still state
-        let pointColor = isOverallActive ? activeColor.opacity(0.8) : stillColor.opacity(0.6)
-
-        Chart(Array(data.enumerated()), id: \.offset) { index, value in
-            PointMark(
-                x: .value("Index", index),
-                y: .value("Value", value)
-            )
-            .foregroundStyle(pointColor)
-            .symbolSize(10)
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-    }
-}
-
-// MARK: - Recording State Indicator (Automatic Recording)
-struct RecordingStateIndicator: View {
-    let state: DeviceRecordingState
-    let isCalibrated: Bool
-    let calibrationProgress: Double
-    let eventCount: Int
-    let duration: String
-
-    private var stateColor: Color {
-        switch state {
-        case .dataStreaming:
-            return .black
-        case .positioned:
-            return .green
-        case .activity:
-            return .red
-        }
-    }
-
-    private var stateIcon: String {
-        switch state {
-        case .dataStreaming:
-            return "waveform"
-        case .positioned:
-            return "checkmark.circle.fill"
-        case .activity:
-            return "bolt.fill"
-        }
-    }
-
-    private var statusText: String {
-        if !isCalibrated && state == .positioned {
-            return "Calibrating..."
-        }
-        return state.displayName
-    }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            // State indicator circle
-            ZStack {
-                Circle()
-                    .fill(stateColor)
-                    .frame(width: 50, height: 50)
-                    .shadow(color: stateColor.opacity(0.3), radius: 6, x: 0, y: 3)
-
-                Image(systemName: stateIcon)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
-            }
-
-            // Status text
-            Text(statusText)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(stateColor)
-
-            // Calibration progress (if calibrating)
-            if !isCalibrated && state == .positioned && calibrationProgress > 0 {
-                ProgressView(value: calibrationProgress)
-                    .progressViewStyle(LinearProgressViewStyle(tint: .green))
-                    .frame(width: 100)
-                Text("\(Int(calibrationProgress * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            // Duration and events
-            HStack(spacing: 16) {
-                StatBadge(label: "Time", value: duration)
-                StatBadge(label: "Events", value: "\(eventCount)")
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-    }
-}
-
-// MARK: - Stat Badge
-struct StatBadge: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text(value)
-                .font(.caption.bold())
-                .foregroundColor(.primary)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(8)
     }
 }
 

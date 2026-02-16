@@ -115,17 +115,17 @@ struct SettingsView: View {
         }) {
             HStack {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 20))
+                    .font(designSystem.typography.headline)
                     .foregroundColor(.gray)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("About")
-                        .font(.system(size: 17))
+                        .font(designSystem.typography.body)
                         .foregroundColor(.primary)
 
                     Text("Version 1.0")
-                        .font(.system(size: 15))
+                        .font(designSystem.typography.bodySmall)
                         .foregroundColor(.secondary)
                 }
 
@@ -140,23 +140,23 @@ struct SettingsView: View {
         Button(action: { showSubscriptionInfo = true }) {
             HStack {
                 Image(systemName: "star.fill")
-                    .font(.system(size: 20))
+                    .font(designSystem.typography.headline)
                     .foregroundColor(.orange)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Current Plan")
-                        .font(.system(size: 17))
+                        .font(designSystem.typography.body)
                         .foregroundColor(.primary)
 
                     HStack(spacing: 4) {
                         Text(dependencies.subscriptionManager.currentTier.displayName)
-                            .font(.system(size: 15))
+                            .font(designSystem.typography.bodySmall)
                             .foregroundColor(.secondary)
 
                         if dependencies.subscriptionManager.currentTier == .premium {
                             Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 12))
+                                .font(designSystem.typography.footnote)
                                 .foregroundColor(.green)
                         }
                     }
@@ -166,11 +166,11 @@ struct SettingsView: View {
 
                 if dependencies.subscriptionManager.currentTier == .basic {
                     Text("Upgrade")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(designSystem.typography.labelLarge)
                         .foregroundColor(.blue)
                 } else {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(designSystem.typography.buttonSmall)
                         .foregroundColor(.secondary)
                 }
             }
@@ -184,17 +184,17 @@ struct SettingsView: View {
         } label: {
             HStack {
                 Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 20))
+                    .font(designSystem.typography.headline)
                     .foregroundColor(.orange)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Thresholds")
-                        .font(.system(size: 17))
+                        .font(designSystem.typography.body)
                         .foregroundColor(.primary)
 
                     Text("Adjust movement sensitivity")
-                        .font(.system(size: 15))
+                        .font(designSystem.typography.bodySmall)
                         .foregroundColor(.secondary)
                 }
 
@@ -210,17 +210,17 @@ struct SettingsView: View {
         } label: {
             HStack {
                 Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 20))
+                    .font(designSystem.typography.headline)
                     .foregroundColor(.blue)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Event Detection")
-                        .font(.system(size: 17))
+                        .font(designSystem.typography.body)
                         .foregroundColor(.primary)
 
                     Text("Configure IR threshold for events")
-                        .font(.system(size: 15))
+                        .font(designSystem.typography.bodySmall)
                         .foregroundColor(.secondary)
                 }
 
@@ -236,17 +236,17 @@ struct SettingsView: View {
         Toggle(isOn: $useSimplifiedDashboard) {
             HStack {
                 Image(systemName: "rectangle.on.rectangle")
-                    .font(.system(size: 20))
+                    .font(designSystem.typography.headline)
                     .foregroundColor(.blue)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Simplified Dashboard")
-                        .font(.system(size: 17))
+                        .font(designSystem.typography.body)
                         .foregroundColor(.primary)
 
                     Text("Color-coded status card")
-                        .font(.system(size: 15))
+                        .font(designSystem.typography.bodySmall)
                         .foregroundColor(.secondary)
                 }
             }

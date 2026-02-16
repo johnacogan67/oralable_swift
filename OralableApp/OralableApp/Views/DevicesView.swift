@@ -70,7 +70,7 @@ struct DevicesView: View {
                 otherDevicesSection
             }
             .listStyle(.insetGrouped)
-            .background(Color(UIColor.systemGroupedBackground))
+            .background(designSystem.colors.backgroundSecondary)
             .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -369,6 +369,7 @@ struct DeviceRowItem: Identifiable {
 
 // MARK: - Device Row Component
 struct DeviceRow: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let name: String
     let readinessState: ConnectionReadiness
     let onTap: () -> Void
@@ -377,7 +378,7 @@ struct DeviceRow: View {
     var body: some View {
         HStack {
             Text(name)
-                .font(.system(size: 17))
+                .font(designSystem.typography.body)
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
@@ -388,16 +389,16 @@ struct DeviceRow: View {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
-                
+
                 Text(statusText)
-                    .font(.system(size: 15))
+                    .font(designSystem.typography.bodySmall)
                     .foregroundColor(statusTextColor)
             }
 
             if let onInfoTap = onInfoTap {
                 Button(action: onInfoTap) {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 22))
+                        .font(designSystem.typography.h3)
                         .foregroundColor(.blue)
                 }
                 .buttonStyle(PlainButtonStyle())

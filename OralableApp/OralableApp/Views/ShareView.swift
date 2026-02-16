@@ -124,19 +124,19 @@ struct ShareView: View {
                             .frame(width: 32)
                     } else {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 20))
+                            .font(designSystem.typography.headline)
                             .foregroundColor(.blue)
                             .frame(width: 32)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(isSharing ? "Sharing..." : "Share Data as CSV")
-                            .font(.system(size: 17))
+                            .font(designSystem.typography.body)
                             .foregroundColor(.primary)
 
                         if isSharing && !shareProgress.isEmpty {
                             Text(shareProgress)
-                                .font(.system(size: 13))
+                                .font(designSystem.typography.footnote)
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -145,7 +145,7 @@ struct ShareView: View {
 
                     if !isSharing {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(designSystem.typography.buttonSmall)
                             .foregroundColor(Color(UIColor.tertiaryLabel))
                     }
                 }
@@ -176,7 +176,7 @@ struct ShareView: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Your Share Code")
-                    .font(.system(size: 15))
+                    .font(designSystem.typography.bodySmall)
                     .foregroundColor(.secondary)
 
                 HStack {
@@ -193,7 +193,7 @@ struct ShareView: View {
 
                     Button(action: copyShareCode) {
                         Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 20))
+                            .font(designSystem.typography.headline)
                             .foregroundColor(showCopiedFeedback ? .green : .blue)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -201,7 +201,7 @@ struct ShareView: View {
                 }
 
                 Text("Give this code to your healthcare professional to share your data")
-                    .font(.system(size: 13))
+                    .font(designSystem.typography.footnote)
                     .foregroundColor(.secondary)
                 
                 // Regenerate button
@@ -212,7 +212,7 @@ struct ShareView: View {
                         Image(systemName: "arrow.clockwise")
                         Text("Generate New Code")
                     }
-                    .font(.system(size: 15))
+                    .font(designSystem.typography.bodySmall)
                     .foregroundColor(.blue)
                 }
                 .disabled(isGeneratingCode)
@@ -240,11 +240,11 @@ struct ShareView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(professional.professionalName ?? professional.professionalID)
-                                .font(.system(size: 17))
+                                .font(designSystem.typography.body)
                                 .foregroundColor(.primary)
 
                             Text("Has access")
-                                .font(.system(size: 13))
+                                .font(designSystem.typography.footnote)
                                 .foregroundColor(.secondary)
                         }
 
@@ -253,7 +253,7 @@ struct ShareView: View {
                         Button("Remove") {
                             removeConnection(professional)
                         }
-                        .font(.system(size: 15))
+                        .font(designSystem.typography.bodySmall)
                         .foregroundColor(.red)
                     }
                     .padding(.vertical, 4)
