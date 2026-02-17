@@ -89,6 +89,19 @@ struct HistoricalChartView: View {
         "No data available for the selected period"
     }
 
+    /// Accessibility summary describing the chart content for VoiceOver users
+    private var chartAccessibilitySummary: String {
+        guard let processed = processed, !chartPoints.isEmpty else {
+            return "\(metricType.title) chart. No data available for the selected period."
+        }
+        let stats = processed.statistics
+        let sampleCount = stats.sampleCount
+        let avg = String(format: "%.0f", stats.average)
+        let min = String(format: "%.0f", stats.minimum)
+        let max = String(format: "%.0f", stats.maximum)
+        return "\(metricType.title) chart with \(sampleCount) data points. Average: \(avg), minimum: \(min), maximum: \(max). Time range: \(timeRange.rawValue)."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -98,7 +111,7 @@ struct HistoricalChartView: View {
                         .fontWeight(.bold)
 
                     if let processed {
-                        Text("\(processed.statistics.sampleCount) samples • \(processed.processingMethod) processing")
+                        Text("\(processed.statistics.sampleCount) samples \u{2022} \(processed.processingMethod) processing")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .opacity(0.7)
@@ -106,6 +119,7 @@ struct HistoricalChartView: View {
                 }
                 Spacer()
             }
+            .accessibilityElement(children: .combine)
 
             if chartPoints.isEmpty {
                 VStack(spacing: 12) {
@@ -121,6 +135,8 @@ struct HistoricalChartView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(metricType.title) chart. No data available for the selected period.")
             } else {
                 Chart {
                     ForEach(Array(chartPoints.enumerated()), id: \.offset) { _, point in
@@ -187,6 +203,8 @@ struct HistoricalChartView: View {
                         }
                     }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(chartAccessibilitySummary)
             }
 
             if let selected = selectedDataPoint, let processed {

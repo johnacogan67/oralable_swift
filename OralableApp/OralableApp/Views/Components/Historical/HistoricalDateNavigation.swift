@@ -114,6 +114,8 @@ struct HistoricalDateNavigation: View {
                     .background(Color.gray.opacity(0.1))
                     .clipShape(Circle())
             }
+            .accessibilityLabel("Previous \(timeRange.rawValue)")
+            .accessibilityHint("Navigate to the previous \(timeRange.rawValue)")
 
             Spacer()
 
@@ -128,6 +130,8 @@ struct HistoricalDateNavigation: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Current period: \(displayText)")
 
             Spacer()
 
@@ -140,6 +144,8 @@ struct HistoricalDateNavigation: View {
                     .clipShape(Circle())
             }
             .disabled(!canNavigateForward)
+            .accessibilityLabel("Next \(timeRange.rawValue)")
+            .accessibilityHint(canNavigateForward ? "Navigate to the next \(timeRange.rawValue)" : "No future data available")
         }
         .padding(.vertical, 8)
     }

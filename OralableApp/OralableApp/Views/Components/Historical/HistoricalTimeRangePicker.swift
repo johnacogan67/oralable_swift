@@ -14,8 +14,13 @@ struct HistoricalTimeRangePicker: View {
                         .font(.system(size: 17, weight: selectedRange == range ? .semibold : .regular))
                         .foregroundColor(selectedRange == range ? .blue : .primary)
                 }
+                .accessibilityLabel("Time range: \(range.rawValue)")
+                .accessibilityAddTraits(selectedRange == range ? .isSelected : [])
+                .accessibilityHint(selectedRange == range ? "Currently selected" : "Double tap to select \(range.rawValue) view")
             }
         }
         .padding(.horizontal)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Time range selector")
     }
 }

@@ -33,6 +33,8 @@ struct HistoricalStatisticsCard: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(metricType.color)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Average \(metricType.title): \(formatValue(stats.average))")
 
                 Divider()
 
@@ -45,6 +47,8 @@ struct HistoricalStatisticsCard: View {
                             .font(.title3)
                             .fontWeight(.semibold)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Minimum: \(formatValue(stats.minimum))")
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Maximum")
@@ -54,6 +58,8 @@ struct HistoricalStatisticsCard: View {
                             .font(.title3)
                             .fontWeight(.semibold)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Maximum: \(formatValue(stats.maximum))")
 
                     Spacer()
                 }
@@ -82,6 +88,8 @@ struct HistoricalStatisticsCard: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Standard deviation: \(formatValue(stats.standardDeviation)), coefficient of variation: \(String(format: "%.1f percent", stats.variationCoefficient)), \(stats.sampleCount) data points")
             } else {
                 Text("No statistics available")
                     .font(.subheadline)
@@ -92,5 +100,7 @@ struct HistoricalStatisticsCard: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(radius: 1)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(metricType.title) statistics")
     }
 }

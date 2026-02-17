@@ -229,6 +229,7 @@ struct HistoricalDetailView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal)
+                    .accessibilityHidden(true)
 
                     VStack(spacing: 20) {
                         HistoricalChartView(
@@ -308,6 +309,7 @@ struct HistoricalDetailView: View {
 // MARK: - PPG Debug Card (uses shared DeviceState)
 struct PPGDebugCard: View {
     @EnvironmentObject var ppgNormalizationService: PPGNormalizationService
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
     let timeRange: TimeRange
     let selectedDate: Date
@@ -676,18 +678,20 @@ struct PPGDebugCard: View {
                 Image(systemName: "waveform.path.ecg")
                     .foregroundColor(.red)
                 Text("PPG Channel Debug")
-                    .font(.headline)
+                    .font(designSystem.typography.headline)
                     .fontWeight(.bold)
                 Spacer()
                 Text("Last \(recentPPGData.count)")
-                    .font(.caption)
+                    .font(designSystem.typography.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("PPG Channel Debug, showing last \(recentPPGData.count) samples")
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Normalization Method")
-                        .font(.subheadline)
+                        .font(designSystem.typography.labelMedium)
                         .fontWeight(.medium)
 
                     Spacer()
@@ -699,13 +703,14 @@ struct PPGDebugCard: View {
                     }
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                .accessibilityLabel("Normalization method: \(normalizationMethod.rawValue)")
                 .onChange(of: normalizationMethod) { _, _ in
                     updateSegmentsIfNeeded()
                 }
 
                 Text(normalizationMethod == .none ? "Raw values only" :
                         "Use \(normalizationMethod.rawValue) normalization")
-                    .font(.caption2)
+                    .font(designSystem.typography.caption2)
                     .foregroundColor(.secondary)
             }
 
@@ -715,30 +720,32 @@ struct PPGDebugCard: View {
             HStack(spacing: 16) {
                 VStack {
                     Text("IR")
-                        .font(.caption2)
+                        .font(designSystem.typography.caption2)
                         .foregroundColor(.secondary)
                     Text("\(Int(recentPPGData.last?.ir ?? 0))")
-                        .font(.title2)
+                        .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
                 }
                 VStack {
                     Text("Red")
-                        .font(.caption2)
+                        .font(designSystem.typography.caption2)
                         .foregroundColor(.secondary)
                     Text("\(Int(recentPPGData.last?.red ?? 0))")
-                        .font(.title2)
+                        .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
                 }
                 VStack {
                     Text("Green")
-                        .font(.caption2)
+                        .font(designSystem.typography.caption2)
                         .foregroundColor(.secondary)
                     Text("\(Int(recentPPGData.last?.green ?? 0))")
-                        .font(.title2)
+                        .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
                 }
                 Spacer()
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("IR value: \(Int(recentPPGData.last?.ir ?? 0)), Red value: \(Int(recentPPGData.last?.red ?? 0)), Green value: \(Int(recentPPGData.last?.green ?? 0))")
 
             Divider()
 
@@ -756,6 +763,7 @@ struct PPGDebugCard: View {
             .frame(height: 160)
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
+            .accessibilityHidden(true)
 
             Divider()
 
@@ -766,35 +774,37 @@ struct PPGDebugCard: View {
                         .foregroundColor(ctx.state.color)
                     VStack(alignment: .leading) {
                         Text(ctx.state.rawValue)
-                            .font(.subheadline)
+                            .font(designSystem.typography.bodySmall)
                             .fontWeight(.semibold)
                         Text(String(format: "Confidence: %.2f", ctx.confidence))
-                            .font(.caption2)
+                            .font(designSystem.typography.caption2)
                             .foregroundColor(.secondary)
                     }
                     Spacer()
                     if ctx.shouldNormalize {
                         Text("Stable")
-                            .font(.caption)
+                            .font(designSystem.typography.caption)
                             .padding(6)
                             .background(Color.green.opacity(0.12))
-                            .cornerRadius(6)
+                            .cornerRadius(designSystem.cornerRadius.small)
                     } else {
                         Text("Unstable")
-                            .font(.caption)
+                            .font(designSystem.typography.caption)
                             .padding(6)
                             .background(Color.yellow.opacity(0.12))
-                            .cornerRadius(6)
+                            .cornerRadius(designSystem.cornerRadius.small)
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Device state: \(ctx.state.rawValue), confidence: \(String(format: "%.0f percent", ctx.confidence * 100)), \(ctx.shouldNormalize ? "stable" : "unstable")")
             } else {
                 Text("No device context available")
-                    .font(.caption2)
+                    .font(designSystem.typography.caption2)
                     .foregroundColor(.secondary)
             }
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.secondarySystemBackground)))
+        .background(RoundedRectangle(cornerRadius: designSystem.cornerRadius.medium).fill(designSystem.colors.backgroundSecondary))
         .onAppear {
             updateSegmentsIfNeeded()
         }

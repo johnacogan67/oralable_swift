@@ -110,6 +110,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     private var notificationEnableContinuation: CheckedContinuation<Void, Error>?
     private var connectionReadyContinuation: CheckedContinuation<Void, Never>?
     private var accelerometerNotificationContinuation: CheckedContinuation<Void, Error>?
+    private var writeCompletionContinuation: CheckedContinuation<Void, Error>?
     
     // MARK: - Frame Counter Tracking (Fix 9)
     
@@ -230,7 +231,13 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     func disconnect() {
         Logger.shared.info("[OralableDevice] 🔌 Disconnect requested")
         deviceInfo.connectionState = .disconnecting
-        
+
+        // Cancel any pending write continuation to avoid leaked continuations
+        if let continuation = writeCompletionContinuation {
+            writeCompletionContinuation = nil
+            continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        }
+
         // Reset state
         notificationReadiness = []
         lastPPGFrameCounter = nil
@@ -342,15 +349,18 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     func configurePPGLEDs() async throws {
         guard let peripheral = peripheral,
               let commandChar = commandCharacteristic else {
-            Logger.shared.warning("[OralableDevice] ⚠️ Cannot configure LEDs - command characteristic not found")
-            return
+            throw DeviceError.characteristicNotFound("Command characteristic not found")
         }
 
         Logger.shared.info("[OralableDevice] 💡 Configuring PPG LED amplitudes...")
-        
+
         // LED configuration command format depends on firmware
         let configCommand = Data([0x01, 0x00])
-        peripheral.writeValue(configCommand, for: commandChar, type: .withResponse)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.writeCompletionContinuation = continuation
+            peripheral.writeValue(configCommand, for: commandChar, type: .withResponse)
+        }
     }
 
     // MARK: - BLEDeviceProtocol - Reading Methods
@@ -371,7 +381,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
 
         let commandData = command.rawValue.data(using: .utf8) ?? Data()
-        peripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.writeCompletionContinuation = continuation
+            peripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+        }
     }
 
     func updateConfiguration(_ config: DeviceConfiguration) async throws {
@@ -819,6 +833,18 @@ extension OralableDevice: CBPeripheralDelegate {
                 break
             }
             Logger.shared.warning("[OralableDevice] ⚠️ Notifications disabled for \(charName)")
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            Logger.shared.error("[OralableDevice] ❌ Write failed for \(characteristic.uuid.uuidString.prefix(12)): \(error.localizedDescription)")
+            writeCompletionContinuation?.resume(throwing: error)
+            writeCompletionContinuation = nil
+        } else {
+            Logger.shared.debug("[OralableDevice] ✅ Write succeeded for \(characteristic.uuid.uuidString.prefix(12))")
+            writeCompletionContinuation?.resume()
+            writeCompletionContinuation = nil
         }
     }
 
