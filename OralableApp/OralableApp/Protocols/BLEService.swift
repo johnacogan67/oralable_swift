@@ -34,7 +34,7 @@ enum BLEConnectionState: String, Equatable {
 
 /// Events emitted by the BLE service
 enum BLEServiceEvent {
-    case deviceDiscovered(peripheral: CBPeripheral, name: String, rssi: Int)
+    case deviceDiscovered(peripheral: CBPeripheral, name: String, rssi: Int, advertisementData: [String: Any])
     case deviceConnected(peripheral: CBPeripheral)
     case deviceDisconnected(peripheral: CBPeripheral, error: Error?)
     case bluetoothStateChanged(state: CBManagerState)

@@ -52,9 +52,9 @@ struct ProfileView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: designSystem.spacing.xs) {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(designSystem.typography.headline)
                             Text("Back")
                         }
                         .foregroundColor(designSystem.colors.primaryBlack)
@@ -109,21 +109,21 @@ struct ProfileView: View {
         .overlay {
             if isDeleting {
                 ZStack {
-                    Color.black.opacity(0.4)
+                    designSystem.colors.primaryBlack.opacity(0.4)
                         .ignoresSafeArea()
 
-                    VStack(spacing: 16) {
+                    VStack(spacing: designSystem.spacing.md) {
                         ProgressView()
                             .scaleEffect(1.5)
-                            .tint(.white)
+                            .tint(designSystem.colors.primaryWhite)
 
                         Text("Deleting account...")
-                            .font(.headline)
-                            .foregroundColor(.white)
+                            .font(designSystem.typography.headline)
+                            .foregroundColor(designSystem.colors.primaryWhite)
                     }
-                    .padding(32)
-                    .background(Color(UIColor.systemGray5))
-                    .cornerRadius(16)
+                    .padding(designSystem.spacing.xl)
+                    .background(designSystem.colors.backgroundTertiary)
+                    .cornerRadius(designSystem.cornerRadius.xl)
                 }
             }
         }
@@ -167,7 +167,7 @@ struct ProfileView: View {
                     .frame(width: 100, height: 100)
                 
                 Image(systemName: "person.fill")
-                    .font(.system(size: 50))
+                    .font(designSystem.typography.h1)
                     .foregroundColor(designSystem.colors.textSecondary)
             }
             
@@ -308,9 +308,9 @@ struct ProfileView: View {
                     }) {
                         HStack {
                             Image(systemName: "trash")
-                                .foregroundColor(.red)
+                                .foregroundColor(designSystem.colors.error)
                             Text("Delete Account")
-                                .foregroundColor(.red)
+                                .foregroundColor(designSystem.colors.error)
                             Spacer()
                         }
                         .padding(designSystem.spacing.md)

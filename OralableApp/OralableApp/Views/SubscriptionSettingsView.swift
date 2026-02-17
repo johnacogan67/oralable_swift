@@ -10,6 +10,7 @@ import SwiftUI
 import AuthenticationServices
 
 struct SubscriptionSettingsView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var deviceManagerAdapter: DeviceManagerAdapter
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
     @Binding var selectedMode: HistoricalAppMode?
@@ -20,7 +21,7 @@ struct SubscriptionSettingsView: View {
     @State private var showLogs = false
     @State private var showSubscriptionInfo = false
     @State private var showAppleIDDebug = false
-    
+
     var body: some View {
         List {
             // Account Section
@@ -28,46 +29,46 @@ struct SubscriptionSettingsView: View {
                 HStack {
                     Image(systemName: "person.circle.fill")
                         .font(.title)
-                        .foregroundColor(.blue)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
+                        .foregroundColor(designSystem.colors.info)
+
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                         Text(authManager.userFullName ?? "User")
-                            .font(.headline)
+                            .font(designSystem.typography.headline)
                         if let email = authManager.userEmail {
                             Text(email)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(designSystem.typography.caption)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
                         Text("Apple ID")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption2)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
-                .padding(.vertical, 8)
-                
+                .padding(.vertical, designSystem.spacing.sm)
+
                 Button(action: { showSignOutAlert = true }) {
                     HStack {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                         Text("Sign Out")
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(designSystem.colors.error)
                 }
             }
-            
+
             // Subscription Section
             Section("Subscription") {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                         Text("Current Plan")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         HStack {
                             Text(subscriptionManager.currentTier.displayName)
-                                .font(.headline)
+                                .font(designSystem.typography.headline)
                             if subscriptionManager.currentTier == .premium {
                                 Image(systemName: "star.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.caption)
+                                    .foregroundColor(designSystem.colors.warning)
+                                    .font(designSystem.typography.caption)
                             }
                         }
                     }
@@ -76,18 +77,18 @@ struct SubscriptionSettingsView: View {
                         Button("Upgrade") {
                             showSubscriptionInfo = true
                         }
-                        .font(.subheadline)
+                        .font(designSystem.typography.bodySmall)
                     }
                 }
-                
+
                 Button(action: { showSubscriptionInfo = true }) {
                     HStack {
                         Image(systemName: "info.circle")
                         Text("View Plans")
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
             }
@@ -117,36 +118,36 @@ struct SubscriptionSettingsView: View {
                 HStack {
                     Text("Status")
                     Spacer()
-                    HStack(spacing: 6) {
+                    HStack(spacing: designSystem.spacing.xs + 2) {
                         Circle()
-                            .fill(deviceManagerAdapter.isConnected ? Color.green : Color.red)
+                            .fill(deviceManagerAdapter.isConnected ? designSystem.colors.success : designSystem.colors.error)
                             .frame(width: 8, height: 8)
                         Text(deviceManagerAdapter.isConnected ? "Connected" : "Disconnected")
-                            .foregroundColor(deviceManagerAdapter.isConnected ? .green : .red)
+                            .foregroundColor(deviceManagerAdapter.isConnected ? designSystem.colors.success : designSystem.colors.error)
                     }
                 }
-                
+
                 if deviceManagerAdapter.isConnected {
                     HStack {
                         Text("Device")
                         Spacer()
                         Text(deviceManagerAdapter.deviceName)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
-                    
+
                     HStack {
                         Text("Battery")
                         Spacer()
                         Text("\(Int(deviceManagerAdapter.batteryLevel))%")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
-                    
+
                     Button(action: { deviceManagerAdapter.disconnect() }) {
                         HStack {
                             Image(systemName: "link.slash")
                             Text("Disconnect")
                         }
-                        .foregroundColor(.orange)
+                        .foregroundColor(designSystem.colors.warning)
                     }
                 } else {
                     Button(action: {
@@ -172,46 +173,46 @@ struct SubscriptionSettingsView: View {
                         Text("View Logs")
                         Spacer()
                         Text("\(loggingService.recentLogs.count)")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                            .font(designSystem.typography.caption)
                         Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
-                
+
                 Button(action: { showAppleIDDebug = true }) {
                     HStack {
                         Image(systemName: "person.crop.rectangle.badge.plus")
                         Text("Apple ID Debug")
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
-                
+
                 Button(action: { loggingService.clearLogs() }) {
                     HStack {
                         Image(systemName: "trash")
                         Text("Clear Logs")
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(designSystem.colors.error)
                 }
             }
-            
+
             // App Mode Section
             Section("App Mode") {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                         Text("Current Mode")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Text("Subscription Mode")
-                            .font(.headline)
+                            .font(designSystem.typography.headline)
                     }
                 }
-                
+
                 Button(action: {
                     selectedMode = nil
                 }) {
@@ -220,19 +221,19 @@ struct SubscriptionSettingsView: View {
                         Text("Change Mode")
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
             }
-            
+
             // About Section
             Section("About") {
                 HStack {
                     Text("Version")
                     Spacer()
                     Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
                 
                 if deviceManagerAdapter.isConnected {
@@ -251,18 +252,18 @@ struct SubscriptionSettingsView: View {
                             Text("Device UUID")
                             Spacer()
                             Text(deviceUUID.uuidString)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(designSystem.typography.caption)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
                     }
                 }
-                
+
                 Link(destination: URL(string: "https://github.com/johna67/tgm_firmware")!) {
                     HStack {
                         Text("GitHub Repository")
                         Spacer()
                         Image(systemName: "arrow.up.forward.square")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
             }
@@ -292,15 +293,16 @@ struct SubscriptionSettingsView: View {
 // MARK: - Subscription Info View
 
 struct SubscriptionInfoView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Environment(\.dismiss) private var dismiss
     @StateObject private var subscriptionManager = SubscriptionManager()
     @State private var isUpgrading = false
     @State private var showSuccessAlert = false
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: designSystem.spacing.lg) {
                     headerSection
                     subscriptionTiersSection
                     footerSection
@@ -337,18 +339,18 @@ struct SubscriptionInfoView: View {
 
     @ViewBuilder
     private var headerSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: designSystem.spacing.sm) {
             Image(systemName: "star.circle.fill")
                 .font(.system(size: 60))
-                .foregroundColor(.orange)
+                .foregroundColor(designSystem.colors.warning)
 
             Text("Choose Your Plan")
-                .font(.largeTitle)
+                .font(designSystem.typography.largeTitle)
                 .fontWeight(.bold)
 
             Text("Unlock premium features and get the most out of your device")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }
@@ -357,7 +359,7 @@ struct SubscriptionInfoView: View {
 
     @ViewBuilder
     private var subscriptionTiersSection: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             // Basic Tier
             SubscriptionTierCard(
                 tier: .basic,
@@ -381,28 +383,28 @@ struct SubscriptionInfoView: View {
 
     @ViewBuilder
     private var footerSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             Text("All plans include:")
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
                 FeatureBullet(text: "Secure data encryption")
                 FeatureBullet(text: "Regular firmware updates")
                 FeatureBullet(text: "Customer support")
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, designSystem.spacing.xl)
         }
         .padding(.top)
     }
 
     @ViewBuilder
     private var loadingOverlay: some View {
-        Color.black.opacity(0.3)
+        designSystem.colors.primaryBlack.opacity(0.3)
             .ignoresSafeArea()
 
         ProgressView()
             .scaleEffect(1.5)
-            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+            .progressViewStyle(CircularProgressViewStyle(tint: designSystem.colors.primaryWhite))
     }
     
     private func upgradeToPremium() {
@@ -440,63 +442,64 @@ struct SubscriptionInfoView: View {
 // MARK: - Subscription Tier Card
 
 struct SubscriptionTierCard: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let tier: SubscriptionTier
     let isCurrentTier: Bool
     let action: () -> Void
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: designSystem.spacing.md) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                     Text(tier.displayName)
-                        .font(.title2)
+                        .font(designSystem.typography.h3)
                         .fontWeight(.bold)
-                    
+
                     if tier == .premium {
                         Text("$9.99/month")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.headline)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 if tier == .premium {
                     Image(systemName: "star.fill")
-                        .foregroundColor(.orange)
-                        .font(.title2)
+                        .foregroundColor(designSystem.colors.warning)
+                        .font(designSystem.typography.h3)
                 }
             }
-            
+
             Divider()
-            
-            VStack(alignment: .leading, spacing: 8) {
+
+            VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
                 ForEach(tier.features, id: \.self) { feature in
-                    HStack(alignment: .top, spacing: 8) {
+                    HStack(alignment: .top, spacing: designSystem.spacing.sm) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.body)
+                            .foregroundColor(designSystem.colors.success)
+                            .font(designSystem.typography.body)
                         Text(feature)
-                            .font(.subheadline)
+                            .font(designSystem.typography.bodySmall)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            
+
             if isCurrentTier {
                 HStack {
                     Spacer()
                     Text("Current Plan")
-                        .font(.subheadline)
+                        .font(designSystem.typography.bodySmall)
                         .fontWeight(.semibold)
-                        .foregroundColor(.green)
+                        .foregroundColor(designSystem.colors.success)
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(designSystem.colors.success)
                     Spacer()
                 }
-                .padding(.vertical, 12)
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(8)
+                .padding(.vertical, designSystem.spacing.buttonPadding)
+                .background(designSystem.colors.success.opacity(0.1))
+                .cornerRadius(designSystem.cornerRadius.medium)
             } else if tier == .premium {
                 Button(action: action) {
                     HStack {
@@ -505,21 +508,21 @@ struct SubscriptionTierCard: View {
                             .fontWeight(.semibold)
                         Spacer()
                     }
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .padding(.vertical, designSystem.spacing.buttonPadding)
+                    .background(designSystem.colors.info)
+                    .foregroundColor(designSystem.colors.primaryWhite)
+                    .cornerRadius(designSystem.cornerRadius.medium)
                 }
             }
         }
         .padding()
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isCurrentTier ? Color.green : Color.gray.opacity(0.3), lineWidth: isCurrentTier ? 2 : 1)
+            RoundedRectangle(cornerRadius: designSystem.cornerRadius.large)
+                .stroke(isCurrentTier ? designSystem.colors.success : designSystem.colors.gray400.opacity(0.3), lineWidth: isCurrentTier ? 2 : 1)
         )
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+            RoundedRectangle(cornerRadius: designSystem.cornerRadius.large)
+                .fill(designSystem.colors.backgroundPrimary)
         )
     }
 }
@@ -527,15 +530,16 @@ struct SubscriptionTierCard: View {
 // MARK: - Feature Bullet
 
 struct FeatureBullet: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let text: String
-    
+
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: designSystem.spacing.sm) {
             Image(systemName: "checkmark.circle")
-                .foregroundColor(.blue)
+                .foregroundColor(designSystem.colors.info)
             Text(text)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
         }
     }
 }
@@ -543,64 +547,65 @@ struct FeatureBullet: View {
 // MARK: - BLE Logs View
 
 struct BLELogsView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Environment(\.dismiss) private var dismiss
     let logs: [LogEntry]
     @State private var searchText = ""
-    
+
     var filteredLogs: [LogEntry] {
         if searchText.isEmpty {
             return logs
         }
         return logs.filter { $0.message.localizedCaseInsensitiveContains(searchText) }
     }
-    
+
     var body: some View {
         NavigationStack {
             Group {
                 if filteredLogs.isEmpty {
-                    VStack(spacing: 16) {
+                    VStack(spacing: designSystem.spacing.md) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.system(size: 50))
-                            .foregroundColor(.secondary)
-                        
+                            .foregroundColor(designSystem.colors.textSecondary)
+
                         Text("No Logs")
-                            .font(.headline)
-                        
+                            .font(designSystem.typography.headline)
+
                         Text(searchText.isEmpty ? "No logs available" : "No logs matching '\(searchText)'")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.bodySmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 } else {
                     List {
                         ForEach(Array(filteredLogs.enumerated().reversed()), id: \.offset) { index, log in
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                                 HStack {
                                     Image(systemName: log.level.icon)
                                         .foregroundColor(log.level.color)
-                                        .font(.caption)
-                                    
+                                        .font(designSystem.typography.caption)
+
                                     Text(log.category)
                                         .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(designSystem.colors.textSecondary)
                                 }
-                                
+
                                 Text(log.message)
                                     .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.primary)
-                                
+                                    .foregroundColor(designSystem.colors.textPrimary)
+
                                 HStack {
                                     Text("Entry #\(filteredLogs.count - index)")
                                         .font(.system(.caption2, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                    
+                                        .foregroundColor(designSystem.colors.textSecondary)
+
                                     Spacer()
-                                    
+
                                     Text(log.timestamp, style: .time)
                                         .font(.system(.caption2, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(designSystem.colors.textSecondary)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, designSystem.spacing.xs)
                         }
                     }
                     .listStyle(.plain)

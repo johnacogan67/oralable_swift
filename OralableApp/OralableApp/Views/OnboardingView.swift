@@ -64,9 +64,9 @@ struct OnboardingView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .padding(.top, 60)
-                .padding(.bottom, 40)
+                .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.xl))
+                .padding(.top, designSystem.spacing.xxl + designSystem.spacing.buttonPadding)
+                .padding(.bottom, designSystem.spacing.xl + designSystem.spacing.sm)
 
             // Paging content
             TabView(selection: $currentPage) {
@@ -92,17 +92,17 @@ struct OnboardingView: View {
             )
             .signInWithAppleButtonStyle(.black)
             .frame(height: 50)
-            .cornerRadius(12)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 20)
+            .cornerRadius(designSystem.cornerRadius.large)
+            .padding(.horizontal, designSystem.spacing.lg)
+            .padding(.bottom, designSystem.spacing.screenPadding)
 
             // Footer
-            VStack(spacing: 8) {
+            VStack(spacing: designSystem.spacing.sm) {
                 Text("Requires Oralable device")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textTertiary)
 
-                HStack(spacing: 12) {
+                HStack(spacing: designSystem.spacing.buttonPadding) {
                     Link("Privacy Policy", destination: URL(string: "https://oralable.com/privacy")!)
                     Text("•")
                     Link("Terms of Service", destination: URL(string: "https://oralable.com/terms")!)
@@ -110,7 +110,7 @@ struct OnboardingView: View {
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textTertiary)
             }
-            .padding(.bottom, 40)
+            .padding(.bottom, designSystem.spacing.xl + designSystem.spacing.sm)
         }
     }
 
@@ -140,13 +140,13 @@ struct OnboardingPageView: View {
     let page: OnboardingPage
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: designSystem.spacing.lg) {
             // Show tagline OR icon (tagline takes precedence)
             if let tagline = page.tagline {
                 Text(tagline)
-                    .font(.title2)
+                    .font(designSystem.typography.h3)
                     .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
                     .italic()
                     .frame(height: 80)  // Match icon height for consistency
             } else if let icon = page.icon {
@@ -164,7 +164,7 @@ struct OnboardingPageView: View {
                 .font(designSystem.typography.body)
                 .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .padding(.horizontal, designSystem.spacing.xl + designSystem.spacing.sm)
         }
     }
 }

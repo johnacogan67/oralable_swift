@@ -113,7 +113,7 @@ struct SubscriptionTierSelectionView: View {
 
                 if subscriptionManager.isPaidSubscriber {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(designSystem.colors.success)
                 }
 
                 Spacer()
@@ -291,10 +291,10 @@ struct SubscriptionPlanCard: View {
                     if isRecommended {
                         Text("Best Value")
                             .font(designSystem.typography.caption)
-                            .foregroundColor(.white)
+                            .foregroundColor(designSystem.colors.primaryWhite)
                             .padding(.horizontal, designSystem.spacing.sm)
-                            .padding(.vertical, 4)
-                            .background(Color.orange)
+                            .padding(.vertical, designSystem.spacing.xs)
+                            .background(designSystem.colors.warning)
                             .cornerRadius(designSystem.cornerRadius.sm)
                     }
                 }
@@ -333,12 +333,12 @@ struct SubscriptionPlanCard: View {
 
                     Spacer()
                 }
-                .foregroundColor(.white)
+                .foregroundColor(designSystem.colors.primaryWhite)
                 .padding(.vertical, designSystem.spacing.sm)
                 .background(
                     isRecommended ?
                         LinearGradient(
-                            colors: [.orange, .pink],
+                            colors: [designSystem.colors.warning, .pink],
                             startPoint: .leading,
                             endPoint: .trailing
                         ) :
@@ -356,7 +356,7 @@ struct SubscriptionPlanCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: designSystem.cornerRadius.md)
                     .stroke(
-                        isRecommended ? Color.orange : designSystem.colors.border,
+                        isRecommended ? designSystem.colors.warning : designSystem.colors.border,
                         lineWidth: isRecommended ? 2 : 1
                     )
             )
@@ -392,8 +392,8 @@ struct SubscriptionFeatureRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: designSystem.spacing.sm) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-                .font(.system(size: 20))
+                .foregroundColor(designSystem.colors.success)
+                .font(.system(size: designSystem.spacing.screenPadding))
 
             Text(feature)
                 .font(designSystem.typography.body)

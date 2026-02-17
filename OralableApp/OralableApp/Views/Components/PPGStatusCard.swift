@@ -11,6 +11,7 @@
 import SwiftUI
 
 struct PPGStatusCard: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let state: PositioningState
     let temperature: Double
     let isConnected: Bool
@@ -39,10 +40,10 @@ struct PPGStatusCard: View {
             // Bottom info bar
             bottomInfoBar
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.xl))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(.systemGray4), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: designSystem.cornerRadius.xl)
+                .stroke(designSystem.colors.gray400, lineWidth: 0.5)
         )
         .opacity(isConnected ? 1.0 : 0.5)
     }
@@ -50,7 +51,7 @@ struct PPGStatusCard: View {
     // MARK: - Main Status Area
 
     private var mainStatusArea: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             if isInCalibration {
                 // Calibration progress
                 calibrationView
@@ -60,38 +61,38 @@ struct PPGStatusCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
+        .padding(.vertical, designSystem.spacing.xxl)
         .background(state.backgroundColor)
     }
 
     private var calibrationView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             ProgressView(value: effectiveCalibrationProgress)
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .progressViewStyle(CircularProgressViewStyle(tint: designSystem.colors.primaryWhite))
                 .scaleEffect(1.5)
 
             Text(state.statusText)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(.white)
+                .font(designSystem.typography.displaySmall)
+                .foregroundColor(designSystem.colors.primaryWhite)
 
             Text(state.description)
-                .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.8))
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.primaryWhite.opacity(0.8))
         }
     }
 
     private var statusView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             Image(systemName: state.iconName)
                 .font(.system(size: 48, weight: .light))
                 .foregroundColor(state.textColor)
 
             Text(state.statusText)
-                .font(.system(size: 24, weight: .semibold))
+                .font(designSystem.typography.displaySmall)
                 .foregroundColor(state.textColor)
 
             Text(state.description)
-                .font(.system(size: 14))
+                .font(designSystem.typography.caption)
                 .foregroundColor(state.textColor.opacity(0.8))
         }
     }
@@ -103,29 +104,29 @@ struct PPGStatusCard: View {
             // Temperature
             Label {
                 Text(String(format: "%.1f°C", temperature))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .font(designSystem.typography.labelSmall)
             } icon: {
                 Image(systemName: "thermometer")
-                    .font(.system(size: 10))
+                    .font(designSystem.typography.caption2)
             }
-            .foregroundColor(.secondary)
+            .foregroundColor(designSystem.colors.textSecondary)
 
             Spacer()
 
             // Positioning indicator
             if temperature >= 32.0 {
                 Label("On Skin", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.green)
+                    .font(designSystem.typography.labelSmall)
+                    .foregroundColor(designSystem.colors.success)
             } else {
                 Label("Off Skin", systemImage: "xmark.circle.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.labelSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(.systemGray6))
+        .padding(.horizontal, designSystem.spacing.md)
+        .padding(.vertical, designSystem.spacing.buttonPadding)
+        .background(designSystem.colors.backgroundTertiary)
     }
 }
 

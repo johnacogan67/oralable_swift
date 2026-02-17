@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Tooltip Component
 struct HistoricalTooltip: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let metricType: MetricType
     let selected: SensorData
     let processed: HistoricalDataProcessor.ProcessedHistoricalData
@@ -38,21 +39,21 @@ struct HistoricalTooltip: View {
                 Text(timeFormatter.string(from: selected.timestamp))
                     .font(.caption2)
                     .fontWeight(.medium)
-                    .foregroundColor(.white)
+                    .foregroundColor(designSystem.colors.primaryWhite)
                 Spacer()
                 Image(systemName: metricType.icon)
                     .font(.caption2)
-                    .foregroundColor(.white)
+                    .foregroundColor(designSystem.colors.primaryWhite)
             }
 
             Text(valueText)
                 .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(.white)
+                .foregroundColor(designSystem.colors.primaryWhite)
         }
-        .padding(8)
+        .padding(designSystem.spacing.sm)
         .background(metricType.color)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.small + 2))
         .overlay(
             Path { path in
                 let arrowWidth: CGFloat = 8

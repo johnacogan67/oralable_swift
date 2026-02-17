@@ -18,6 +18,7 @@
 import SwiftUI
 
 struct DeviceDetailView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Environment(\.dismiss) private var dismiss
     let device: DeviceRowItem
     let onForget: () -> Void
@@ -32,10 +33,10 @@ struct DeviceDetailView: View {
                 Section {
                     HStack {
                         Text("Name")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Spacer()
                         Text(device.name)
-                            .foregroundColor(.primary)
+                            .foregroundColor(designSystem.colors.textPrimary)
                     }
                 }
 
@@ -43,10 +44,10 @@ struct DeviceDetailView: View {
                 Section {
                     HStack {
                         Text("Status")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Spacer()
                         Text(device.isConnected ? "Connected" : "Not Connected")
-                            .foregroundColor(device.isConnected ? .blue : .secondary)
+                            .foregroundColor(device.isConnected ? designSystem.colors.info : designSystem.colors.textSecondary)
                     }
                 }
 
@@ -56,7 +57,7 @@ struct DeviceDetailView: View {
                         showingForgetAlert = true
                     }) {
                         Text("Forget This Device")
-                            .foregroundColor(.blue)
+                            .foregroundColor(designSystem.colors.info)
                     }
                 }
 
@@ -66,7 +67,7 @@ struct DeviceDetailView: View {
                             onDisconnect()
                         }) {
                             Text("Disconnect")
-                                .foregroundColor(.red)
+                                .foregroundColor(designSystem.colors.error)
                         }
                     }
                 }
@@ -77,9 +78,9 @@ struct DeviceDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: designSystem.spacing.xs) {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(designSystem.typography.headline)
                             Text("Back")
                         }
                     }

@@ -3,6 +3,7 @@ import Charts
 
 // MARK: - Enhanced Historical Chart Component
 struct HistoricalChartView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let metricType: MetricType
     let timeRange: TimeRange
     @Binding var selectedDataPoint: SensorData?
@@ -89,6 +90,19 @@ struct HistoricalChartView: View {
         "No data available for the selected period"
     }
 
+    /// Accessibility summary describing the chart content for VoiceOver users
+    private var chartAccessibilitySummary: String {
+        guard let processed = processed, !chartPoints.isEmpty else {
+            return "\(metricType.title) chart. No data available for the selected period."
+        }
+        let stats = processed.statistics
+        let sampleCount = stats.sampleCount
+        let avg = String(format: "%.0f", stats.average)
+        let min = String(format: "%.0f", stats.minimum)
+        let max = String(format: "%.0f", stats.maximum)
+        return "\(metricType.title) chart with \(sampleCount) data points. Average: \(avg), minimum: \(min), maximum: \(max). Time range: \(timeRange.rawValue)."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -98,29 +112,32 @@ struct HistoricalChartView: View {
                         .fontWeight(.bold)
 
                     if let processed {
-                        Text("\(processed.statistics.sampleCount) samples • \(processed.processingMethod) processing")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        Text("\(processed.statistics.sampleCount) samples \u{2022} \(processed.processingMethod) processing")
+                            .font(designSystem.typography.caption2)
+                            .foregroundColor(designSystem.colors.textSecondary)
                             .opacity(0.7)
                     }
                 }
                 Spacer()
             }
+            .accessibilityElement(children: .combine)
 
             if chartPoints.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.xyaxis.line")
                         .font(.system(size: 40))
-                        .foregroundColor(.gray)
+                        .foregroundColor(designSystem.colors.gray400)
                     Text("No data available")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text(emptyStateMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(metricType.title) chart. No data available for the selected period.")
             } else {
                 Chart {
                     ForEach(Array(chartPoints.enumerated()), id: \.offset) { _, point in
@@ -187,6 +204,8 @@ struct HistoricalChartView: View {
                         }
                     }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(chartAccessibilitySummary)
             }
 
             if let selected = selectedDataPoint, let processed {
@@ -198,14 +217,14 @@ struct HistoricalChartView: View {
             }
 
             Text("Context is key to getting a better understanding of your \(metricType.title).")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.top, 8)
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
+                .padding(.top, designSystem.spacing.sm)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(radius: 1)
+        .background(designSystem.colors.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.large))
+        .designShadow(.small)
     }
 
     private func closestPoint(to time: Date) -> (timestamp: Date, value: Double)? {

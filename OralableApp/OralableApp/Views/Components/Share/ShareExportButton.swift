@@ -20,7 +20,7 @@ struct ShareExportButton: View {
             HStack(spacing: designSystem.spacing.sm) {
                 if isExporting {
                     ProgressView()
-                        .tint(.white)
+                        .tint(designSystem.colors.primaryWhite)
                 } else {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: DesignSystem.Sizing.Icon.md))
@@ -29,18 +29,18 @@ struct ShareExportButton: View {
                 Text(isExporting ? "Exporting..." : "Export Data as CSV")
                     .font(designSystem.typography.buttonMedium)
             }
-            .foregroundColor(.white)
+            .foregroundColor(designSystem.colors.primaryWhite)
             .frame(maxWidth: .infinity)
             .padding(.vertical, designSystem.spacing.md)
             .background(
                 hasData ?
                     LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        colors: [designSystem.colors.info, designSystem.colors.info.opacity(0.8)],
                         startPoint: .leading,
                         endPoint: .trailing
                     ) :
                     LinearGradient(
-                        colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.2)],
+                        colors: [designSystem.colors.gray400.opacity(0.3), designSystem.colors.gray400.opacity(0.2)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

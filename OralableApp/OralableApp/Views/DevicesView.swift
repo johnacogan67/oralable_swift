@@ -130,7 +130,7 @@ struct DevicesView: View {
 
             if rememberedDevices.isEmpty {
                 Text("No saved devices")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             } else {
                 ForEach(rememberedDevices) { device in
                     DeviceRow(
@@ -171,20 +171,20 @@ struct DevicesView: View {
                 if !deviceManager.isBluetoothReady {
                     HStack {
                         Image(systemName: "antenna.radiowaves.left.and.right.slash")
-                            .foregroundColor(.orange)
+                            .foregroundColor(designSystem.colors.warning)
                         Text(bluetoothStateMessage)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 } else if isScanning {
                     HStack {
                         Text("Searching...")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Spacer()
                         ProgressView()
                     }
                 } else {
                     Text("No devices found")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             } else {
                 ForEach(discoveredDevices, id: \.peripheralIdentifier) { device in
@@ -379,13 +379,13 @@ struct DeviceRow: View {
         HStack {
             Text(name)
                 .font(designSystem.typography.body)
-                .foregroundColor(.primary)
+                .foregroundColor(designSystem.colors.textPrimary)
                 .lineLimit(1)
 
             Spacer()
 
             // Status indicator with color
-            HStack(spacing: 6) {
+            HStack(spacing: designSystem.spacing.xs + 2) {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
@@ -399,7 +399,7 @@ struct DeviceRow: View {
                 Button(action: onInfoTap) {
                     Image(systemName: "info.circle")
                         .font(designSystem.typography.h3)
-                        .foregroundColor(.blue)
+                        .foregroundColor(designSystem.colors.info)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .accessibilityLabel("Device info for \(name)")
@@ -445,24 +445,24 @@ struct DeviceRow: View {
     private var statusColor: Color {
         switch readinessState {
         case .disconnected, .failed:
-            return .gray
+            return designSystem.colors.gray400
         case .connecting, .connected, .discoveringServices, .servicesDiscovered,
              .discoveringCharacteristics, .characteristicsDiscovered, .enablingNotifications:
-            return .orange
+            return designSystem.colors.warning
         case .ready:
-            return .green
+            return designSystem.colors.success
         }
     }
-    
+
     private var statusTextColor: Color {
         switch readinessState {
         case .disconnected, .failed:
-            return .secondary
+            return designSystem.colors.textSecondary
         case .connecting, .connected, .discoveringServices, .servicesDiscovered,
              .discoveringCharacteristics, .characteristicsDiscovered, .enablingNotifications:
-            return .orange
+            return designSystem.colors.warning
         case .ready:
-            return .green
+            return designSystem.colors.success
         }
     }
 }

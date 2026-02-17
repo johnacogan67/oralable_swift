@@ -17,6 +17,7 @@ import SwiftUI
 import OralableCore
 
 struct SimplifiedDashboardView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var viewModel: DashboardViewModel
 
     // Computed positioning state
@@ -39,7 +40,7 @@ struct SimplifiedDashboardView: View {
 
                 // Main content
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: designSystem.spacing.lg) {
                         // Connection prompt (if not connected)
                         if !viewModel.isConnected {
                             connectionPrompt
@@ -60,9 +61,9 @@ struct SimplifiedDashboardView: View {
                         // Recording state indicator (automatic recording)
                         recordingStateIndicator
                     }
-                    .padding(20)
+                    .padding(designSystem.spacing.screenPadding)
                 }
-                .background(Color(.systemBackground))
+                .background(designSystem.colors.backgroundPrimary)
             }
             .navigationBarHidden(true)
         }
@@ -75,12 +76,12 @@ struct SimplifiedDashboardView: View {
             // Device name or connection status
             if viewModel.isConnected {
                 Text(viewModel.deviceName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
+                    .font(designSystem.typography.labelMedium)
+                    .foregroundColor(designSystem.colors.textPrimary)
             } else {
                 Text("Not Connected")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.labelMedium)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             Spacer()
@@ -93,68 +94,68 @@ struct SimplifiedDashboardView: View {
                 )
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(Color(.systemBackground))
+        .padding(.horizontal, designSystem.spacing.screenPadding)
+        .padding(.vertical, designSystem.spacing.buttonPadding)
+        .background(designSystem.colors.backgroundPrimary)
     }
 
     // MARK: - Connection Prompt
 
     private var connectionPrompt: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 32))
-                .foregroundColor(.secondary)
+                .foregroundColor(designSystem.colors.textSecondary)
 
             Text("Connect to start monitoring")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.labelMedium)
+                .foregroundColor(designSystem.colors.textSecondary)
 
             Button(action: { viewModel.startScanning() }) {
                 Text("Scan for Devices")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 10)
-                    .background(Color.black)
-                    .cornerRadius(20)
+                    .font(designSystem.typography.captionBold)
+                    .foregroundColor(designSystem.colors.primaryWhite)
+                    .padding(.horizontal, designSystem.spacing.lg)
+                    .padding(.vertical, designSystem.spacing.sm + 2)
+                    .background(designSystem.colors.primaryBlack)
+                    .cornerRadius(designSystem.cornerRadius.xl)
             }
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, designSystem.spacing.lg)
     }
 
     // MARK: - Event Summary
 
     private var eventSummary: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                 Text("State Transitions")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.labelSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
 
                 Text("\(viewModel.eventCount)")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(designSystem.colors.textPrimary)
             }
 
             Spacer()
 
             // Duration
             if viewModel.isRecording {
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: designSystem.spacing.xs) {
                     Text("Duration")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.labelSmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
 
                     Text(viewModel.formattedDuration)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .font(designSystem.typography.labelMedium)
+                        .foregroundColor(designSystem.colors.textPrimary)
                 }
             }
         }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundTertiary)
+        .cornerRadius(designSystem.cornerRadius.large)
     }
 
     // MARK: - Recording State Indicator (Automatic Recording)
@@ -162,33 +163,33 @@ struct SimplifiedDashboardView: View {
     private var recordingStateIndicator: some View {
         Group {
             if viewModel.isConnected {
-                HStack(spacing: 12) {
+                HStack(spacing: designSystem.spacing.buttonPadding) {
                     // State color indicator
                     Circle()
                         .fill(stateColor)
                         .frame(width: 12, height: 12)
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                         Text("Recording: \(stateDisplayName)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.primary)
+                            .font(designSystem.typography.labelMedium)
+                            .foregroundColor(designSystem.colors.textPrimary)
 
                         Text("Automatic • \(viewModel.eventCount) events")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
 
                     Spacer()
 
                     if viewModel.isRecording {
                         Text(viewModel.formattedDuration)
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.labelMedium)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .padding(designSystem.spacing.md)
+                .background(designSystem.colors.backgroundTertiary)
+                .cornerRadius(designSystem.cornerRadius.large)
             }
         }
     }
@@ -196,11 +197,11 @@ struct SimplifiedDashboardView: View {
     private var stateColor: Color {
         switch viewModel.currentRecordingState {
         case .dataStreaming:
-            return .black
+            return designSystem.colors.primaryBlack
         case .positioned:
-            return .green
+            return designSystem.colors.success
         case .activity:
-            return .red
+            return designSystem.colors.error
         }
     }
 

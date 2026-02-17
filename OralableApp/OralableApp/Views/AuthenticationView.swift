@@ -28,10 +28,12 @@ struct AuthenticationView: View {
     @State private var showingProfileDetails = false
     @State private var showingSignOutConfirmation = false
 
-    init(sharedAuthManager: AuthenticationManager) {
-        // Use the SHARED authManager, not a new instance
+    init(sharedAuthManager: AuthenticationManager,
+         subscriptionManager: SubscriptionManager) {
+        // Use the SHARED authManager and subscriptionManager, not new instances
         _viewModel = StateObject(wrappedValue: AuthenticationViewModel(
-            authenticationManager: sharedAuthManager
+            authenticationManager: sharedAuthManager,
+            subscriptionManager: subscriptionManager
         ))
     }
     
@@ -61,9 +63,9 @@ struct AuthenticationView: View {
                                 Text("Continue to Dashboard")
                             }
                             .font(designSystem.typography.buttonLarge)
-                            .foregroundColor(.white)
+                            .foregroundColor(designSystem.colors.primaryWhite)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                            .padding(.vertical, designSystem.spacing.md)
                             .background(designSystem.colors.primaryBlack)
                             .cornerRadius(designSystem.cornerRadius.md)
                         }
@@ -121,7 +123,7 @@ struct AuthenticationView: View {
             // Avatar
             ZStack {
                 Circle()
-                    .fill(viewModel.isAuthenticated ? Color.green : designSystem.colors.backgroundTertiary)
+                    .fill(viewModel.isAuthenticated ? designSystem.colors.success : designSystem.colors.backgroundTertiary)
                     .frame(width: 100, height: 100)
                 
                 if viewModel.isAuthenticated {
@@ -130,7 +132,7 @@ struct AuthenticationView: View {
                         .foregroundColor(designSystem.colors.primaryWhite)
                 } else {
                     Image(systemName: "person.crop.circle")
-                        .font(.system(size: 50))
+                        .font(designSystem.typography.h1)
                         .foregroundColor(designSystem.colors.textTertiary)
                 }
             }
@@ -154,7 +156,7 @@ struct AuthenticationView: View {
             VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                 HStack {
                     Circle()
-                        .fill(viewModel.isAuthenticated ? Color.green : Color.gray)
+                        .fill(viewModel.isAuthenticated ? designSystem.colors.success : designSystem.colors.gray400)
                         .frame(width: 12, height: 12)
                     
                     Text(viewModel.isAuthenticated ? "Signed In" : "Not Signed In")
@@ -358,10 +360,10 @@ struct AuthenticationView: View {
                         Image(systemName: "trash")
                         Text("Reset Apple ID Auth")
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(designSystem.colors.error)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(designSystem.spacing.sm)
-                    .background(Color.red.opacity(0.1))
+                    .background(designSystem.colors.error.opacity(0.1))
                     .cornerRadius(designSystem.cornerRadius.sm)
                 }
                 
@@ -506,27 +508,28 @@ struct ProfileDetailView: View {
 // MARK: - Circular Progress View
 
 struct CircularProgressView<Content: View>: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let progress: Double
     let lineWidth: CGFloat
     let size: CGFloat
     @ViewBuilder let content: () -> Content
-    
+
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: lineWidth)
+                .stroke(designSystem.colors.gray300.opacity(0.2), lineWidth: lineWidth)
                 .frame(width: size, height: size)
-            
+
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    Color.green,
+                    designSystem.colors.success,
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .frame(width: size, height: size)
                 .rotationEffect(.degrees(-90))
                 .animation(.easeInOut, value: progress)
-            
+
             content()
         }
     }
@@ -536,7 +539,10 @@ struct CircularProgressView<Content: View>: View {
 
 struct AuthenticationView_Previews: PreviewProvider {
     static var previews: some View {
-        AuthenticationView(sharedAuthManager: AuthenticationManager())
-            .environmentObject(DesignSystem())
+        AuthenticationView(
+            sharedAuthManager: AuthenticationManager(),
+            subscriptionManager: SubscriptionManager()
+        )
+        .environmentObject(DesignSystem())
     }
 }

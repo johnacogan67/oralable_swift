@@ -9,6 +9,7 @@ import SwiftUI
 import OralableCore
 
 struct BatteryDisplayView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let millivolts: Int32
     let showVoltage: Bool
 
@@ -26,25 +27,25 @@ struct BatteryDisplayView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
             HStack {
                 Image(systemName: status.systemImageName)
                     .foregroundColor(status.color)
-                    .font(.title2)
+                    .font(designSystem.typography.h3)
 
                 Text("Battery")
-                    .font(.headline)
+                    .font(designSystem.typography.headline)
 
                 Spacer()
 
                 Text(status.rawValue)
-                    .font(.caption)
+                    .font(designSystem.typography.captionSmall)
                     .fontWeight(.medium)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, designSystem.spacing.sm)
+                    .padding(.vertical, designSystem.spacing.xs)
                     .background(status.color.opacity(0.2))
                     .foregroundColor(status.color)
-                    .cornerRadius(8)
+                    .cornerRadius(designSystem.cornerRadius.medium)
             }
 
             BatteryBarView(percentage: percentage, status: status)
@@ -57,12 +58,12 @@ struct BatteryDisplayView: View {
                 Spacer()
 
                 if showVoltage {
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: designSystem.spacing.xxs) {
                         Text(BatteryConversion.formatVoltage(millivolts: millivolts))
                             .font(.system(.body, design: .monospaced))
                         Text("voltage")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption2)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
             }
@@ -70,40 +71,42 @@ struct BatteryDisplayView: View {
             if BatteryConversion.needsCharging(percentage: percentage) {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(BatteryConversion.isCritical(percentage: percentage) ? .red : .orange)
+                        .foregroundColor(BatteryConversion.isCritical(percentage: percentage) ? designSystem.colors.error : designSystem.colors.warning)
                     Text(BatteryConversion.isCritical(percentage: percentage) ? "Battery critically low!" : "Battery low - charge soon")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.large)
+        .designShadow(.medium)
     }
 }
 
 struct BatteryBarView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let percentage: Double
     let status: BatteryStatus
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.gray.opacity(0.2))
+                RoundedRectangle(cornerRadius: designSystem.cornerRadius.sm)
+                    .fill(designSystem.colors.gray300.opacity(0.2))
 
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: designSystem.cornerRadius.sm)
                     .fill(status.color)
                     .frame(width: max(0, geometry.size.width * CGFloat(percentage / 100.0)))
             }
         }
-        .frame(height: 24)
+        .frame(height: designSystem.spacing.lg)
     }
 }
 
 struct BatteryCompactView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let millivolts: Int32
 
     private var percentage: Double {
@@ -127,6 +130,7 @@ struct BatteryCompactView: View {
 }
 
 struct BatteryCardView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let millivolts: Int32
     let isCharging: Bool
 
@@ -144,7 +148,7 @@ struct BatteryCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: designSystem.spacing.md) {
             HStack {
                 ZStack {
                     Circle()
@@ -155,23 +159,23 @@ struct BatteryCardView: View {
                         .foregroundColor(status.color)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("Battery")
-                        .font(.headline)
+                        .font(designSystem.typography.headline)
                     Text(isCharging ? "Charging" : status.rawValue)
-                        .font(.caption)
-                        .foregroundColor(isCharging ? .green : status.color)
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(isCharging ? designSystem.colors.success : status.color)
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: designSystem.spacing.xxs) {
                     Text(String(format: "%.0f", percentage))
                         .font(.system(.title, design: .rounded))
                         .fontWeight(.bold)
                     Text("%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
 
@@ -179,17 +183,17 @@ struct BatteryCardView: View {
 
             HStack {
                 Text("Voltage:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
                 Spacer()
                 Text(BatteryConversion.formatVoltage(millivolts: millivolts))
                     .font(.system(.caption, design: .monospaced))
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.xl)
+        .designShadow(.medium)
     }
 }
 

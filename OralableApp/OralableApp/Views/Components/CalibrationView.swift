@@ -11,10 +11,11 @@ import SwiftUI
 import OralableCore
 
 struct CalibrationView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var session: EventRecordingSession
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             switch session.sessionState {
             case .idle:
                 idleView
@@ -32,123 +33,123 @@ struct CalibrationView: View {
                 stoppedView
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundTertiary)
+        .cornerRadius(designSystem.cornerRadius.large)
     }
 
     // MARK: - State Views
 
     private var idleView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: "waveform.path.ecg")
                 .font(.system(size: 40))
-                .foregroundColor(.blue)
+                .foregroundColor(designSystem.colors.info)
 
             Text("Calibration Required")
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
             Text("Keep your jaw relaxed and remain still for 15 seconds to establish your baseline.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button(action: { session.startCalibration() }) {
                 Label("Start Calibration", systemImage: "play.fill")
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(designSystem.typography.headline)
+                    .foregroundColor(designSystem.colors.primaryWhite)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
+                    .padding(designSystem.spacing.md)
+                    .background(designSystem.colors.info)
+                    .cornerRadius(designSystem.cornerRadius.medium)
             }
         }
     }
 
     private func calibratingView(progress: Double) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             ZStack {
                 Circle()
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                    .stroke(designSystem.colors.gray300.opacity(0.3), lineWidth: 8)
                     .frame(width: 80, height: 80)
 
                 Circle()
                     .trim(from: 0, to: progress)
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(designSystem.colors.info, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 0.5), value: progress)
 
                 Text("\(Int(progress * 100))%")
-                    .font(.title2.bold())
+                    .font(designSystem.typography.h3)
             }
 
             Text("Calibrating...")
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
             Text("Please remain still with jaw relaxed")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
 
             Button(action: {
                 session.eventDetector.cancelCalibration()
                 session.reset()
             }) {
                 Text("Cancel")
-                    .foregroundColor(.red)
+                    .foregroundColor(designSystem.colors.error)
             }
         }
     }
 
     private var calibratedView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 40))
-                .foregroundColor(.green)
+                .foregroundColor(designSystem.colors.success)
 
             Text("Calibration Complete")
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
             HStack {
                 Text("Baseline:")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
                 Text("\(Int(session.eventDetector.baseline))")
                     .font(.system(.body, design: .monospaced))
             }
 
             HStack {
                 Text("Threshold:")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
                 Text(session.eventDetector.effectiveThreshold)
                     .font(.system(.body, design: .monospaced))
             }
 
             Button(action: { session.startRecording() }) {
                 Label("Start Recording", systemImage: "record.circle")
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(designSystem.typography.headline)
+                    .foregroundColor(designSystem.colors.primaryWhite)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .cornerRadius(10)
+                    .padding(designSystem.spacing.md)
+                    .background(designSystem.colors.error)
+                    .cornerRadius(designSystem.cornerRadius.medium)
             }
 
             Button(action: { session.startCalibration() }) {
                 Text("Recalibrate")
-                    .foregroundColor(.blue)
+                    .foregroundColor(designSystem.colors.info)
             }
         }
     }
 
     private var recordingView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             HStack {
                 Circle()
-                    .fill(Color.red)
+                    .fill(designSystem.colors.error)
                     .frame(width: 12, height: 12)
 
                 Text("Recording")
-                    .font(.headline)
+                    .font(designSystem.typography.headline)
 
                 Spacer()
 
@@ -156,50 +157,50 @@ struct CalibrationView: View {
                     .font(.system(.title2, design: .monospaced))
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: designSystem.spacing.screenPadding) {
                 StatView(label: "Events", value: "\(session.eventCount)")
                 StatView(label: "Memory", value: session.summary.formattedMemory)
             }
 
             Button(action: { session.stopRecording() }) {
                 Label("Stop Recording", systemImage: "stop.fill")
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(designSystem.typography.headline)
+                    .foregroundColor(designSystem.colors.primaryWhite)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .cornerRadius(10)
+                    .padding(designSystem.spacing.md)
+                    .background(designSystem.colors.error)
+                    .cornerRadius(designSystem.cornerRadius.medium)
             }
         }
     }
 
     private var stoppedView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 40))
-                .foregroundColor(.green)
+                .foregroundColor(designSystem.colors.success)
 
             Text("Recording Complete")
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
-            HStack(spacing: 20) {
+            HStack(spacing: designSystem.spacing.screenPadding) {
                 StatView(label: "Duration", value: session.summary.formattedDuration)
                 StatView(label: "Events", value: "\(session.eventCount)")
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: designSystem.spacing.screenPadding) {
                 StatView(label: "Samples", value: "\(session.samplesProcessed)")
                 StatView(label: "Memory", value: session.summary.formattedMemory)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: designSystem.spacing.buttonPadding) {
                 Button(action: { session.startCalibration() }) {
                     Label("New Recording", systemImage: "record.circle")
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .padding(designSystem.spacing.md)
+                        .background(designSystem.colors.info)
+                        .foregroundColor(designSystem.colors.primaryWhite)
+                        .cornerRadius(designSystem.cornerRadius.medium)
                 }
             }
         }
@@ -209,21 +210,22 @@ struct CalibrationView: View {
 // MARK: - Stat View
 
 private struct StatView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let label: String
     let value: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: designSystem.spacing.xs) {
             Text(value)
                 .font(.system(.title3, design: .monospaced).bold())
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color(.systemGray5))
-        .cornerRadius(8)
+        .padding(.vertical, designSystem.spacing.sm)
+        .background(designSystem.colors.backgroundTertiary)
+        .cornerRadius(designSystem.cornerRadius.medium)
     }
 }
 

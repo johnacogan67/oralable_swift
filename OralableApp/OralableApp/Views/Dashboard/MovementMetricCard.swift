@@ -38,14 +38,14 @@ struct MovementMetricCard: View {
 
                 Text("Movement")
                     .font(designSystem.typography.captionBold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(designSystem.colors.textPrimary)
 
                 Spacer()
 
                 if showChevron {
                     Image(systemName: "chevron.right")
                         .font(designSystem.typography.buttonSmall)
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                        .foregroundColor(designSystem.colors.textTertiary)
                 }
             }
 
@@ -54,12 +54,12 @@ struct MovementMetricCard: View {
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
                     Text(value)
                         .font(designSystem.typography.displaySmall)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     if !unit.isEmpty {
                         Text(unit)
                             .font(designSystem.typography.body)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
 
                     // Status indicator (Active/Still/Not Connected)

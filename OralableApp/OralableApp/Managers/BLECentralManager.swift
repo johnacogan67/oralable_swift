@@ -19,7 +19,7 @@ final class BLECentralManager: NSObject, BLEService {
     // MARK: - Legacy Callbacks (for backward compatibility)
 
     /// Called when a peripheral is discovered
-    var onDeviceDiscovered: ((CBPeripheral, String, Int) -> Void)?
+    var onDeviceDiscovered: ((CBPeripheral, String, Int, [String: Any]) -> Void)?
 
     /// Called when a peripheral is connected
     var onDeviceConnected: ((CBPeripheral) -> Void)?
@@ -358,10 +358,10 @@ extension BLECentralManager: CBCentralManagerDelegate {
         }
 
         // Emit event via publisher (new)
-        eventSubject.send(.deviceDiscovered(peripheral: peripheral, name: name, rssi: RSSI.intValue))
+        eventSubject.send(.deviceDiscovered(peripheral: peripheral, name: name, rssi: RSSI.intValue, advertisementData: advertisementData))
 
         // Legacy callback (backward compatibility)
-        onDeviceDiscovered?(peripheral, name, RSSI.intValue)
+        onDeviceDiscovered?(peripheral, name, RSSI.intValue, advertisementData)
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {

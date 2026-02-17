@@ -19,14 +19,14 @@ struct ShareClearDataButton: View {
                 Text("Clear All Data")
                     .font(designSystem.typography.buttonMedium)
             }
-            .foregroundColor(hasData ? .red : designSystem.colors.textDisabled)
+            .foregroundColor(hasData ? designSystem.colors.error : designSystem.colors.textDisabled)
             .frame(maxWidth: .infinity)
             .padding(.vertical, designSystem.spacing.md)
-            .background(hasData ? Color.red.opacity(0.1) : designSystem.colors.backgroundTertiary)
+            .background(hasData ? designSystem.colors.error.opacity(0.1) : designSystem.colors.backgroundTertiary)
             .cornerRadius(designSystem.cornerRadius.lg)
             .overlay(
                 RoundedRectangle(cornerRadius: designSystem.cornerRadius.lg)
-                    .stroke(hasData ? Color.red.opacity(0.3) : designSystem.colors.border, lineWidth: 1)
+                    .stroke(hasData ? designSystem.colors.error.opacity(0.3) : designSystem.colors.border, lineWidth: 1)
             )
         }
         .disabled(!hasData)

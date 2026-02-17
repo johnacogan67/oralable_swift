@@ -3,12 +3,20 @@
 //  OralableApp
 //
 //  ViewModel for historical data processing and chart display.
+//  Acts as a coordinator that wires together specialized services.
 //
 //  Responsibilities:
-//  - Loads data from CSV export files
-//  - Processes data for selected time range
-//  - Calculates statistics (min, max, average)
-//  - Manages session playback mode
+//  - Coordinates between HistoricalSessionPlaybackService and HistoricalTimeRangeService
+//  - Manages Combine pipelines for reactive data flow
+//  - Provides a unified public API for views
+//
+//  Delegated Services:
+//  - HistoricalSessionPlaybackService: Session loading, playback state, session data points
+//  - HistoricalTimeRangeService: Time range navigation, offset, display text, formatting
+//
+//  Models (extracted):
+//  - HistoricalStatisticsCache: Pre-computed statistics for efficient rendering
+//  - ChartDataPoint: Simple chart data point struct
 //
 //  Time Ranges:
 //  - Minute: Last 60 seconds
@@ -24,94 +32,25 @@
 //
 //  Created: November 7, 2025
 //  Updated: December 7, 2025 - Added session playback support
+//  Updated: February 2026 - Extracted services for better separation of concerns
 //
 
 import Foundation
 import Combine
 
-/// Pre-computed statistics cache to avoid redundant compactMap/reduce on every view render
-struct HistoricalStatisticsCache {
-    var averageHeartRate: String = "--"
-    var averageSpO2: String = "--"
-    var averageTemperature: String = "--"
-    var averageBattery: String = "--"
-    var activeTime: String = "--"
-    var dataPointsCount: String = "--"
-    var totalGrindingEvents: String = "--"
-
-    /// Recompute all statistics from data points in a single pass
-    static func compute(
-        from points: [HistoricalDataPoint],
-        metrics: HistoricalMetrics?,
-        isSessionPlayback: Bool
-    ) -> HistoricalStatisticsCache {
-        var cache = HistoricalStatisticsCache()
-        guard !points.isEmpty else { return cache }
-
-        // Heart rate
-        let hrValues = points.compactMap { $0.averageHeartRate }
-        if !hrValues.isEmpty {
-            let avg = hrValues.reduce(0, +) / Double(hrValues.count)
-            cache.averageHeartRate = avg > 0 ? String(format: "%.0f", avg) : "--"
-        }
-
-        // SpO2
-        let spo2Values = points.compactMap { $0.averageSpO2 }
-        if !spo2Values.isEmpty {
-            let avg = spo2Values.reduce(0, +) / Double(spo2Values.count)
-            cache.averageSpO2 = avg > 0 ? String(format: "%.0f", avg) : "--"
-        }
-
-        // Temperature
-        if isSessionPlayback {
-            let temps = points.map { $0.averageTemperature }.filter { $0 > 0 }
-            if !temps.isEmpty {
-                cache.averageTemperature = String(format: "%.1f", temps.reduce(0, +) / Double(temps.count))
-            }
-        } else if let metrics = metrics {
-            cache.averageTemperature = String(format: "%.1f", metrics.avgTemperature)
-        }
-
-        // Battery
-        if isSessionPlayback {
-            let batteries = points.map { $0.averageBattery }.filter { $0 > 0 }
-            if !batteries.isEmpty {
-                cache.averageBattery = String(format: "%.0f", Double(batteries.reduce(0, +)) / Double(batteries.count))
-            }
-        } else if let metrics = metrics {
-            cache.averageBattery = String(format: "%.0f", metrics.avgBatteryLevel)
-        }
-
-        // Active time
-        let totalActivity = points.map { $0.movementIntensity }.reduce(0, +)
-        let hours = Int(totalActivity)
-        let minutes = Int((totalActivity - Double(hours)) * 60)
-        cache.activeTime = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-
-        // Data points count
-        if isSessionPlayback {
-            cache.dataPointsCount = "\(points.count)"
-        } else if let metrics = metrics {
-            cache.dataPointsCount = "\(metrics.dataPoints.count)"
-        }
-
-        // Grinding events
-        if isSessionPlayback {
-            let events = points.compactMap { $0.grindingEvents }.reduce(0, +)
-            cache.totalGrindingEvents = "\(events)"
-        } else if let metrics = metrics {
-            cache.totalGrindingEvents = "\(metrics.totalGrindingEvents)"
-        }
-
-        return cache
-    }
-}
-
 @MainActor
 class HistoricalViewModel: ObservableObject {
-    
+
+    // MARK: - Services
+
+    /// Session playback service managing loaded sessions and session data points
+    let sessionService: HistoricalSessionPlaybackService
+
+    /// Time range navigation and formatting service
+    let timeRangeService: HistoricalTimeRangeService
+
     // MARK: - Published Properties (Observable by View)
-    
+
     /// Selected time range for viewing data
     @Published var selectedTimeRange: TimeRange = .minute
 
@@ -121,10 +60,10 @@ class HistoricalViewModel: ObservableObject {
     @Published var dayMetrics: HistoricalMetrics?
     @Published var weekMetrics: HistoricalMetrics?
     @Published var monthMetrics: HistoricalMetrics?
-    
+
     /// Current metrics for selected range
     @Published var currentMetrics: HistoricalMetrics?
-    
+
     /// Cached data points (debounced / computed off-main then published on main)
     /// Use this in views instead of calling the heavy computed getter repeatedly
     @Published private(set) var cachedDataPoints: [HistoricalDataPoint] = []
@@ -134,45 +73,53 @@ class HistoricalViewModel: ObservableObject {
 
     /// Whether metrics are being updated
     @Published var isUpdating: Bool = false
-    
+
     /// Last update time
     @Published var lastUpdateTime: Date?
-    
+
     /// Whether to show detailed statistics
     @Published var showDetailedStats: Bool = false
-    
+
     /// Selected data point for detail view
     @Published var selectedDataPoint: HistoricalDataPoint?
-    
+
+    // MARK: - Pass-through Published Properties (from services)
+
     /// Current offset from present time (0 = current period, -1 = previous period, etc.)
-    @Published var timeRangeOffset: Int = 0
-    
-    // MARK: - Session Playback Properties
-    
+    /// Pass-through to timeRangeService
+    var timeRangeOffset: Int {
+        get { timeRangeService.timeRangeOffset }
+        set { timeRangeService.timeRangeOffset = newValue }
+    }
+
+    // MARK: - Session Playback Properties (pass-through to sessionService)
+
     /// The loaded recording session (nil = live mode)
-    @Published var loadedSession: RecordingSession?
-    
+    var loadedSession: RecordingSession? {
+        get { sessionService.loadedSession }
+        set { sessionService.loadedSession = newValue }
+    }
+
     /// Whether we're in session playback mode vs live mode
     var isSessionPlaybackMode: Bool {
-        return loadedSession != nil
+        return sessionService.isSessionPlaybackMode
     }
-    
+
     /// Session data points loaded from CSV file
-    @Published private(set) var sessionDataPoints: [HistoricalDataPoint] = []
-    
-    /// Metric type filter for session data (e.g., "EMG Activity", "Movement", "Temperature")
-    private var metricTypeFilter: String = "Movement"
-    
+    var sessionDataPoints: [HistoricalDataPoint] {
+        return sessionService.sessionDataPoints
+    }
+
     // MARK: - Private Properties
 
     private let historicalDataManager: HistoricalDataManagerProtocol
     private var cancellables = Set<AnyCancellable>()
-    
+
     // Internal cancellable for caching datapoints
     private var metricsCacheCancellable: AnyCancellable?
-    
+
     // MARK: - Computed Properties
-    
+
     /// Whether any metrics are available
     var hasAnyMetrics: Bool {
         if isSessionPlaybackMode {
@@ -180,7 +127,7 @@ class HistoricalViewModel: ObservableObject {
         }
         return hourMetrics != nil || dayMetrics != nil || weekMetrics != nil || monthMetrics != nil
     }
-    
+
     /// Whether current metrics are available
     var hasCurrentMetrics: Bool {
         if isSessionPlaybackMode {
@@ -188,15 +135,12 @@ class HistoricalViewModel: ObservableObject {
         }
         return currentMetrics != nil
     }
-    
+
     /// Whether the selected time range is the current period (today/this week/this month)
     var isCurrentTimeRange: Bool {
-        if isSessionPlaybackMode {
-            return true  // Session playback doesn't support time range navigation
-        }
-        return timeRangeOffset == 0
+        return timeRangeService.isCurrentTimeRange(isSessionPlaybackMode: isSessionPlaybackMode)
     }
-    
+
     /// Total samples for current range
     var totalSamples: Int {
         if isSessionPlaybackMode {
@@ -204,7 +148,7 @@ class HistoricalViewModel: ObservableObject {
         }
         return currentMetrics?.totalSamples ?? 0
     }
-    
+
     /// Data points for current range - returns session data or cached live data
     var dataPoints: [HistoricalDataPoint] {
         if isSessionPlaybackMode {
@@ -212,76 +156,25 @@ class HistoricalViewModel: ObservableObject {
         }
         return cachedDataPoints
     }
-    
+
     /// Time range display text
     var timeRangeText: String {
-        if isSessionPlaybackMode {
-            if let session = loadedSession {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .short
-                formatter.timeStyle = .short
-                return "Session: \(formatter.string(from: session.startTime))"
-            }
-            return "Session Playback"
-        }
-        
-        if timeRangeOffset == 0 {
-            switch selectedTimeRange {
-            case .minute: return "This Minute"
-            case .hour: return "This Hour"
-            case .day: return "Today"
-            case .week: return "This Week"
-            case .month: return "This Month"
-            }
-        } else if timeRangeOffset == -1 {
-            switch selectedTimeRange {
-            case .minute: return "Last Minute"
-            case .hour: return "Last Hour"
-            case .day: return "Yesterday"
-            case .week: return "Last Week"
-            case .month: return "Last Month"
-            }
-        } else {
-            let absoluteOffset = abs(timeRangeOffset)
-            switch selectedTimeRange {
-            case .minute: return "\(absoluteOffset) Minutes Ago"
-            case .hour: return "\(absoluteOffset) Hours Ago"
-            case .day: return "\(absoluteOffset) Days Ago"
-            case .week: return "\(absoluteOffset) Weeks Ago"
-            case .month: return "\(absoluteOffset) Months Ago"
-            }
-        }
+        return timeRangeService.timeRangeText(
+            selectedTimeRange: selectedTimeRange,
+            isSessionPlaybackMode: isSessionPlaybackMode,
+            loadedSession: loadedSession
+        )
     }
-    
+
     /// Date range text for display
     var dateRangeText: String {
-        if isSessionPlaybackMode {
-            guard let session = loadedSession else { return "No session" }
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            let start = formatter.string(from: session.startTime)
-            if let endTime = session.endTime {
-                let end = formatter.string(from: endTime)
-                return "\(start) - \(end)"
-            }
-            return "Started: \(start)"
-        }
-        
-        guard let metrics = currentMetrics else {
-            return "No data"
-        }
-        
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        
-        let start = formatter.string(from: metrics.startDate)
-        let end = formatter.string(from: metrics.endDate)
-        
-        return "\(start) - \(end)"
+        return timeRangeService.dateRangeText(
+            isSessionPlaybackMode: isSessionPlaybackMode,
+            loadedSession: loadedSession,
+            currentMetrics: currentMetrics
+        )
     }
-    
+
     // MARK: - Metric Text Properties (cached, recomputed when data changes)
 
     var averageHeartRateText: String { statisticsCache.averageHeartRate }
@@ -291,7 +184,7 @@ class HistoricalViewModel: ObservableObject {
     var activeTimeText: String { statisticsCache.activeTime }
     var dataPointsCountText: String { statisticsCache.dataPointsCount }
     var totalGrindingEventsText: String { statisticsCache.totalGrindingEvents }
-    
+
     // MARK: - Initialization
 
     /// Initialize with injected historicalDataManager
@@ -299,6 +192,8 @@ class HistoricalViewModel: ObservableObject {
     init(historicalDataManager: HistoricalDataManagerProtocol) {
         Logger.shared.info("[HistoricalViewModel] Initializing with protocol-based dependency injection...")
         self.historicalDataManager = historicalDataManager
+        self.sessionService = HistoricalSessionPlaybackService()
+        self.timeRangeService = HistoricalTimeRangeService()
         Logger.shared.info("[HistoricalViewModel] Setting up bindings...")
         setupBindings()
         Logger.shared.info("[HistoricalViewModel] Updating current metrics for initial selectedTimeRange: \(selectedTimeRange)")
@@ -307,17 +202,17 @@ class HistoricalViewModel: ObservableObject {
     }
 
     // MARK: - Setup
-    
+
     private func setupBindings() {
         // Subscribe to selectedTimeRange changes
         $selectedTimeRange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newRange in
                 guard let self = self else { return }
-                
+
                 // Skip if in session playback mode
                 if self.isSessionPlaybackMode { return }
-                
+
                 Logger.shared.info("[HistoricalViewModel] Time range changed to: \(newRange)")
                 self.updateCurrentMetrics()
                 // Trigger update if we don't have metrics for this range
@@ -442,7 +337,7 @@ class HistoricalViewModel: ObservableObject {
             }
 
         // Recalculate statistics when session data changes (playback mode)
-        $sessionDataPoints
+        sessionService.$sessionDataPoints
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.global(qos: .userInitiated))
             .map { points in
                 HistoricalStatisticsCache.compute(from: points, metrics: nil, isSessionPlayback: true)
@@ -454,61 +349,32 @@ class HistoricalViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    // MARK: - Public Methods - Session Playback
-    
+
+    // MARK: - Public Methods - Session Playback (delegated to sessionService)
+
     /// Load data from a recording session
     /// - Parameters:
     ///   - session: The recording session to load
     ///   - metricType: The metric type to display (e.g., "EMG Activity", "Movement")
     func loadSession(_ session: RecordingSession, metricType: String) {
-        Logger.shared.info("[HistoricalViewModel] Loading session: \(session.id) for metric: \(metricType)")
-        
-        self.loadedSession = session
-        self.metricTypeFilter = metricType
-        
-        // Load data points from the session file
-        let dataPoints = SessionDataLoader.shared.loadHistoricalDataPoints(from: session, metricType: metricType)
-        self.sessionDataPoints = dataPoints
-        
-        Logger.shared.info("[HistoricalViewModel] Loaded \(dataPoints.count) data points from session")
+        sessionService.loadSession(session, metricType: metricType)
     }
-    
+
     /// Load the most recent completed session for the current metric type
     /// - Parameters:
     ///   - sessions: Array of available recording sessions
     ///   - metricType: The metric type to display
     func loadMostRecentSession(from sessions: [RecordingSession], metricType: String) {
-        // Determine device type based on metric
-        let targetDeviceType: DeviceType? = metricType == "EMG Activity" ? .anr : .oralable
-        
-        let session: RecordingSession?
-        if let deviceType = targetDeviceType {
-            session = SessionDataLoader.shared.getMostRecentCompletedSession(from: sessions, deviceType: deviceType)
-        } else {
-            session = SessionDataLoader.shared.getMostRecentCompletedSession(from: sessions)
-        }
-        
-        if let session = session {
-            loadSession(session, metricType: metricType)
-        } else {
-            Logger.shared.warning("[HistoricalViewModel] No completed sessions found for metric: \(metricType)")
-            // Clear session playback mode
-            self.loadedSession = nil
-            self.sessionDataPoints = []
-        }
+        sessionService.loadMostRecentSession(from: sessions, metricType: metricType)
     }
-    
+
     /// Exit session playback mode and return to live data
     func exitSessionPlayback() {
-        Logger.shared.info("[HistoricalViewModel] Exiting session playback mode")
-        self.loadedSession = nil
-        self.sessionDataPoints = []
-        
+        sessionService.exitSessionPlayback()
         // Refresh live data
         updateCurrentMetrics()
     }
-    
+
     // MARK: - Public Methods - Data Management
 
     /// Update all metrics
@@ -518,7 +384,7 @@ class HistoricalViewModel: ObservableObject {
             Logger.shared.debug("[HistoricalViewModel] Skipping updateAllMetrics - in session playback mode")
             return
         }
-        
+
         Logger.shared.info("[HistoricalViewModel] Requesting metrics update from HistoricalDataManager")
         Logger.shared.info("[HistoricalViewModel] Current state BEFORE update:")
         Logger.shared.info("[HistoricalViewModel]   - hourMetrics: \(hourMetrics?.dataPoints.count ?? 0) points")
@@ -539,77 +405,78 @@ class HistoricalViewModel: ObservableObject {
         if isSessionPlaybackMode {
             // Reload session data
             if let session = loadedSession {
-                loadSession(session, metricType: metricTypeFilter)
+                sessionService.loadSession(session, metricType: sessionService.metricTypeFilter)
             }
         } else {
             Logger.shared.info("[HistoricalViewModel] Manual refresh triggered")
             updateCurrentRangeMetrics()
         }
     }
-    
+
     /// Async refresh for SwiftUI refreshable modifier
     func refreshAsync() async {
         refresh()
         // Give a small delay to ensure UI updates properly
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
     }
-    
+
     /// Clear all cached metrics
     func clearAllMetrics() {
         historicalDataManager.clearAllMetrics()
         currentMetrics = nil
         cachedDataPoints = []
-        sessionDataPoints = []
-        loadedSession = nil
+        sessionService.exitSessionPlayback()
     }
-    
+
     /// Start automatic updates
     func startAutoUpdate() {
         if isSessionPlaybackMode { return }
         historicalDataManager.startAutoUpdate()
     }
-    
+
     /// Stop automatic updates
     func stopAutoUpdate() {
         historicalDataManager.stopAutoUpdate()
     }
-    
-    // MARK: - Public Methods - Time Range Selection
-    
+
+    // MARK: - Public Methods - Time Range Selection (delegated to timeRangeService)
+
     /// Select a specific time range
     func selectTimeRange(_ range: TimeRange) {
         if isSessionPlaybackMode { return }  // Disabled in session playback
         selectedTimeRange = range
     }
-    
+
     /// Move to next time range (forward in time, toward present)
     func selectNextTimeRange() {
-        if isSessionPlaybackMode { return }
-        if timeRangeOffset < 0 {
-            timeRangeOffset += 1
-            updateCurrentRangeMetrics()
+        timeRangeService.selectNextTimeRange(
+            isSessionPlaybackMode: isSessionPlaybackMode
+        ) { [weak self] in
+            self?.updateCurrentRangeMetrics()
         }
     }
-    
+
     /// Move to previous time range (backward in time)
     func selectPreviousTimeRange() {
-        if isSessionPlaybackMode { return }
-        timeRangeOffset -= 1
-        updateCurrentRangeMetrics()
+        timeRangeService.selectPreviousTimeRange(
+            isSessionPlaybackMode: isSessionPlaybackMode
+        ) { [weak self] in
+            self?.updateCurrentRangeMetrics()
+        }
     }
-    
+
     // MARK: - Public Methods - Data Point Selection
-    
+
     /// Select a data point for detailed view
     func selectDataPoint(_ point: HistoricalDataPoint) {
         selectedDataPoint = point
     }
-    
+
     /// Clear selected data point
     func clearSelectedDataPoint() {
         selectedDataPoint = nil
     }
-    
+
     /// Toggle detailed statistics view
     func toggleDetailedStats() {
         showDetailedStats.toggle()
@@ -620,7 +487,7 @@ class HistoricalViewModel: ObservableObject {
     /// Check if there's sufficient data for the current time range
     var hasSufficientDataForCurrentRange: Bool {
         let points = isSessionPlaybackMode ? sessionDataPoints : (currentMetrics?.dataPoints ?? [])
-        
+
         // Need at least 2 data points for a meaningful chart
         guard points.count >= 2 else { return false }
 
@@ -633,7 +500,7 @@ class HistoricalViewModel: ObservableObject {
         if isSessionPlaybackMode {
             return dataSpan >= 1.0  // At least 1 second
         }
-        
+
         // Set lenient minimum spans based on time range
         let minimumSpanSeconds: TimeInterval
         switch selectedTimeRange {
@@ -655,7 +522,7 @@ class HistoricalViewModel: ObservableObject {
     /// Get a descriptive message about data sufficiency
     var dataSufficiencyMessage: String? {
         let points = isSessionPlaybackMode ? sessionDataPoints : (currentMetrics?.dataPoints ?? [])
-        
+
         if points.isEmpty {
             if isSessionPlaybackMode {
                 return "No data available in this session file."
@@ -688,7 +555,7 @@ class HistoricalViewModel: ObservableObject {
             if isSessionPlaybackMode {
                 return "Session duration: \(timeSpanDescription) (\(points.count) data points)"
             }
-            
+
             // Check against minimum spans
             let minimumSpanSeconds: TimeInterval
             let minimumSpanText: String
@@ -717,12 +584,43 @@ class HistoricalViewModel: ObservableObject {
 
         return nil  // Sufficient data
     }
-    
+
+    // MARK: - Formatting Helpers (delegated to timeRangeService)
+
+    /// Format a data point's timestamp
+    func formatTimestamp(_ date: Date) -> String {
+        return timeRangeService.formatTimestamp(
+            date,
+            selectedTimeRange: selectedTimeRange,
+            isSessionPlaybackMode: isSessionPlaybackMode
+        )
+    }
+
+    /// Format temperature value
+    func formatTemperature(_ temp: Double) -> String {
+        return timeRangeService.formatTemperature(temp)
+    }
+
+    /// Format battery value
+    func formatBattery(_ battery: Int) -> String {
+        return timeRangeService.formatBattery(battery)
+    }
+
+    /// Format heart rate value
+    func formatHeartRate(_ hr: Double?) -> String {
+        return timeRangeService.formatHeartRate(hr)
+    }
+
+    /// Format SpO2 value
+    func formatSpO2(_ spo2: Double?) -> String {
+        return timeRangeService.formatSpO2(spo2)
+    }
+
     // MARK: - Private Methods
 
     private func updateCurrentMetrics() {
         if isSessionPlaybackMode { return }
-        
+
         Logger.shared.info("[HistoricalViewModel] updateCurrentMetrics() called for selectedTimeRange: \(selectedTimeRange)")
 
         switch selectedTimeRange {
@@ -746,63 +644,6 @@ class HistoricalViewModel: ObservableObject {
         // Update current metrics if the selected range matches the updated range
         updateCurrentMetrics()
     }
-    
-    // MARK: - Formatting Helpers
-    
-    /// Format a data point's timestamp
-    func formatTimestamp(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        
-        if isSessionPlaybackMode {
-            // For session playback, show full time
-            formatter.dateFormat = "HH:mm:ss"
-            return formatter.string(from: date)
-        }
-        
-        switch selectedTimeRange {
-        case .minute:
-            formatter.dateFormat = "HH:mm:ss"
-        case .hour, .day:
-            formatter.dateFormat = "HH:mm"
-        case .week:
-            formatter.dateFormat = "EEE"
-        case .month:
-            formatter.dateFormat = "MMM d"
-        }
-        
-        return formatter.string(from: date)
-    }
-    
-    /// Format temperature value
-    func formatTemperature(_ temp: Double) -> String {
-        String(format: "%.1f°C", temp)
-    }
-    
-    /// Format battery value
-    func formatBattery(_ battery: Int) -> String {
-        "\(battery)%"
-    }
-    
-    /// Format heart rate value
-    func formatHeartRate(_ hr: Double?) -> String {
-        guard let hr = hr else { return "--" }
-        return String(format: "%.0f bpm", hr)
-    }
-    
-    /// Format SpO2 value
-    func formatSpO2(_ spo2: Double?) -> String {
-        guard let spo2 = spo2 else { return "--" }
-        return String(format: "%.0f%%", spo2)
-    }
-}
-
-// MARK: - Chart Data Point
-
-/// Represents a single point on a chart
-struct ChartDataPoint: Identifiable {
-    let id = UUID()
-    let timestamp: Date
-    let value: Double
 }
 
 // MARK: - Mock for Previews
@@ -810,10 +651,10 @@ struct ChartDataPoint: Identifiable {
 extension HistoricalViewModel {
     static func mock() -> HistoricalViewModel {
         // Create mock historical data manager
-        let mockHistoricalManager = MockHistoricalDataManager()
-        
+        let mockHistoricalManager = PreviewHistoricalDataManager()
+
         let viewModel = HistoricalViewModel(historicalDataManager: mockHistoricalManager)
-        
+
         // Create mock metrics
         let mockDataPoints = (0..<10).map { index in
             HistoricalDataPoint(
@@ -828,7 +669,7 @@ extension HistoricalViewModel {
                 grindingEvents: Int.random(in: 0...3)
             )
         }
-        
+
         let mockMetrics = HistoricalMetrics(
             timeRange: "Day",
             startDate: Date().addingTimeInterval(-86400),
@@ -843,108 +684,14 @@ extension HistoricalViewModel {
             totalGrindingEvents: 5,
             totalGrindingDuration: 300
         )
-        
+
         // Set the mock metrics on the manager
         mockHistoricalManager.dayMetrics = mockMetrics
-        
+
         // Update the view model's metrics (they'll be automatically synced via publishers)
         viewModel.dayMetrics = mockMetrics
         viewModel.currentMetrics = mockMetrics
-        
+
         return viewModel
     }
-}
-
-// MARK: - Mock Historical Data Manager
-
-/// Mock implementation of HistoricalDataManagerProtocol for previews and testing
-@MainActor
-class MockHistoricalDataManager: HistoricalDataManagerProtocol {
-    // MARK: - Metrics State
-    @Published var minuteMetrics: HistoricalMetrics?
-    @Published var hourMetrics: HistoricalMetrics?
-    @Published var dayMetrics: HistoricalMetrics?
-    @Published var weekMetrics: HistoricalMetrics?
-    @Published var monthMetrics: HistoricalMetrics?
-    
-    // MARK: - Update State
-    @Published var isUpdating: Bool = false
-    @Published var lastUpdateTime: Date?
-    
-    // MARK: - Actions
-    func updateAllMetrics() {
-        // No-op for mock
-    }
-    
-    func updateMetrics(for range: TimeRange) {
-        // No-op for mock
-    }
-    
-    func getMetrics(for range: TimeRange) -> HistoricalMetrics? {
-        switch range {
-        case .minute: return minuteMetrics
-        case .hour: return hourMetrics
-        case .day: return dayMetrics
-        case .week: return weekMetrics
-        case .month: return monthMetrics
-        }
-    }
-    
-    func hasMetrics(for range: TimeRange) -> Bool {
-        getMetrics(for: range) != nil
-    }
-    
-    func clearAllMetrics() {
-        minuteMetrics = nil
-        hourMetrics = nil
-        dayMetrics = nil
-        weekMetrics = nil
-        monthMetrics = nil
-    }
-
-    func clearMetrics(for range: TimeRange) {
-        switch range {
-        case .minute: minuteMetrics = nil
-        case .hour: hourMetrics = nil
-        case .day: dayMetrics = nil
-        case .week: weekMetrics = nil
-        case .month: monthMetrics = nil
-        }
-    }
-    
-    // MARK: - Auto-Update Management
-    func startAutoUpdate() {
-        // No-op for mock
-    }
-    
-    func stopAutoUpdate() {
-        // No-op for mock
-    }
-    
-    func setUpdateInterval(_ interval: TimeInterval) {
-        // No-op for mock
-    }
-    
-    // MARK: - Computed Properties
-    var hasAnyMetrics: Bool {
-        hourMetrics != nil || dayMetrics != nil || weekMetrics != nil || monthMetrics != nil
-    }
-    
-    var availabilityDescription: String {
-        "Mock data available"
-    }
-    
-    var timeSinceLastUpdate: TimeInterval? {
-        guard let lastUpdate = lastUpdateTime else { return nil }
-        return Date().timeIntervalSince(lastUpdate)
-    }
-
-    // MARK: - Publishers
-    var minuteMetricsPublisher: Published<HistoricalMetrics?>.Publisher { $minuteMetrics }
-    var hourMetricsPublisher: Published<HistoricalMetrics?>.Publisher { $hourMetrics }
-    var dayMetricsPublisher: Published<HistoricalMetrics?>.Publisher { $dayMetrics }
-    var weekMetricsPublisher: Published<HistoricalMetrics?>.Publisher { $weekMetrics }
-    var monthMetricsPublisher: Published<HistoricalMetrics?>.Publisher { $monthMetrics }
-    var isUpdatingPublisher: Published<Bool>.Publisher { $isUpdating }
-    var lastUpdateTimePublisher: Published<Date?>.Publisher { $lastUpdateTime }
 }

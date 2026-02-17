@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Date Navigation Component
 struct HistoricalDateNavigation: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Binding var selectedDate: Date
     let timeRange: TimeRange
 
@@ -109,11 +110,13 @@ struct HistoricalDateNavigation: View {
             Button(action: navigateBackward) {
                 Image(systemName: "chevron.left")
                     .font(.title2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(designSystem.colors.info)
                     .frame(width: 44, height: 44)
-                    .background(Color.gray.opacity(0.1))
+                    .background(designSystem.colors.gray400.opacity(0.1))
                     .clipShape(Circle())
             }
+            .accessibilityLabel("Previous \(timeRange.rawValue)")
+            .accessibilityHint("Navigate to the previous \(timeRange.rawValue)")
 
             Spacer()
 
@@ -125,23 +128,27 @@ struct HistoricalDateNavigation: View {
                 if timeRange != .day {
                     Text(periodInfo)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Current period: \(displayText)")
 
             Spacer()
 
             Button(action: navigateForward) {
                 Image(systemName: "chevron.right")
                     .font(.title2)
-                    .foregroundColor(canNavigateForward ? .blue : .gray)
+                    .foregroundColor(canNavigateForward ? designSystem.colors.info : designSystem.colors.gray400)
                     .frame(width: 44, height: 44)
-                    .background(Color.gray.opacity(0.1))
+                    .background(designSystem.colors.gray400.opacity(0.1))
                     .clipShape(Circle())
             }
             .disabled(!canNavigateForward)
+            .accessibilityLabel("Next \(timeRange.rawValue)")
+            .accessibilityHint(canNavigateForward ? "Navigate to the next \(timeRange.rawValue)" : "No future data available")
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, designSystem.spacing.sm)
     }
 
     private var periodInfo: String {

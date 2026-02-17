@@ -8,14 +8,15 @@
 import SwiftUI
 
 struct BatteryIndicator: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let level: Int  // 0-100
     let isCharging: Bool
 
     private var batteryColor: Color {
-        if isCharging { return .green }
-        if level <= 20 { return .red }
-        if level <= 40 { return .orange }
-        return .primary
+        if isCharging { return designSystem.colors.success }
+        if level <= 20 { return designSystem.colors.error }
+        if level <= 40 { return designSystem.colors.warning }
+        return designSystem.colors.textPrimary
     }
 
     private var iconName: String {
@@ -28,14 +29,14 @@ struct BatteryIndicator: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: designSystem.spacing.xs) {
             Image(systemName: iconName)
-                .font(.system(size: 16))
+                .font(designSystem.typography.labelSmall)
                 .foregroundColor(batteryColor)
 
             Text("\(level)%")
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.labelSmall)
+                .foregroundColor(designSystem.colors.textSecondary)
         }
     }
 }

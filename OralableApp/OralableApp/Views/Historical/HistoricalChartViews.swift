@@ -54,7 +54,7 @@ extension HistoricalView {
                 x: .value("Time", point.timestamp),
                 y: .value("Acceleration", point.movementIntensity)
             )
-            .foregroundStyle(point.isAtRest ? Color.green.opacity(0.6) : Color.orange)
+            .foregroundStyle(point.isAtRest ? designSystem.colors.success.opacity(0.6) : designSystem.colors.warning)
             .symbolSize(10)
         }
         .chartXScale(domain: xAxisDomain)

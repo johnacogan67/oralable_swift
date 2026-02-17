@@ -103,18 +103,18 @@ struct SessionHistoryView: View {
                 // 4-segment picker
                 filterPicker
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, designSystem.spacing.sm)
 
                 // Source label with description
                 sourceInfo
                     .padding(.horizontal)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, designSystem.spacing.sm)
 
                 // Session count
                 if !filteredSessions.isEmpty {
                     sessionCount
                         .padding(.horizontal)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, designSystem.spacing.xs)
                 }
 
                 // Session list or empty state
@@ -141,33 +141,33 @@ struct SessionHistoryView: View {
     }
 
     private var sourceInfo: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: designSystem.spacing.sm) {
             Image(systemName: selectedFilter.icon)
                 .foregroundColor(selectedFilter.color)
-                .font(.system(size: 16))
+                .font(designSystem.typography.labelSmall)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                 Text(selectedFilter.description)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                    .font(designSystem.typography.bodySmall)
+                    .foregroundColor(designSystem.colors.textPrimary)
 
                 Text("Source: \(selectedFilter.deviceSource)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             Spacer()
         }
-        .padding(12)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(10)
+        .padding(designSystem.spacing.buttonPadding)
+        .background(designSystem.colors.backgroundSecondary)
+        .cornerRadius(designSystem.cornerRadius.medium)
     }
 
     private var sessionCount: some View {
         HStack {
             Text("\(filteredSessions.count) session\(filteredSessions.count == 1 ? "" : "s")")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
             Spacer()
         }
     }
@@ -183,7 +183,7 @@ struct SessionHistoryView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             Spacer()
 
             Image(systemName: selectedFilter.icon)
@@ -191,14 +191,14 @@ struct SessionHistoryView: View {
                 .foregroundColor(selectedFilter.color.opacity(0.5))
 
             Text(selectedFilter.emptyTitle)
-                .font(.headline)
-                .foregroundColor(.primary)
+                .font(designSystem.typography.headline)
+                .foregroundColor(designSystem.colors.textPrimary)
 
             Text(selectedFilter.emptyMessage)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .padding(.horizontal, designSystem.spacing.xl + designSystem.spacing.sm)
 
             Spacer()
         }
