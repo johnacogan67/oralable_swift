@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import Accelerate
 import OralableCore
 
 // MARK: - Result Types
@@ -192,6 +193,15 @@ actor UnifiedBiometricProcessor {
 
     private var irBaseline: Double = 0
     private var isBaselineInitialized: Bool = false
+
+    // MARK: - FFT Setup (cached for reuse; creating FFT plans is expensive)
+
+    /// Cached FFT setup for heart rate frequency analysis.
+    /// The log2n value corresponds to a 256-point FFT (log2(256) = 8), which gives
+    /// ~5.12 seconds of data at 50 Hz and frequency resolution of ~0.195 Hz (~11.7 BPM).
+    private var fftSetup: FFTSetup?
+    /// The log2 of the FFT size currently allocated.
+    private var fftLog2n: vDSP_Length = 0
 
     // MARK: - Initialization
 
@@ -379,6 +389,16 @@ actor UnifiedBiometricProcessor {
         isBaselineInitialized = false
 
         motionCompensator.reset()
+
+        // Note: FFT setup is intentionally NOT destroyed on reset.
+        // It is reused across sessions since the FFT size rarely changes.
+    }
+
+    deinit {
+        // Clean up FFT resources
+        if let setup = fftSetup {
+            vDSP_destroy_fftsetup(setup)
+        }
     }
 
     // MARK: - Private: Motion Detection
@@ -442,21 +462,49 @@ actor UnifiedBiometricProcessor {
     // MARK: - Private: Heart Rate Calculation
 
     private func calculateHeartRate() -> (bpm: Int, quality: Double, source: HRSource) {
-        // Try IR channel first (primary)
-        if let (bpm, quality) = calculateHeartRateFromSignal(irBuffer.all) {
-            if quality >= config.minHRQuality {
-                return (bpm, quality, .ir)
+        // Try IR channel first (primary peak detection)
+        let irSignal = irBuffer.all
+        if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(irSignal) {
+            if peakQuality >= config.minHRQuality {
+                // Cross-validate with FFT if we have enough samples
+                let (fftBpm, _) = calculateHeartRateFFT(from: irSignal, sampleRate: config.sampleRate)
+                if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
+                    // FFT disagrees significantly with peak detection — prefer FFT
+                    // as it is more robust to noise and irregular peak shapes
+                    Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    return (fftBpm, peakQuality * 0.8, .fft)
+                }
+                return (peakBpm, peakQuality, .ir)
             }
         }
 
-        // Try Green channel (backup)
-        if let (bpm, quality) = calculateHeartRateFromSignal(greenBuffer.all) {
-            if quality >= config.minHRQuality {
-                return (bpm, quality, .green)
+        // Try Green channel (backup peak detection)
+        let greenSignal = greenBuffer.all
+        if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(greenSignal) {
+            if peakQuality >= config.minHRQuality {
+                // Cross-validate with FFT on green channel
+                let (fftBpm, _) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
+                if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
+                    Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    return (fftBpm, peakQuality * 0.8, .fft)
+                }
+                return (peakBpm, peakQuality, .green)
             }
         }
 
-        // TODO: Add FFT fallback in future version
+        // FFT fallback: peak detection failed on both channels, try FFT on IR
+        let (fftBpmIR, fftQualityIR) = calculateHeartRateFFT(from: irSignal, sampleRate: config.sampleRate)
+        if fftBpmIR > 0 && fftQualityIR >= config.minHRQuality * 0.7 {
+            Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on IR — bpm=\(fftBpmIR) quality=\(String(format: "%.2f", fftQualityIR))")
+            return (fftBpmIR, fftQualityIR, .fft)
+        }
+
+        // FFT fallback on Green channel
+        let (fftBpmGreen, fftQualityGreen) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
+        if fftBpmGreen > 0 && fftQualityGreen >= config.minHRQuality * 0.7 {
+            Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on Green — bpm=\(fftBpmGreen) quality=\(String(format: "%.2f", fftQualityGreen))")
+            return (fftBpmGreen, fftQualityGreen, .fft)
+        }
 
         return (0, 0, .unavailable)
     }
@@ -522,6 +570,164 @@ actor UnifiedBiometricProcessor {
         let quality = 0.6 * acdc + 0.4 * peakFactor
 
         return (bpm, max(0, min(1.0, quality)))
+    }
+
+    // MARK: - Private: FFT Heart Rate Calculation
+
+    /// Calculate heart rate using FFT frequency analysis on a bandpass-filtered PPG signal.
+    ///
+    /// This method performs spectral analysis to find the dominant frequency in the
+    /// cardiac range (0.67-3.0 Hz, corresponding to 40-180 BPM). It uses a Hann window
+    /// to reduce spectral leakage and finds the peak magnitude in the frequency domain.
+    ///
+    /// - Parameters:
+    ///   - signal: Bandpass-filtered PPG signal (Double array)
+    ///   - sampleRate: Sample rate in Hz (e.g. 50.0)
+    /// - Returns: Heart rate in BPM, or 0 if no valid dominant frequency is found.
+    ///           Returns a quality estimate as a second value (0.0 to 1.0).
+    private func calculateHeartRateFFT(
+        from signal: [Double],
+        sampleRate: Double
+    ) -> (bpm: Int, quality: Double) {
+        // Require minimum 128 samples (~2.56 seconds at 50 Hz)
+        let minSamples = 128
+        guard signal.count >= minSamples else { return (0, 0) }
+
+        // Determine FFT size: next power of 2 >= signal.count
+        let log2n = vDSP_Length(ceil(log2(Double(signal.count))))
+        let fftSize = Int(1 << log2n)
+        let halfN = fftSize / 2
+
+        // Create or reuse FFT setup (only reallocate if size changed)
+        if fftSetup == nil || fftLog2n != log2n {
+            if let existing = fftSetup {
+                vDSP_destroy_fftsetup(existing)
+            }
+            guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else {
+                return (0, 0)
+            }
+            fftSetup = setup
+            fftLog2n = log2n
+        }
+
+        guard let setup = fftSetup else { return (0, 0) }
+
+        // Step 1: Remove DC offset (subtract mean)
+        var meanValue: Double = 0
+        vDSP_meanvD(signal, 1, &meanValue, vDSP_Length(signal.count))
+
+        var dcRemoved = signal.map { $0 - meanValue }
+
+        // Step 2: Apply Hann window to reduce spectral leakage
+        var window = [Double](repeating: 0, count: signal.count)
+        vDSP_hann_windowD(&window, vDSP_Length(signal.count), Int32(vDSP_HANN_NORM))
+
+        // Multiply signal by window
+        vDSP_vmulD(dcRemoved, 1, window, 1, &dcRemoved, 1, vDSP_Length(signal.count))
+
+        // Step 3: Zero-pad to FFT size
+        var paddedSignal = [Double](repeating: 0, count: fftSize)
+        paddedSignal.replaceSubrange(0..<signal.count, with: dcRemoved)
+
+        // Step 4: Set up split complex arrays for FFT
+        var realPart = [Double](repeating: 0, count: halfN)
+        var imagPart = [Double](repeating: 0, count: halfN)
+
+        // Convert real signal to split complex (even/odd interleaving)
+        realPart.withUnsafeMutableBufferPointer { realBuf in
+            imagPart.withUnsafeMutableBufferPointer { imagBuf in
+                var splitComplex = DSPDoubleSplitComplex(
+                    realp: realBuf.baseAddress!,
+                    imagp: imagBuf.baseAddress!
+                )
+
+                // Pack real data into split complex format
+                paddedSignal.withUnsafeBufferPointer { signalBuf in
+                    signalBuf.baseAddress!.withMemoryRebound(
+                        to: DSPDoubleComplex.self,
+                        capacity: halfN
+                    ) { complexPtr in
+                        vDSP_ctozD(complexPtr, 2, &splitComplex, 1, vDSP_Length(halfN))
+                    }
+                }
+
+                // Step 5: Perform forward FFT (in-place)
+                vDSP_fft_zripD(setup, &splitComplex, 1, log2n, FFTDirection(kFFTDirection_Forward))
+
+                // Step 6: Calculate magnitude spectrum: sqrt(real² + imag²)
+                // Scale by 1/(2*fftSize) for proper normalization
+                var scale = 1.0 / Double(2 * fftSize)
+                vDSP_vsmulD(splitComplex.realp, 1, &scale, splitComplex.realp, 1, vDSP_Length(halfN))
+                vDSP_vsmulD(splitComplex.imagp, 1, &scale, splitComplex.imagp, 1, vDSP_Length(halfN))
+            }
+        }
+
+        // Step 7: Compute magnitude spectrum
+        var magnitudes = [Double](repeating: 0, count: halfN)
+        for i in 0..<halfN {
+            let re = realPart[i]
+            let im = imagPart[i]
+            magnitudes[i] = sqrt(re * re + im * im)
+        }
+
+        // Step 8: Find dominant frequency in cardiac range (0.67 Hz - 3.0 Hz = 40-180 BPM)
+        let freqResolution = sampleRate / Double(fftSize)
+        let minFreq = config.minBPM / 60.0  // 0.667 Hz for 40 BPM
+        let maxFreq = config.maxBPM / 60.0  // 3.0 Hz for 180 BPM
+
+        let minBin = max(1, Int(ceil(minFreq / freqResolution)))
+        let maxBin = min(halfN - 1, Int(floor(maxFreq / freqResolution)))
+
+        guard minBin < maxBin else { return (0, 0) }
+
+        // Find peak magnitude and its bin index within the cardiac range
+        var peakMagnitude: Double = 0
+        var peakBin = minBin
+
+        for bin in minBin...maxBin {
+            if magnitudes[bin] > peakMagnitude {
+                peakMagnitude = magnitudes[bin]
+                peakBin = bin
+            }
+        }
+
+        // Ensure the peak is meaningful (not just noise floor)
+        guard peakMagnitude > 0 else { return (0, 0) }
+
+        // Step 9: Parabolic interpolation for sub-bin frequency accuracy
+        // Uses the peak bin and its two neighbors to refine the frequency estimate
+        var refinedBin = Double(peakBin)
+        if peakBin > minBin && peakBin < maxBin {
+            let alpha = magnitudes[peakBin - 1]
+            let beta = magnitudes[peakBin]
+            let gamma = magnitudes[peakBin + 1]
+            let denominator = alpha - 2.0 * beta + gamma
+            if abs(denominator) > 1e-10 {
+                let correction = 0.5 * (alpha - gamma) / denominator
+                refinedBin = Double(peakBin) + correction
+            }
+        }
+
+        let dominantFrequency = refinedBin * freqResolution
+        let bpm = Int(round(dominantFrequency * 60.0))
+
+        // Validate BPM range
+        guard bpm >= Int(config.minBPM) && bpm <= Int(config.maxBPM) else { return (0, 0) }
+
+        // Step 10: Calculate quality as peak-to-average ratio (spectral SNR)
+        // Sum all magnitudes in the cardiac range
+        var totalMagnitude: Double = 0
+        for bin in minBin...maxBin {
+            totalMagnitude += magnitudes[bin]
+        }
+        let avgMagnitude = totalMagnitude / Double(maxBin - minBin + 1)
+
+        // SNR: how much the peak stands out from the average
+        let snr = avgMagnitude > 0 ? peakMagnitude / avgMagnitude : 0
+        // Normalize SNR to 0-1 quality (SNR of 5+ is very good, 2 is marginal)
+        let quality = min(1.0, max(0, (snr - 1.0) / 4.0))
+
+        return (bpm, quality)
     }
 
     // MARK: - Private: SpO2 Calculation

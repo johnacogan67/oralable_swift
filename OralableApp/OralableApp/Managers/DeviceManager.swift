@@ -291,7 +291,7 @@ class DeviceManager: ObservableObject {
 
         // Also set up legacy callbacks for backward compatibility with BLECentralManager
         if let centralManager = bleManager {
-            centralManager.onDeviceDiscovered = { [weak self] peripheral, name, rssi in
+            centralManager.onDeviceDiscovered = { [weak self] peripheral, name, rssi, advertisementData in
                 Logger.shared.debug("[DeviceManager] onDeviceDiscovered callback received")
                 Logger.shared.debug("[DeviceManager] Peripheral: \(peripheral.identifier)")
                 Logger.shared.debug("[DeviceManager] Name: \(name)")
@@ -299,7 +299,7 @@ class DeviceManager: ObservableObject {
 
                 Task { @MainActor [weak self] in
                     Logger.shared.debug("[DeviceManager] Dispatching to main actor...")
-                    self?.handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: rssi)
+                    self?.handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: rssi, advertisementData: advertisementData)
                 }
             }
 
@@ -350,8 +350,8 @@ class DeviceManager: ObservableObject {
     /// Handle events from BLEService publisher
     private func handleBLEServiceEvent(_ event: BLEServiceEvent) {
         switch event {
-        case .deviceDiscovered(let peripheral, let name, let rssi):
-            handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: rssi)
+        case .deviceDiscovered(let peripheral, let name, let rssi, let advertisementData):
+            handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: rssi, advertisementData: advertisementData)
 
         case .deviceConnected(let peripheral):
             handleDeviceConnected(peripheral: peripheral)
