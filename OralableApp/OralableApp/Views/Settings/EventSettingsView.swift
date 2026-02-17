@@ -12,7 +12,7 @@ import SwiftUI
 import OralableCore
 
 struct EventSettingsView: View {
-
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var settings = EventSettings.shared
 
     var body: some View {
@@ -21,14 +21,14 @@ struct EventSettingsView: View {
             Section {
                 HStack {
                     Image(systemName: "waveform.path.ecg")
-                        .foregroundColor(.orange)
+                        .foregroundColor(designSystem.colors.warning)
                     Text("Normalized Detection")
-                        .font(.headline)
+                        .font(designSystem.typography.headline)
                 }
 
                 Text("Events are detected when PPG IR exceeds a percentage above your calibrated baseline. This works consistently across different users and sensor placements.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
             } header: {
                 Text("Detection Mode")
             } footer: {
@@ -37,18 +37,18 @@ struct EventSettingsView: View {
 
             // Normalized Threshold Section
             Section {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
                     Text("Threshold Percentage")
-                        .font(.headline)
+                        .font(designSystem.typography.headline)
 
                     Text("Lower values detect more events, higher values detect only stronger activity.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
 
                     HStack {
                         Text("\(Int(EventSettings.minNormalizedThreshold))%")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                             .frame(width: 40, alignment: .leading)
 
                         Slider(
@@ -56,25 +56,25 @@ struct EventSettingsView: View {
                             in: EventSettings.minNormalizedThreshold...EventSettings.maxNormalizedThreshold,
                             step: 5.0
                         )
-                        .tint(.orange)
+                        .tint(designSystem.colors.warning)
 
                         Text("\(Int(EventSettings.maxNormalizedThreshold))%")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                             .frame(width: 40, alignment: .trailing)
                     }
 
                     HStack {
                         Spacer()
                         Text("Current: \(settings.formattedNormalizedThreshold)")
-                            .font(.subheadline)
+                            .font(designSystem.typography.bodySmall)
                             .monospacedDigit()
-                            .foregroundColor(.primary)
+                            .foregroundColor(designSystem.colors.textPrimary)
                         Spacer()
                     }
-                    .padding(.top, 4)
+                    .padding(.top, designSystem.spacing.xs)
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, designSystem.spacing.sm)
             } header: {
                 Text("Threshold")
             }
@@ -120,8 +120,8 @@ struct EventSettingsView: View {
                         Text("~20 KB")
                             .font(.system(.body, design: .monospaced))
                         Text("Events only")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
 
@@ -132,8 +132,8 @@ struct EventSettingsView: View {
                         Text("~160 KB")
                             .font(.system(.body, design: .monospaced))
                         Text("Events only")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                 }
             } header: {
@@ -146,7 +146,7 @@ struct EventSettingsView: View {
                 Button("Reset to Defaults") {
                     settings.resetToDefaults()
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(designSystem.colors.info)
             }
         }
         .navigationTitle("Event Settings")
@@ -157,6 +157,7 @@ struct EventSettingsView: View {
 // MARK: - Preset Button
 
 private struct PresetButton: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let title: String
     let description: String
     let value: Double
@@ -170,25 +171,25 @@ private struct PresetButton: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text(title)
-                        .font(.body)
-                        .foregroundColor(.primary)
+                        .font(designSystem.typography.body)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     Text(description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
 
                 Spacer()
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(designSystem.colors.success)
                 } else {
                     Text("\(Int(value))%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
                         .monospacedDigit()
                 }
             }

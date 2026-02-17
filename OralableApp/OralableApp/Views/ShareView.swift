@@ -114,30 +114,30 @@ struct ShareView: View {
             }
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            .listRowInsets(EdgeInsets(top: designSystem.spacing.sm, leading: 0, bottom: designSystem.spacing.sm, trailing: 0))
 
             Button(action: shareCSV) {
                 HStack {
                     if isSharing {
                         ProgressView()
-                            .frame(width: 20, height: 20)
-                            .frame(width: 32)
+                            .frame(width: designSystem.spacing.icon, height: designSystem.spacing.icon)
+                            .frame(width: designSystem.spacing.xl)
                     } else {
                         Image(systemName: "square.and.arrow.up")
                             .font(designSystem.typography.headline)
-                            .foregroundColor(.blue)
-                            .frame(width: 32)
+                            .foregroundColor(designSystem.colors.info)
+                            .frame(width: designSystem.spacing.xl)
                     }
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                         Text(isSharing ? "Sharing..." : "Share Data as CSV")
                             .font(designSystem.typography.body)
-                            .foregroundColor(.primary)
+                            .foregroundColor(designSystem.colors.textPrimary)
 
                         if isSharing && !shareProgress.isEmpty {
                             Text(shareProgress)
                                 .font(designSystem.typography.footnote)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
                     }
 
@@ -146,7 +146,7 @@ struct ShareView: View {
                     if !isSharing {
                         Image(systemName: "chevron.right")
                             .font(designSystem.typography.buttonSmall)
-                            .foregroundColor(Color(UIColor.tertiaryLabel))
+                            .foregroundColor(designSystem.colors.textTertiary)
                     }
                 }
             }
@@ -174,10 +174,10 @@ struct ShareView: View {
     // MARK: - Share Code Section
     private var shareCodeSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
                 Text("Your Share Code")
                     .font(designSystem.typography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
 
                 HStack {
                     if isGeneratingCode {
@@ -186,7 +186,7 @@ struct ShareView: View {
                     } else {
                         Text(shareCode.isEmpty ? "------" : shareCode)
                             .font(.system(size: 32, weight: .bold, design: .monospaced))
-                            .foregroundColor(.primary)
+                            .foregroundColor(designSystem.colors.textPrimary)
                     }
 
                     Spacer()
@@ -194,7 +194,7 @@ struct ShareView: View {
                     Button(action: copyShareCode) {
                         Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
                             .font(designSystem.typography.headline)
-                            .foregroundColor(showCopiedFeedback ? .green : .blue)
+                            .foregroundColor(showCopiedFeedback ? designSystem.colors.success : designSystem.colors.info)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .disabled(shareCode.isEmpty)
@@ -202,8 +202,8 @@ struct ShareView: View {
 
                 Text("Give this code to your healthcare professional to share your data")
                     .font(designSystem.typography.footnote)
-                    .foregroundColor(.secondary)
-                
+                    .foregroundColor(designSystem.colors.textSecondary)
+
                 // Regenerate button
                 Button(action: {
                     Task { await generateAndSaveShareCode() }
@@ -213,11 +213,11 @@ struct ShareView: View {
                         Text("Generate New Code")
                     }
                     .font(designSystem.typography.bodySmall)
-                    .foregroundColor(.blue)
+                    .foregroundColor(designSystem.colors.info)
                 }
                 .disabled(isGeneratingCode)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, designSystem.spacing.sm)
         } header: {
             Text("Share with Professional")
         } footer: {
@@ -230,22 +230,22 @@ struct ShareView: View {
         Section {
             if sharedDataManager.sharedProfessionals.isEmpty {
                 Text("No one has access to your data")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             } else {
                 ForEach(sharedDataManager.sharedProfessionals) { professional in
                     HStack {
                         Image(systemName: "person.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundColor(.blue)
+                            .foregroundColor(designSystem.colors.info)
 
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                             Text(professional.professionalName ?? professional.professionalID)
                                 .font(designSystem.typography.body)
-                                .foregroundColor(.primary)
+                                .foregroundColor(designSystem.colors.textPrimary)
 
                             Text("Has access")
                                 .font(designSystem.typography.footnote)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
 
                         Spacer()
@@ -254,9 +254,9 @@ struct ShareView: View {
                             removeConnection(professional)
                         }
                         .font(designSystem.typography.bodySmall)
-                        .foregroundColor(.red)
+                        .foregroundColor(designSystem.colors.error)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, designSystem.spacing.xs)
                 }
             }
         } header: {

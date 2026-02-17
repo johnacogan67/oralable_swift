@@ -116,22 +116,22 @@ struct SettingsView: View {
             HStack {
                 Image(systemName: "info.circle")
                     .font(designSystem.typography.headline)
-                    .foregroundColor(.gray)
-                    .frame(width: 32)
+                    .foregroundColor(designSystem.colors.gray500)
+                    .frame(width: designSystem.spacing.xl)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("About")
                         .font(designSystem.typography.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     Text("Version 1.0")
                         .font(designSystem.typography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
 
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, designSystem.spacing.xs)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -141,23 +141,23 @@ struct SettingsView: View {
             HStack {
                 Image(systemName: "star.fill")
                     .font(designSystem.typography.headline)
-                    .foregroundColor(.orange)
-                    .frame(width: 32)
+                    .foregroundColor(designSystem.colors.warning)
+                    .frame(width: designSystem.spacing.xl)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("Current Plan")
                         .font(designSystem.typography.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: designSystem.spacing.xs) {
                         Text(dependencies.subscriptionManager.currentTier.displayName)
                             .font(designSystem.typography.bodySmall)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
 
                         if dependencies.subscriptionManager.currentTier == .premium {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(designSystem.typography.footnote)
-                                .foregroundColor(.green)
+                                .foregroundColor(designSystem.colors.success)
                         }
                     }
                 }
@@ -167,15 +167,15 @@ struct SettingsView: View {
                 if dependencies.subscriptionManager.currentTier == .basic {
                     Text("Upgrade")
                         .font(designSystem.typography.labelLarge)
-                        .foregroundColor(.blue)
+                        .foregroundColor(designSystem.colors.info)
                 } else {
                     Image(systemName: "chevron.right")
                         .font(designSystem.typography.buttonSmall)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, designSystem.spacing.xs)
     }
 
     private var thresholdsRow: some View {
@@ -185,22 +185,22 @@ struct SettingsView: View {
             HStack {
                 Image(systemName: "slider.horizontal.3")
                     .font(designSystem.typography.headline)
-                    .foregroundColor(.orange)
-                    .frame(width: 32)
+                    .foregroundColor(designSystem.colors.warning)
+                    .frame(width: designSystem.spacing.xl)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("Thresholds")
                         .font(designSystem.typography.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     Text("Adjust movement sensitivity")
                         .font(designSystem.typography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
 
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, designSystem.spacing.xs)
         }
     }
 
@@ -211,22 +211,22 @@ struct SettingsView: View {
             HStack {
                 Image(systemName: "waveform.path.ecg")
                     .font(designSystem.typography.headline)
-                    .foregroundColor(.blue)
-                    .frame(width: 32)
+                    .foregroundColor(designSystem.colors.info)
+                    .frame(width: designSystem.spacing.xl)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("Event Detection")
                         .font(designSystem.typography.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     Text("Configure IR threshold for events")
                         .font(designSystem.typography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
 
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, designSystem.spacing.xs)
         }
     }
 
@@ -237,22 +237,22 @@ struct SettingsView: View {
             HStack {
                 Image(systemName: "rectangle.on.rectangle")
                     .font(designSystem.typography.headline)
-                    .foregroundColor(.blue)
-                    .frame(width: 32)
+                    .foregroundColor(designSystem.colors.info)
+                    .frame(width: designSystem.spacing.xl)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                     Text("Simplified Dashboard")
                         .font(designSystem.typography.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(designSystem.colors.textPrimary)
 
                     Text("Color-coded status card")
                         .font(designSystem.typography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
         }
-        .tint(.blue)
-        .padding(.vertical, 4)
+        .tint(designSystem.colors.info)
+        .padding(.vertical, designSystem.spacing.xs)
     }
 }
 

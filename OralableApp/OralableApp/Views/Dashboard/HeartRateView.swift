@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HeartRateView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Binding var wornStatus: WornStatus
     @Binding var heartRateResult: HRResult?
 
@@ -13,43 +14,43 @@ struct HeartRateView: View {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle())
                 Text("Initializing...")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
             case .repositioning:
                 VStack {
                     Image(systemName: "person.fill.questionmark")
-                        .font(.largeTitle)
-                        .foregroundColor(.yellow)
+                        .font(designSystem.typography.h1)
+                        .foregroundColor(designSystem.colors.warning)
                     Text("Adjust Sensor Position")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.headline)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             case .active:
                 if let result = heartRateResult, result.bpm > 0 {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: designSystem.spacing.xs) {
                         Image(systemName: "heart.fill")
-                            .foregroundColor(.red)
+                            .foregroundColor(designSystem.colors.error)
                             .scaleEffect(isBeating ? 1.2 : 1.0)
                             .animation(Animation.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: isBeating)
                         Text("\(Int(result.bpm))")
-                            .font(.title)
+                            .font(designSystem.typography.h2)
                             .fontWeight(.bold)
                         Text("BPM")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                     .onAppear {
                         isBeating = true
                     }
                 } else {
                     Text("-- BPM")
-                        .font(.title)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.h2)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
         }
         .frame(maxWidth: .infinity, minHeight: 100)
-        .background(Color(UIColor.systemGray6))
-        .cornerRadius(12)
+        .background(designSystem.colors.backgroundTertiary)
+        .cornerRadius(designSystem.cornerRadius.large)
     }
 }

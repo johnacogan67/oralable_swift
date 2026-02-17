@@ -110,7 +110,7 @@ struct DashboardView: View {
                     if featureFlags.demoModeEnabled {
                         HStack {
                             Image(systemName: "play.circle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(designSystem.colors.warning)
                             Text("Demo Mode Active")
                                 .font(designSystem.typography.caption)
                                 .fontWeight(.medium)
@@ -119,11 +119,11 @@ struct DashboardView: View {
                                 featureFlags.demoModeEnabled = false
                             }
                             .font(designSystem.typography.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(designSystem.colors.warning)
                         }
                         .padding(.horizontal, designSystem.spacing.buttonPadding)
                         .padding(.vertical, designSystem.spacing.sm)
-                        .background(Color.orange.opacity(0.1))
+                        .background(designSystem.colors.warning.opacity(0.1))
                         .cornerRadius(designSystem.cornerRadius.button)
                     }
 
@@ -139,7 +139,7 @@ struct DashboardView: View {
                             eventCount: viewModel.eventCount,
                             duration: viewModel.formattedDuration
                         )
-                        .padding(.vertical, 8)
+                        .padding(.vertical, designSystem.spacing.sm)
                     }
 
                     // PPG Card (Oralable) - Shows IR sensor data
@@ -273,7 +273,7 @@ struct DashboardView: View {
                     Button(action: { showingProfile = true }) {
                         Image(systemName: "person.circle")
                             .font(designSystem.typography.h3)
-                            .foregroundColor(.primary)
+                            .foregroundColor(designSystem.colors.textPrimary)
                     }
                     .accessibilityLabel("Profile")
                 }
@@ -291,23 +291,23 @@ struct DashboardView: View {
     private func deviceStatusIndicator(viewModel: DashboardViewModel) -> some View {
         let persistenceManager = DevicePersistenceManager.shared
 
-        return VStack(spacing: 8) {
+        return VStack(spacing: designSystem.spacing.sm) {
             // Oralable Device - show if connected OR previously paired OR demo mode enabled
             // Only show "Ready" when actually connected (not just when demo mode is enabled)
             if viewModel.oralableConnected || persistenceManager.hasOralableDevicePaired() || featureFlags.demoModeEnabled {
                 HStack {
                     Circle()
-                        .fill(viewModel.oralableConnected ? Color.green : Color.gray)
+                        .fill(viewModel.oralableConnected ? designSystem.colors.success : designSystem.colors.gray400)
                         .frame(width: 10, height: 10)
 
                     Text("Oralable")
-                        .font(.subheadline)
+                        .font(designSystem.typography.bodySmall)
 
                     Spacer()
 
                     Text(viewModel.oralableConnected ? "Ready" : "Not Connected")
-                        .font(.subheadline)
-                        .foregroundColor(viewModel.oralableConnected ? .green : .secondary)
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(viewModel.oralableConnected ? designSystem.colors.success : designSystem.colors.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Oralable device, \(viewModel.oralableConnected ? "Ready" : "Not Connected")")
@@ -317,23 +317,23 @@ struct DashboardView: View {
             if persistenceManager.hasANRDevicePaired() && !featureFlags.demoModeEnabled {
                 HStack {
                     Circle()
-                        .fill(viewModel.anrConnected ? Color.green : Color.gray)
+                        .fill(viewModel.anrConnected ? designSystem.colors.success : designSystem.colors.gray400)
                         .frame(width: 10, height: 10)
 
                     Text("ANR M40")
-                        .font(.subheadline)
+                        .font(designSystem.typography.bodySmall)
 
                     Spacer()
 
                     Text(viewModel.anrConnected ? "Ready" : "Not Connected")
-                        .font(.subheadline)
-                        .foregroundColor(viewModel.anrConnected ? .green : .secondary)
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(viewModel.anrConnected ? designSystem.colors.success : designSystem.colors.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("ANR M40 device, \(viewModel.anrConnected ? "Ready" : "Not Connected")")
             }
         }
-        .padding()
+        .padding(designSystem.spacing.md)
         .background(designSystem.colors.backgroundPrimary)
         .cornerRadius(designSystem.cornerRadius.card)
         .designShadow(.small)
@@ -351,10 +351,10 @@ struct DashboardView: View {
     }
 
     private func batteryColor(level: Double) -> Color {
-        if level <= 0 { return .gray }  // N/A or unavailable
-        if level < 20 { return .red }
-        if level < 50 { return .orange }
-        return .green
+        if level <= 0 { return designSystem.colors.gray400 }  // N/A or unavailable
+        if level < 20 { return designSystem.colors.error }
+        if level < 50 { return designSystem.colors.warning }
+        return designSystem.colors.success
     }
 
     /// Calculate and format movement magnitude in g-units

@@ -15,10 +15,10 @@ extension HistoricalView {
     // MARK: - Data Summary Card
 
     var dataSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
             Text("Summary")
-                .font(.headline)
-                .foregroundColor(.primary)
+                .font(designSystem.typography.headline)
+                .foregroundColor(designSystem.colors.textPrimary)
 
             HStack(spacing: 16) {
                 summaryItem(title: "Min", value: formatValue(getMinValue()))
@@ -34,10 +34,10 @@ extension HistoricalView {
     }
 
     func summaryItem(title: String, value: String) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: designSystem.spacing.xs) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
             Text(value)
                 .font(.system(.body, design: .monospaced))
                 .fontWeight(.medium)
@@ -48,35 +48,35 @@ extension HistoricalView {
     // MARK: - Loading View
 
     var loadingView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             ProgressView()
                 .scaleEffect(1.5)
             Text("Loading data...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(40)
+        .padding(designSystem.spacing.xl + designSystem.spacing.sm)
     }
 
     // MARK: - Empty State
 
     var emptyStateView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: designSystem.spacing.md) {
             Image(systemName: "chart.line.downtrend.xyaxis")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundColor(designSystem.colors.textSecondary)
 
             Text(emptyStateTitle)
-                .font(.headline)
+                .font(designSystem.typography.headline)
 
             Text(emptyStateMessage)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.bodySmall)
+                .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(40)
+        .padding(designSystem.spacing.xl + designSystem.spacing.sm)
     }
 
     var emptyStateTitle: String {
@@ -115,7 +115,7 @@ extension HistoricalView {
     func exportInfoBanner(exportFile: SessionDataLoader.ExportFileInfo) -> some View {
         HStack {
             Image(systemName: "doc.text")
-                .foregroundColor(.secondary)
+                .foregroundColor(designSystem.colors.textSecondary)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(exportFile.url.lastPathComponent)
@@ -124,16 +124,16 @@ extension HistoricalView {
                     .lineLimit(1)
 
                 Text("\(filteredDataPoints.count) points in view")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.caption2)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             Spacer()
 
             let sizeKB = Double(exportFile.fileSize) / 1024.0
             Text(String(format: "%.1f KB", sizeKB))
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
         }
         .padding(designSystem.spacing.buttonPadding)
         .background(designSystem.colors.backgroundSecondary)

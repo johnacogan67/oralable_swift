@@ -17,7 +17,7 @@ struct ShareWithProfessionalSection: View {
             HStack {
                 Image(systemName: "person.2.fill")
                     .font(.title2)
-                    .foregroundColor(.black)
+                    .foregroundColor(designSystem.colors.primaryBlack)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Share with Professional")
@@ -45,9 +45,9 @@ struct ShareWithProfessionalSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.black)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .background(designSystem.colors.primaryBlack)
+                .foregroundColor(designSystem.colors.primaryWhite)
+                .cornerRadius(designSystem.cornerRadius.large)
             }
 
             // Show generated code
@@ -59,7 +59,7 @@ struct ShareWithProfessionalSection: View {
 
                     Text(shareCode)
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
+                        .foregroundColor(designSystem.colors.primaryBlack)
                         .tracking(8)
 
                     Text("Code expires in 48 hours")
@@ -73,13 +73,13 @@ struct ShareWithProfessionalSection: View {
                 }
                 .padding()
                 .background(designSystem.colors.backgroundSecondary)
-                .cornerRadius(12)
+                .cornerRadius(designSystem.cornerRadius.large)
             }
 
             // List of shared professionals
             if !sharedDataManager.sharedProfessionals.isEmpty {
                 Divider()
-                    .padding(.vertical, 8)
+                    .padding(.vertical, designSystem.spacing.sm)
 
                 Text("Shared With:")
                     .font(designSystem.typography.caption)
@@ -92,13 +92,13 @@ struct ShareWithProfessionalSection: View {
 
             // Tier limitation message
             if subscriptionManager.currentTier == .basic {
-                HStack(spacing: 8) {
+                HStack(spacing: designSystem.spacing.sm) {
                     Image(systemName: "info.circle")
                     Text("Basic tier: Share with 1 professional")
                         .font(designSystem.typography.caption)
                 }
                 .foregroundColor(designSystem.colors.textSecondary)
-                .padding(.top, 8)
+                .padding(.top, designSystem.spacing.sm)
             }
         }
         .padding(designSystem.spacing.md)
@@ -151,11 +151,11 @@ struct SharedProfessionalRow: View {
                 showRevokeConfirmation = true
             }
             .font(designSystem.typography.caption)
-            .foregroundColor(.red)
+            .foregroundColor(designSystem.colors.error)
         }
         .padding()
         .background(designSystem.colors.backgroundSecondary)
-        .cornerRadius(8)
+        .cornerRadius(designSystem.cornerRadius.medium)
         .alert("Revoke Access?", isPresented: $showRevokeConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Revoke", role: .destructive) {
@@ -183,10 +183,10 @@ struct UpgradeToShareMoreView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            VStack(spacing: designSystem.spacing.lg) {
                 Image(systemName: "person.2.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.black)
+                    .foregroundColor(designSystem.colors.primaryBlack)
 
                 Text("Share with More Providers")
                     .font(designSystem.typography.title)
@@ -197,7 +197,7 @@ struct UpgradeToShareMoreView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
                     ShareFeatureRow(icon: "checkmark.circle.fill", text: "Share with unlimited providers")
                     ShareFeatureRow(icon: "checkmark.circle.fill", text: "Advanced analytics")
                     ShareFeatureRow(icon: "checkmark.circle.fill", text: "Unlimited data export")
@@ -209,11 +209,11 @@ struct UpgradeToShareMoreView: View {
                     dismiss()
                 }
                 .font(designSystem.typography.buttonLarge)
-                .foregroundColor(.white)
+                .foregroundColor(designSystem.colors.primaryWhite)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.black)
-                .cornerRadius(12)
+                .background(designSystem.colors.primaryBlack)
+                .cornerRadius(designSystem.cornerRadius.large)
                 .padding(.horizontal)
 
                 Button("Maybe Later") {
@@ -239,15 +239,16 @@ struct UpgradeToShareMoreView: View {
 }
 
 struct ShareFeatureRow: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let icon: String
     let text: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: icon)
-                .foregroundColor(.green)
+                .foregroundColor(designSystem.colors.success)
             Text(text)
-                .font(.system(size: 15))
+                .font(designSystem.typography.body)
         }
     }
 }

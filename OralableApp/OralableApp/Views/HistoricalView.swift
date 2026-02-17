@@ -293,8 +293,8 @@ struct HistoricalView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(selectedTimePeriod == period ? Color.black : Color.clear)
-                    .foregroundColor(selectedTimePeriod == period ? .white : .primary)
+                    .background(selectedTimePeriod == period ? designSystem.colors.primaryBlack : Color.clear)
+                    .foregroundColor(selectedTimePeriod == period ? designSystem.colors.primaryWhite : designSystem.colors.textPrimary)
                 }
                 .accessibilityLabel("\(period.rawValue) view")
                 .accessibilityAddTraits(selectedTimePeriod == period ? .isSelected : [])
@@ -313,7 +313,7 @@ struct HistoricalView: View {
             Button(action: navigateBackward) {
                 Image(systemName: "chevron.left")
                     .font(designSystem.typography.buttonLarge)
-                    .foregroundColor(.primary)
+                    .foregroundColor(designSystem.colors.textPrimary)
                     .frame(width: 44, height: 44)
                     .background(designSystem.colors.backgroundSecondary)
                     .clipShape(Circle())
@@ -324,14 +324,14 @@ struct HistoricalView: View {
             Spacer()
 
             // Current period display
-            VStack(spacing: 2) {
+            VStack(spacing: designSystem.spacing.xxs) {
                 Text(navigationDisplayText)
                     .font(designSystem.typography.button)
-                    .foregroundColor(.primary)
+                    .foregroundColor(designSystem.colors.textPrimary)
 
                 Text(selectedTimePeriod == .hour ? "Hour View" : "Day View")
                     .font(designSystem.typography.footnote)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Currently viewing \(navigationDisplayText)")
@@ -342,7 +342,7 @@ struct HistoricalView: View {
             Button(action: navigateForward) {
                 Image(systemName: "chevron.right")
                     .font(designSystem.typography.buttonLarge)
-                    .foregroundColor(canNavigateForward ? .primary : .gray)
+                    .foregroundColor(canNavigateForward ? designSystem.colors.textPrimary : designSystem.colors.gray400)
                     .frame(width: 44, height: 44)
                     .background(designSystem.colors.backgroundSecondary)
                     .clipShape(Circle())
@@ -394,7 +394,7 @@ struct HistoricalView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(selectedTab == tab ? tab.chartColor.opacity(0.15) : Color.clear)
-                    .foregroundColor(selectedTab == tab ? tab.chartColor : .secondary)
+                    .foregroundColor(selectedTab == tab ? tab.chartColor : designSystem.colors.textSecondary)
                 }
                 .accessibilityLabel("\(tab.metricType) tab")
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
@@ -412,15 +412,15 @@ struct HistoricalView: View {
             // Header
             HStack {
                 Text(selectedTab.metricType)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                    .font(designSystem.typography.headline)
+                    .foregroundColor(designSystem.colors.textPrimary)
 
                 Spacer()
 
                 if let latestValue = getLatestValue() {
                     Text(formatValue(latestValue))
                         .font(.system(.subheadline, design: .monospaced))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
 

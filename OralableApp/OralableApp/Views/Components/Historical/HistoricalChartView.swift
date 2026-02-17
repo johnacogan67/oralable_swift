@@ -3,6 +3,7 @@ import Charts
 
 // MARK: - Enhanced Historical Chart Component
 struct HistoricalChartView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let metricType: MetricType
     let timeRange: TimeRange
     @Binding var selectedDataPoint: SensorData?
@@ -112,8 +113,8 @@ struct HistoricalChartView: View {
 
                     if let processed {
                         Text("\(processed.statistics.sampleCount) samples \u{2022} \(processed.processingMethod) processing")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption2)
+                            .foregroundColor(designSystem.colors.textSecondary)
                             .opacity(0.7)
                     }
                 }
@@ -125,13 +126,13 @@ struct HistoricalChartView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.xyaxis.line")
                         .font(.system(size: 40))
-                        .foregroundColor(.gray)
+                        .foregroundColor(designSystem.colors.gray400)
                     Text("No data available")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text(emptyStateMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
@@ -216,14 +217,14 @@ struct HistoricalChartView: View {
             }
 
             Text("Context is key to getting a better understanding of your \(metricType.title).")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.top, 8)
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
+                .padding(.top, designSystem.spacing.sm)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(radius: 1)
+        .background(designSystem.colors.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.large))
+        .designShadow(.small)
     }
 
     private func closestPoint(to time: Date) -> (timestamp: Date, value: Double)? {

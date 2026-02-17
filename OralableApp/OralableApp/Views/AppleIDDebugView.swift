@@ -2,6 +2,7 @@ import SwiftUI
 import AuthenticationServices
 
 struct AppleIDDebugView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @Environment(\.dismiss) private var dismiss
     @StateObject private var authManager = AuthenticationManager()
     @State private var credentialStateText: String = "Unknown"
@@ -26,7 +27,7 @@ struct AppleIDDebugView: View {
                         Text("AppleID Credential")
                         Spacer()
                         Text(credentialStateText)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                     Button {
                         checkCredentialState()
@@ -61,8 +62,8 @@ struct AppleIDDebugView: View {
                 if let error = authManager.authenticationError {
                     Section("Last Error") {
                         Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.error)
                     }
                 }
             }
@@ -115,18 +116,19 @@ struct AppleIDDebugView: View {
 }
 
 private struct DebugRow: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let title: String
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
             Text(value)
-                .font(.subheadline)
+                .font(designSystem.typography.bodySmall)
                 .textSelection(.enabled)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, designSystem.spacing.xs)
     }
 }

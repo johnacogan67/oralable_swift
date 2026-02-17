@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Statistics Card Component
 struct HistoricalStatisticsCard: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let metricType: MetricType
     let processed: HistoricalDataProcessor.ProcessedHistoricalData?
 
@@ -28,7 +29,7 @@ struct HistoricalStatisticsCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Average")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text(formatValue(stats.average))
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(metricType.color)
@@ -42,7 +43,7 @@ struct HistoricalStatisticsCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Minimum")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Text(formatValue(stats.minimum))
                             .font(.title3)
                             .fontWeight(.semibold)
@@ -53,7 +54,7 @@ struct HistoricalStatisticsCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Maximum")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Text(formatValue(stats.maximum))
                             .font(.title3)
                             .fontWeight(.semibold)
@@ -70,7 +71,7 @@ struct HistoricalStatisticsCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Std Dev")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Text(formatValue(stats.standardDeviation))
                             .font(.caption)
                             .fontWeight(.semibold)
@@ -78,7 +79,7 @@ struct HistoricalStatisticsCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Coeff. Variation")
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Text(String(format: "%.1f%%", stats.variationCoefficient))
                             .font(.caption)
                             .fontWeight(.semibold)
@@ -86,20 +87,20 @@ struct HistoricalStatisticsCard: View {
                     Spacer()
                     Text("\(stats.sampleCount) pts")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Standard deviation: \(formatValue(stats.standardDeviation)), coefficient of variation: \(String(format: "%.1f percent", stats.variationCoefficient)), \(stats.sampleCount) data points")
             } else {
                 Text("No statistics available")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
         }
         .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(radius: 1)
+        .background(designSystem.colors.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.large))
+        .designShadow(.small)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(metricType.title) statistics")
     }

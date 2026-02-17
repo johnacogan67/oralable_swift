@@ -14,6 +14,7 @@ import SwiftUI
 
 // MARK: - Recording State Indicator (Automatic Recording)
 struct RecordingStateIndicator: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let state: DeviceRecordingState
     let isCalibrated: Bool
     let calibrationProgress: Double
@@ -50,7 +51,7 @@ struct RecordingStateIndicator: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: designSystem.spacing.sm) {
             // State indicator circle
             ZStack {
                 Circle()
@@ -60,54 +61,55 @@ struct RecordingStateIndicator: View {
 
                 Image(systemName: stateIcon)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(designSystem.colors.primaryWhite)
             }
 
             // Status text
             Text(statusText)
-                .font(.system(size: 14, weight: .semibold))
+                .font(designSystem.typography.captionBold)
                 .foregroundColor(stateColor)
 
             // Calibration progress (if calibrating)
             if !isCalibrated && state == .positioned && calibrationProgress > 0 {
                 ProgressView(value: calibrationProgress)
-                    .progressViewStyle(LinearProgressViewStyle(tint: .green))
+                    .progressViewStyle(LinearProgressViewStyle(tint: designSystem.colors.success))
                     .frame(width: 100)
                 Text("\(Int(calibrationProgress * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             // Duration and events
-            HStack(spacing: 16) {
+            HStack(spacing: designSystem.spacing.md) {
                 StatBadge(label: "Time", value: duration)
                 StatBadge(label: "Events", value: "\(eventCount)")
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.large)
+        .designShadow(.small)
     }
 }
 
 // MARK: - Stat Badge
 struct StatBadge: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let label: String
     let value: String
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: designSystem.spacing.xs) {
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textSecondary)
             Text(value)
-                .font(.caption.bold())
-                .foregroundColor(.primary)
+                .font(designSystem.typography.captionBold)
+                .foregroundColor(designSystem.colors.textPrimary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(8)
+        .padding(.horizontal, designSystem.spacing.sm)
+        .padding(.vertical, designSystem.spacing.xs)
+        .background(designSystem.colors.textSecondary.opacity(0.1))
+        .cornerRadius(designSystem.cornerRadius.medium)
     }
 }

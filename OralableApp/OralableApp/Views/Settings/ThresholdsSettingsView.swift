@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct ThresholdsSettingsView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject private var settings = ThresholdSettings.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -16,11 +17,11 @@ struct ThresholdsSettingsView: View {
         List {
             // Movement Threshold Section
             Section {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.md) {
                     // Header with current value
                     HStack {
                         Text("Movement Threshold")
-                            .font(.headline)
+                            .font(designSystem.typography.headline)
                         Spacer()
                         Text(formatThreshold(settings.movementThreshold))
                             .font(.system(.title3, design: .rounded))
@@ -34,40 +35,40 @@ struct ThresholdsSettingsView: View {
                         in: ThresholdSettings.movementThresholdRange,
                         step: ThresholdSettings.movementThresholdStep
                     )
-                    .tint(.blue)
+                    .tint(designSystem.colors.info)
 
                     // Labels
                     HStack {
                         VStack(alignment: .leading) {
                             Text("More Sensitive")
-                                .font(.caption)
-                                .foregroundColor(.green)
+                                .font(designSystem.typography.caption)
+                                .foregroundColor(designSystem.colors.success)
                             Text("500")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .font(designSystem.typography.caption2)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
                         Spacer()
                         VStack(alignment: .trailing) {
                             Text("Less Sensitive")
-                                .font(.caption)
-                                .foregroundColor(.blue)
+                                .font(designSystem.typography.caption)
+                                .foregroundColor(designSystem.colors.info)
                             Text("5K")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .font(designSystem.typography.caption2)
+                                .foregroundColor(designSystem.colors.textSecondary)
                         }
                     }
 
                     // Visual indicator
-                    HStack(spacing: 4) {
+                    HStack(spacing: designSystem.spacing.xs) {
                         Image(systemName: "figure.walk")
-                            .foregroundColor(isCurrentlyActive ? .green : .blue)
+                            .foregroundColor(isCurrentlyActive ? designSystem.colors.success : designSystem.colors.info)
                         Text(isCurrentlyActive ? "More likely to show Active" : "More likely to show Still")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, designSystem.spacing.xs)
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, designSystem.spacing.sm)
             } header: {
                 Text("Movement Detection")
             } footer: {
@@ -76,10 +77,10 @@ struct ThresholdsSettingsView: View {
 
             // Info Section
             Section {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: designSystem.spacing.buttonPadding) {
                     infoRow(
                         icon: "arrow.down.circle.fill",
-                        color: .green,
+                        color: designSystem.colors.success,
                         title: "Lower values (500-1000)",
                         description: "Detect small movements. Good for sensitive monitoring."
                     )
@@ -88,7 +89,7 @@ struct ThresholdsSettingsView: View {
 
                     infoRow(
                         icon: "minus.circle.fill",
-                        color: .blue,
+                        color: designSystem.colors.info,
                         title: "Default value (1500)",
                         description: "Balanced sensitivity for typical use."
                     )
@@ -97,12 +98,12 @@ struct ThresholdsSettingsView: View {
 
                     infoRow(
                         icon: "arrow.up.circle.fill",
-                        color: .orange,
+                        color: designSystem.colors.warning,
                         title: "Higher values (2000-5000)",
                         description: "Only detect significant movement. Reduces false positives."
                     )
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, designSystem.spacing.xs)
             } header: {
                 Text("Guide")
             }
@@ -120,7 +121,7 @@ struct ThresholdsSettingsView: View {
                         Text("Reset to Defaults")
                         Spacer()
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(designSystem.colors.info)
                 }
             }
         }
@@ -132,19 +133,19 @@ struct ThresholdsSettingsView: View {
     // MARK: - Helper Views
 
     private func infoRow(icon: String, color: Color, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: designSystem.spacing.buttonPadding) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.system(size: designSystem.spacing.screenPadding))
                 .foregroundColor(color)
-                .frame(width: 24)
+                .frame(width: designSystem.spacing.lg)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(designSystem.typography.bodySmall)
                     .fontWeight(.medium)
                 Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
         }
     }
@@ -153,11 +154,11 @@ struct ThresholdsSettingsView: View {
 
     private var thresholdColor: Color {
         if settings.movementThreshold < 1000 {
-            return .green
+            return designSystem.colors.success
         } else if settings.movementThreshold > 2500 {
-            return .orange
+            return designSystem.colors.warning
         } else {
-            return .blue
+            return designSystem.colors.info
         }
     }
 

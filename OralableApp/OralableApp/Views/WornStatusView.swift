@@ -12,59 +12,60 @@ import SwiftUI
 
 /// An Apple-inspired UI component to indicate sensor coupling and HR.
 struct WornStatusView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     let result: HRResult?
-    
+
     private var isWorn: Bool {
         (result?.confidence ?? 0) > 0.5
     }
-    
+
     private var bpm: Int {
         Int(result?.bpm ?? 0)
     }
-    
+
     private var confidence: Double {
         result?.confidence ?? 0
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: designSystem.spacing.buttonPadding) {
             // Pulse Circle
             ZStack {
                 Circle()
-                    .stroke(isWorn ? Color.green.opacity(0.2) : Color.gray.opacity(0.1), lineWidth: 4)
+                    .stroke(isWorn ? designSystem.colors.success.opacity(0.2) : designSystem.colors.gray400.opacity(0.1), lineWidth: 4)
                     .frame(width: 44, height: 44)
-                
+
                 if isWorn {
                     Image(systemName: "heart.fill")
-                        .foregroundColor(.red)
+                        .foregroundColor(designSystem.colors.error)
                         .scaleEffect(isWorn ? 1.1 : 1.0)
                         .animation(Animation.easeInOut(duration: 0.6).repeatForever(), value: isWorn)
                 } else {
                     Image(systemName: "person.fill.viewfinder")
-                        .foregroundColor(.gray)
+                        .foregroundColor(designSystem.colors.gray400)
                 }
             }
-            
-            VStack(alignment: .leading, spacing: 2) {
+
+            VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
                 Text(isWorn ? "Sensor Coupled" : "Reposition Sensor")
-                    .font(.custom("OpenSans-Bold", size: 14))
-                    .foregroundColor(.primary)
-                
+                    .font(designSystem.typography.captionBold)
+                    .foregroundColor(designSystem.colors.textPrimary)
+
                 if isWorn {
                     Text(bpm > 0 ? "\(bpm) BPM" : "Measuring...")
-                        .font(.custom("OpenSans-Regular", size: 12))
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 } else {
                     Text("Finding pulse at masseter...")
-                        .font(.custom("OpenSans-Regular", size: 12))
-                        .foregroundColor(.secondary)
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
                 }
             }
-            
+
             Spacer()
-            
+
             // Signal Quality Bar
-            HStack(spacing: 2) {
+            HStack(spacing: designSystem.spacing.xxs) {
                 ForEach(0..<4) { index in
                     RoundedRectangle(cornerRadius: 1)
                         .fill(qualityColor(for: index))
@@ -72,17 +73,17 @@ struct WornStatusView: View {
                 }
             }
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .padding(designSystem.spacing.md)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.large)
+        .designShadow(.small)
     }
-    
+
     private func qualityColor(for index: Int) -> Color {
         let barsToFill = Int(confidence * 4)
         if index < barsToFill {
-            return isWorn ? .green : .orange
+            return isWorn ? designSystem.colors.success : designSystem.colors.warning
         }
-        return Color.gray.opacity(0.2)
+        return designSystem.colors.gray400.opacity(0.2)
     }
 }

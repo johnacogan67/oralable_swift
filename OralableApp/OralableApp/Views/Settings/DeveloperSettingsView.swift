@@ -11,6 +11,7 @@
 import SwiftUI
 
 struct DeveloperSettingsView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     var body: some View {
@@ -45,7 +46,7 @@ struct DeveloperSettingsView: View {
                 Button("Reset to Defaults") {
                     featureFlags.resetToDefaults()
                 }
-                .foregroundColor(.red)
+                .foregroundColor(designSystem.colors.error)
             }
         }
         .navigationTitle("Developer Settings")

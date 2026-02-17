@@ -20,6 +20,7 @@
 
 import Foundation
 import AuthenticationServices
+import Combine
 
 @MainActor
 final class AuthenticationViewModel: ObservableObject {
@@ -32,12 +33,22 @@ final class AuthenticationViewModel: ObservableObject {
     @Published var showError: Bool = false
     @Published var authenticationError: String? = nil
 
-    private let authenticationManager: AuthenticationManager
-    private var memberSinceDate: Date = Date()
+    // Subscription state synced from SubscriptionManager
+    @Published private(set) var currentSubscriptionTier: SubscriptionTier = .basic
+    @Published private(set) var isPaidSubscriber: Bool = false
+    @Published private(set) var subscriptionExpiryDate: Date? = nil
 
-    init(authenticationManager: AuthenticationManager) {
+    private let authenticationManager: AuthenticationManager
+    private let subscriptionManager: SubscriptionManager
+    private var memberSinceDate: Date = Date()
+    private var cancellables = Set<AnyCancellable>()
+
+    init(authenticationManager: AuthenticationManager,
+         subscriptionManager: SubscriptionManager) {
         self.authenticationManager = authenticationManager
+        self.subscriptionManager = subscriptionManager
         syncState()
+        observeSubscriptionChanges()
     }
 
     // MARK: - Computed Properties
@@ -113,27 +124,36 @@ final class AuthenticationViewModel: ObservableObject {
     }
     
     var subscriptionStatus: String {
-        // TODO: Integrate with actual subscription system
-        return "Active"
+        if isPaidSubscriber {
+            if subscriptionManager.hasExpired {
+                return "Expired"
+            } else if subscriptionManager.isExpiringSoon {
+                return "Expiring Soon"
+            }
+            return "Active"
+        }
+        return "Active" // Basic/Free tier is always "Active"
     }
-    
+
     var subscriptionPlan: String {
-        // TODO: Integrate with actual subscription system
-        return "Free"
+        return currentSubscriptionTier.displayName
     }
-    
+
     var hasSubscription: Bool {
-        // TODO: Integrate with actual subscription system
-        return false
+        return isPaidSubscriber
     }
-    
+
     var subscriptionExpiryText: String {
-        // TODO: Integrate with actual subscription system
-        return "N/A"
+        guard let expiryDate = subscriptionExpiryDate else {
+            return isPaidSubscriber ? "Unknown" : "N/A"
+        }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: expiryDate)
     }
 
     // MARK: - State Management
-    
+
     func syncState() {
         isAuthenticated = authenticationManager.isAuthenticated
         userFullName = authenticationManager.userFullName
@@ -141,10 +161,49 @@ final class AuthenticationViewModel: ObservableObject {
         userFamilyName = authenticationManager.userFamilyName
         userEmail = authenticationManager.userEmail
         userID = authenticationManager.userID
+        syncSubscriptionState()
     }
-    
+
+    private func syncSubscriptionState() {
+        currentSubscriptionTier = subscriptionManager.currentTier
+        isPaidSubscriber = subscriptionManager.isPaidSubscriber
+        subscriptionExpiryDate = subscriptionManager.subscriptionExpiryDate
+    }
+
     func checkAuthenticationState() {
         syncState()
+    }
+
+    func refreshSubscription() {
+        Task {
+            await subscriptionManager.updateSubscriptionStatus()
+            syncSubscriptionState()
+        }
+    }
+
+    // MARK: - Subscription Observation
+
+    private func observeSubscriptionChanges() {
+        subscriptionManager.currentTierPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] tier in
+                self?.currentSubscriptionTier = tier
+            }
+            .store(in: &cancellables)
+
+        subscriptionManager.isPaidSubscriberPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isPaid in
+                self?.isPaidSubscriber = isPaid
+            }
+            .store(in: &cancellables)
+
+        subscriptionManager.$subscriptionExpiryDate
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] expiryDate in
+                self?.subscriptionExpiryDate = expiryDate
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Authentication Actions
@@ -197,6 +256,11 @@ final class AuthenticationViewModel: ObservableObject {
         print("Family Name: \(userFamilyName ?? "nil")")
         print("Email: \(userEmail ?? "nil")")
         print("Profile Completion: \(profileCompletionPercentage)%")
+        print("--- Subscription ---")
+        print("Tier: \(currentSubscriptionTier.displayName)")
+        print("Paid Subscriber: \(isPaidSubscriber)")
+        print("Status: \(subscriptionStatus)")
+        print("Expiry: \(subscriptionExpiryText)")
         print("================================")
     }
     

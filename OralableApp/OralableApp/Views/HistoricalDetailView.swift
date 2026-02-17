@@ -171,6 +171,7 @@ struct HistoricalSample: Codable {
 
 // MARK: - Historical Detail View (Refactored to use components)
 struct HistoricalDetailView: View {
+    @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var ppgNormalizationService: PPGNormalizationService
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
     let metricType: MetricType
@@ -221,12 +222,12 @@ struct HistoricalDetailView: View {
                     // DEBUG: Quick counters to help trace where data is present
                     HStack {
                         Text("Raw samples: \(sensorDataProcessor.sensorDataHistory.count)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                         Spacer()
                         Text("Processed: \(getProcessor().processedData?.statistics.sampleCount ?? 0)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                     .padding(.horizontal)
                     .accessibilityHidden(true)
@@ -676,14 +677,14 @@ struct PPGDebugCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "waveform.path.ecg")
-                    .foregroundColor(.red)
+                    .foregroundColor(designSystem.colors.error)
                 Text("PPG Channel Debug")
                     .font(designSystem.typography.headline)
                     .fontWeight(.bold)
                 Spacer()
                 Text("Last \(recentPPGData.count)")
                     .font(designSystem.typography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("PPG Channel Debug, showing last \(recentPPGData.count) samples")
@@ -711,7 +712,7 @@ struct PPGDebugCard: View {
                 Text(normalizationMethod == .none ? "Raw values only" :
                         "Use \(normalizationMethod.rawValue) normalization")
                     .font(designSystem.typography.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             Divider()
@@ -721,7 +722,7 @@ struct PPGDebugCard: View {
                 VStack {
                     Text("IR")
                         .font(designSystem.typography.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text("\(Int(recentPPGData.last?.ir ?? 0))")
                         .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
@@ -729,7 +730,7 @@ struct PPGDebugCard: View {
                 VStack {
                     Text("Red")
                         .font(designSystem.typography.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text("\(Int(recentPPGData.last?.red ?? 0))")
                         .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
@@ -737,7 +738,7 @@ struct PPGDebugCard: View {
                 VStack {
                     Text("Green")
                         .font(designSystem.typography.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(designSystem.colors.textSecondary)
                     Text("\(Int(recentPPGData.last?.green ?? 0))")
                         .font(designSystem.typography.h3)
                         .fontWeight(.semibold)
@@ -778,20 +779,20 @@ struct PPGDebugCard: View {
                             .fontWeight(.semibold)
                         Text(String(format: "Confidence: %.2f", ctx.confidence))
                             .font(designSystem.typography.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(designSystem.colors.textSecondary)
                     }
                     Spacer()
                     if ctx.shouldNormalize {
                         Text("Stable")
                             .font(designSystem.typography.caption)
                             .padding(6)
-                            .background(Color.green.opacity(0.12))
+                            .background(designSystem.colors.success.opacity(0.12))
                             .cornerRadius(designSystem.cornerRadius.small)
                     } else {
                         Text("Unstable")
                             .font(designSystem.typography.caption)
                             .padding(6)
-                            .background(Color.yellow.opacity(0.12))
+                            .background(designSystem.colors.warning.opacity(0.12))
                             .cornerRadius(designSystem.cornerRadius.small)
                     }
                 }
@@ -800,7 +801,7 @@ struct PPGDebugCard: View {
             } else {
                 Text("No device context available")
                     .font(designSystem.typography.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
         }
         .padding()
