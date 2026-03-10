@@ -39,7 +39,7 @@ extension OralableDevice {
         lastPacketTime = notificationTime
 
         // Use OralableCore.BLEDataParser for parsing (handles frame counter)
-        guard let result = BLEDataParser.parsePPGPacket(data, notificationTime: notificationTime) else {
+        guard let result = OralableCore.BLEDataParser.parsePPGPacket(data, notificationTime: notificationTime) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse PPG packet (\(data.count) bytes)")
             return
         }
@@ -72,21 +72,24 @@ extension OralableDevice {
                 sensorType: .ppgRed,
                 value: Double(sample.red),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             let irReading = SensorReading(
                 sensorType: .ppgInfrared,
                 value: Double(sample.ir),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             let greenReading = SensorReading(
                 sensorType: .ppgGreen,
                 value: Double(sample.green),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             readings.append(redReading)
@@ -120,7 +123,7 @@ extension OralableDevice {
         let notificationTime = Date()
 
         // Use OralableCore.BLEDataParser for parsing (handles frame counter)
-        guard let result = BLEDataParser.parseAccelerometerPacket(data, notificationTime: notificationTime) else {
+        guard let result = OralableCore.BLEDataParser.parseAccelerometerPacket(data, notificationTime: notificationTime) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse accelerometer packet (\(data.count) bytes)")
             return
         }
@@ -150,21 +153,24 @@ extension OralableDevice {
                 sensorType: .accelerometerX,
                 value: Double(sample.x),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             let yReading = SensorReading(
                 sensorType: .accelerometerY,
                 value: Double(sample.y),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             let zReading = SensorReading(
                 sensorType: .accelerometerZ,
                 value: Double(sample.z),
                 timestamp: sample.timestamp,
-                deviceId: deviceId
+                deviceId: deviceId,
+                frameNumber: frameCounter
             )
 
             readings.append(xReading)
@@ -188,7 +194,7 @@ extension OralableDevice {
     /// Parse temperature data using OralableCore.BLEDataParser
     func parseTemperature(_ data: Data) {
         // Use OralableCore.BLEDataParser for parsing
-        guard let result = BLEDataParser.parseTemperaturePacket(data) else {
+        guard let result = OralableCore.BLEDataParser.parseTemperaturePacket(data) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse temperature packet (\(data.count) bytes)")
             return
         }
@@ -213,7 +219,7 @@ extension OralableDevice {
     /// Parse TGM battery data using OralableCore.BLEDataParser
     func parseBatteryData(_ data: Data) {
         // Use OralableCore.BLEDataParser for parsing
-        guard let batteryData = BLEDataParser.parseTGMBatteryData(data) else {
+        guard let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse battery packet (\(data.count) bytes)")
             return
         }
@@ -246,7 +252,7 @@ extension OralableDevice {
 
     /// Parse standard battery level using OralableCore.BLEDataParser
     func parseStandardBatteryLevel(_ data: Data) {
-        guard let level = BLEDataParser.parseStandardBatteryLevel(data) else {
+        guard let level = OralableCore.BLEDataParser.parseStandardBatteryLevel(data) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse standard battery level")
             return
         }

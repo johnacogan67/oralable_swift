@@ -22,7 +22,7 @@ extension DeviceManager {
 
     // MARK: - Device Discovery Handlers
 
-    func handleDeviceDiscovered(peripheral: CBPeripheral, name: String, rssi: Int) {
+    func handleDeviceDiscovered(peripheral: CBPeripheral, name: String, rssi: Int, advertisementData: [String: Any] = [:]) {
         discoveryCount += 1
 
         #if DEBUG

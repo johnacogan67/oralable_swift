@@ -146,9 +146,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
         // Create device info
         self.deviceInfo = DeviceInfo(
+            id: peripheral.identifier,
             type: .oralable,
             name: peripheral.name ?? "Oralable",
-            id: peripheral.identifier,
+            peripheralIdentifier: peripheral.identifier,
             connectionState: .disconnected
         )
 
@@ -164,7 +165,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         deviceInfo.connectionState = .connecting
     }
 
-    func disconnect() {
+    func disconnect() async {
         Logger.shared.info("[OralableDevice] 🔌 Disconnect requested")
         deviceInfo.connectionState = .disconnecting
 
@@ -181,6 +182,51 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         ppgPacketsLost = 0
         accelPacketsLost = 0
         sampleRateStats.reset()
+    }
+
+    /// Cancel any pending async continuations to prevent hangs on disconnect
+    func cancelPendingContinuations() {
+        serviceDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        serviceDiscoveryContinuation = nil
+        characteristicDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        characteristicDiscoveryContinuation = nil
+        notificationEnableContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        notificationEnableContinuation = nil
+        connectionReadyContinuation?.resume()
+        connectionReadyContinuation = nil
+        accelerometerNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        accelerometerNotificationContinuation = nil
+        writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        writeCompletionContinuation = nil
+    }
+
+    func isAvailable() -> Bool {
+        guard let peripheral = peripheral else { return false }
+        return peripheral.state == .connected || peripheral.state == .connecting
+    }
+
+    func startDataStream() async throws {
+        guard isConnected else {
+            throw DeviceError.notConnected("Oralable device not connected")
+        }
+        try await enableNotifications()
+        try await enableAccelerometerNotifications()
+        await enableTemperatureNotifications()
+    }
+
+    func stopDataStream() async {
+        guard let peripheral = peripheral else { return }
+        sensorDataCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
+        accelerometerCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
+        commandCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
+        tgmBatteryCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
+    }
+
+    func requestReading(for sensorType: SensorType) async throws -> SensorReading? {
+        guard isConnected else {
+            throw DeviceError.notConnected("Oralable device not connected")
+        }
+        return latestReadings[sensorType]
     }
 
     func discoverServices() async throws {
