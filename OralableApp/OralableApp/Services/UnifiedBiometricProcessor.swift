@@ -188,6 +188,14 @@ actor UnifiedBiometricProcessor {
     private var irHighPass: Double = 0
     private var greenLowPass: Double = 0
     private var greenHighPass: Double = 0
+    private var redLowPass: Double = 0
+    private var redHighPass: Double = 0
+    private var irDC: Double = 0
+    private var irDCInitialized: Bool = false
+
+    // MARK: - MAM Inference (bruxism classification)
+
+    private let mamInferenceManager: MAMInferenceManager
 
     // MARK: - Baseline State
 
@@ -220,6 +228,7 @@ actor UnifiedBiometricProcessor {
         self.redBuffer = CircularBuffer<Double>(capacity: capacity)
         self.greenBuffer = CircularBuffer<Double>(capacity: capacity)
         self.accelMagnitudeBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.mamInferenceManager = MAMInferenceManager()
     }
 
     // MARK: - Real-time Processing
@@ -243,7 +252,7 @@ actor UnifiedBiometricProcessor {
     ) -> BiometricResult {
 
         // Stage 1: Motion detection
-        let (motionLevel, isMoving) = calculateMotion(x: accelX, y: accelY, z: accelZ)
+        let (motionLevel, accelMagnitude, isMoving) = calculateMotion(x: accelX, y: accelY, z: accelZ)
 
         // Stage 2: Motion compensation
         let compensatedIR = motionCompensator.filter(signal: ir, noiseReference: motionLevel)
@@ -253,8 +262,8 @@ actor UnifiedBiometricProcessor {
         // Stage 3: Activity classification
         let activity = activityClassifier.classify(ir: compensatedIR, accMagnitude: motionLevel + 1.0)
 
-        // Stage 4: Update buffers with filtered values
-        updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel)
+        // Stage 4: Update buffers with filtered values and feed MAM inference (non-blocking)
+        updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel, accelMagnitude: accelMagnitude)
 
         // Stage 5: Check if we have enough data
         guard irBuffer.count >= config.hrWindowSize else {
@@ -385,10 +394,15 @@ actor UnifiedBiometricProcessor {
         irHighPass = 0
         greenLowPass = 0
         greenHighPass = 0
+        redLowPass = 0
+        redHighPass = 0
+        irDC = 0
+        irDCInitialized = false
         irBaseline = 0
         isBaselineInitialized = false
 
         motionCompensator.reset()
+        mamInferenceManager.reset()
 
         // Note: FFT setup is intentionally NOT destroyed on reset.
         // It is reused across sessions since the FFT size rarely changes.
@@ -403,7 +417,7 @@ actor UnifiedBiometricProcessor {
 
     // MARK: - Private: Motion Detection
 
-    private func calculateMotion(x: Double, y: Double, z: Double) -> (level: Double, isMoving: Bool) {
+    private func calculateMotion(x: Double, y: Double, z: Double) -> (level: Double, magnitude: Double, isMoving: Bool) {
         // Normalize accelerometer values (16384 LSB/g for LIS2DTW12 at ±2g)
         let normX = x / 16384.0
         let normY = y / 16384.0
@@ -418,27 +432,43 @@ actor UnifiedBiometricProcessor {
         // Is moving if motion exceeds threshold
         let isMoving = motionLevel > config.motionThresholdG
 
-        return (motionLevel, isMoving)
+        return (motionLevel, magnitude, isMoving)
     }
 
     // MARK: - Private: Buffer Management
 
-    private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double) {
+    private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double) {
         // Apply bandpass filtering for IR
         let previousIR = irBuffer.last ?? ir
         irHighPass = config.alphaHP * (irHighPass + ir - previousIR)
         irLowPass = irLowPass + config.alphaLP * (irHighPass - irLowPass)
+
+        // Apply bandpass filtering for Red (for MAM Net)
+        let previousRed = redBuffer.last ?? red
+        redHighPass = config.alphaHP * (redHighPass + red - previousRed)
+        redLowPass = redLowPass + config.alphaLP * (redHighPass - redLowPass)
 
         // Apply bandpass filtering for Green
         let previousGreen = greenBuffer.last ?? green
         greenHighPass = config.alphaHP * (greenHighPass + green - previousGreen)
         greenLowPass = greenLowPass + config.alphaLP * (greenHighPass - greenLowPass)
 
+        // IR DC (low-pass for muscle occlusion) — alpha 0.02 for ~0.8 Hz effective
+        if !irDCInitialized {
+            irDC = ir
+            irDCInitialized = true
+        } else {
+            irDC = irDC + 0.02 * (ir - irDC)
+        }
+
         // Append filtered values (CircularBuffer automatically overwrites oldest when full)
         irBuffer.append(irLowPass)
         redBuffer.append(red)  // Red uses raw for SpO2 AC/DC calculation
         greenBuffer.append(greenLowPass)
         accelMagnitudeBuffer.append(motion)
+
+        // Feed MAM inference (non-blocking; classification runs on background queue)
+        mamInferenceManager.feed(ppgRedAC: redLowPass, ppgIRDC: irDC, accelMagnitude: accelMagnitude)
     }
 
     // MARK: - Private: Perfusion Index
