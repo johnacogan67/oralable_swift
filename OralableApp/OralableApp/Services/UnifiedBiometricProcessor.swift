@@ -263,7 +263,7 @@ actor UnifiedBiometricProcessor {
         let activity = activityClassifier.classify(ir: compensatedIR, accMagnitude: motionLevel + 1.0)
 
         // Stage 4: Update buffers with filtered values and feed MAM inference (non-blocking)
-        updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel, accelMagnitude: accelMagnitude)
+        updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel, accelMagnitude: accelMagnitude, accelX: accelX, accelY: accelY, accelZ: accelZ)
 
         // Stage 5: Check if we have enough data
         guard irBuffer.count >= config.hrWindowSize else {
@@ -437,7 +437,7 @@ actor UnifiedBiometricProcessor {
 
     // MARK: - Private: Buffer Management
 
-    private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double) {
+    private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double, accelX: Double, accelY: Double, accelZ: Double) {
         // Apply bandpass filtering for IR
         let previousIR = irBuffer.last ?? ir
         irHighPass = config.alphaHP * (irHighPass + ir - previousIR)
@@ -467,8 +467,16 @@ actor UnifiedBiometricProcessor {
         greenBuffer.append(greenLowPass)
         accelMagnitudeBuffer.append(motion)
 
-        // Feed MAM inference (non-blocking; classification runs on background queue)
-        mamInferenceManager.feed(ppgRedAC: redLowPass, ppgIRDC: irDC, accelMagnitude: accelMagnitude)
+        // MAM inference: addSample computes accel magnitude internally (√(x²+y²+z²) in g)
+        // accelX/Y/Z are raw (16384 = 1g); convert to g for addSample
+        let scale = 16384.0
+        mamInferenceManager.addSample(
+            ppgRedAC: redLowPass,
+            ppgIRDC: irDC,
+            accelX: accelX / scale,
+            accelY: accelY / scale,
+            accelZ: accelZ / scale
+        )
     }
 
     // MARK: - Private: Perfusion Index
