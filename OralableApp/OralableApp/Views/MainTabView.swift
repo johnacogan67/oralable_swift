@@ -80,7 +80,7 @@ private struct DashboardContainer: View {
                 if useSimplified {
                     SimplifiedDashboardView(viewModel: viewModel)
                 } else {
-                    DashboardView()
+                    HomeView()
                 }
             } else {
                 ProgressView("Loading...")

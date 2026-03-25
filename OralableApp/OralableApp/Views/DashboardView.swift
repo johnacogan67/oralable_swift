@@ -142,6 +142,20 @@ struct DashboardView: View {
                         .padding(.vertical, designSystem.spacing.sm)
                     }
 
+                    if viewModel.oralableConnected || featureFlags.demoModeEnabled {
+                        TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
+                        let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
+                        let chartModel = TemporalisAnalysisChart.build(
+                            from: dependencies.sensorDataProcessor.sensorDataHistory,
+                            hourlyRescue: hourlySorted
+                        )
+                        TemporalisAnalysisChart(
+                            lineSeries: chartModel.line,
+                            rescuePerHour: chartModel.bars,
+                            hypoxiaMarkers: chartModel.markers
+                        )
+                    }
+
                     // PPG Card (Oralable) - Shows IR sensor data
                     NavigationLink(destination: LazyView(
                         HistoricalView(metricType: "IR Activity")
@@ -397,6 +411,9 @@ struct DashboardView_Previews: PreviewProvider {
         let authManager = AuthenticationManager()
         let subscription = SubscriptionManager()
         let device = DeviceManager()
+        let sessionHistoryStore = SessionHistoryStore()
+        recordingSession.sessionHistoryStore = sessionHistoryStore
+        sessionHistoryStore.attach(recordingManager: recordingSession, deviceManager: device)
         let sharedData = SharedDataManager(
             authenticationManager: authManager,
             sensorDataProcessor: SensorDataProcessor.shared
@@ -410,6 +427,7 @@ struct DashboardView_Previews: PreviewProvider {
             subscriptionManager: subscription,
             deviceManager: device,
             sensorDataProcessor: SensorDataProcessor.shared,
+            sessionHistoryStore: sessionHistoryStore,
             appStateManager: appState,
             sharedDataManager: sharedData,
             designSystem: designSystem

@@ -19,13 +19,16 @@ struct OralableApp: App {
     init() {
         let authenticationManager = AuthenticationManager()
         let sensorDataStore = SensorDataStore()
+        let sessionHistoryStore = SessionHistoryStore()
         let recordingSessionManager = RecordingSessionManager()
+        recordingSessionManager.sessionHistoryStore = sessionHistoryStore
         let sensorDataProcessor = SensorDataProcessor.shared
         let historicalDataManager = HistoricalDataManager(
             sensorDataProcessor: sensorDataProcessor
         )
         let subscriptionManager = SubscriptionManager()
         let deviceManager = DeviceManager()
+        sessionHistoryStore.attach(recordingManager: recordingSessionManager, deviceManager: deviceManager)
         let appStateManager = AppStateManager()
         let sharedDataManager = SharedDataManager(
             authenticationManager: authenticationManager,
@@ -49,6 +52,7 @@ struct OralableApp: App {
             subscriptionManager: subscriptionManager,
             deviceManager: deviceManager,
             sensorDataProcessor: sensorDataProcessor,
+            sessionHistoryStore: sessionHistoryStore,
             appStateManager: appStateManager,
             sharedDataManager: sharedDataManager,
             designSystem: designSystem

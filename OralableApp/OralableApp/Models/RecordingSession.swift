@@ -7,6 +7,21 @@
 //
 
 import Foundation
+
+/// One hour of aggregated Temporalis class probabilities, rescue event count, and hypoxic burden (SASHB).
+struct HourlyTemporalisSegment: Codable, Equatable, Sendable {
+    var hourIndex: Int
+    var segmentStart: Date
+    var segmentEnd: Date
+    var quiet: Double
+    var phasic: Double
+    var tonic: Double
+    var rescue: Double
+    /// Cumulative hypoxic burden for this hour: ∫ max(0, 90 − SpO₂) dt when SpO₂ < 90 (%·s).
+    var sashbHypoxicBurden: Double
+    var rescueEventCount: Int
+}
+
 /// Represents a single data recording session
 struct RecordingSession: Identifiable, Codable {
     let id: UUID
@@ -40,6 +55,9 @@ struct RecordingSession: Identifiable, Codable {
     var notes: String?
     var tags: [String] = []
 
+    /// Hourly Temporalis / SASHB rollup (clinical temporalis report and history charts).
+    var hourlyTemporalisSegments: [HourlyTemporalisSegment]? = nil
+
     init(
         id: UUID = UUID(),
         startTime: Date = Date(),
@@ -54,6 +72,7 @@ struct RecordingSession: Identifiable, Codable {
         self.deviceID = deviceID
         self.deviceName = deviceName
         self.deviceType = deviceType
+        self.hourlyTemporalisSegments = nil
     }
 
     /// Format duration as HH:MM:SS
@@ -171,8 +190,15 @@ class RecordingSessionManager: ObservableObject {
     // Reference to SharedDataManager for CloudKit uploads
     weak var sharedDataManager: SharedDataManager?
 
+    weak var sessionHistoryStore: SessionHistoryStore?
+
     init() {
         loadSessions()
+    }
+
+    /// Persists session metadata (`recording_sessions.json`).
+    func saveSessionsToDisk() {
+        saveSessions()
     }
 
     /// Set the SharedDataManager for CloudKit uploads
@@ -205,12 +231,19 @@ class RecordingSessionManager: ObservableObject {
 
         Logger.shared.debug(" [RecordingSessionManager] Started session: \(session.id)")
         saveSessions()
+        sessionHistoryStore?.beginSession(anchor: session.startTime, sessionId: session.id)
 
         return session
     }
 
     /// Stop the current recording session
     func stopSession() throws {
+        guard currentSession != nil else {
+            throw DeviceError.recordingNotInProgress
+        }
+
+        sessionHistoryStore?.endSession(at: Date())
+
         guard var session = currentSession else {
             throw DeviceError.recordingNotInProgress
         }

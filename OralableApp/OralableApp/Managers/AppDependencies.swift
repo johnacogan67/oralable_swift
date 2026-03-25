@@ -38,6 +38,7 @@ final class AppDependencies: ObservableObject {
     let subscriptionManager: SubscriptionManager
     let deviceManager: DeviceManager
     let deviceManagerAdapter: DeviceManagerAdapter
+    let sessionHistoryStore: SessionHistoryStore
     let sensorDataProcessor: SensorDataProcessor
     let appStateManager: AppStateManager
     let sharedDataManager: SharedDataManager
@@ -53,6 +54,7 @@ final class AppDependencies: ObservableObject {
          subscriptionManager: SubscriptionManager,
          deviceManager: DeviceManager,
          sensorDataProcessor: SensorDataProcessor,
+         sessionHistoryStore: SessionHistoryStore,
          appStateManager: AppStateManager,
          sharedDataManager: SharedDataManager,
          designSystem: DesignSystem) {
@@ -62,7 +64,12 @@ final class AppDependencies: ObservableObject {
         self.sensorDataStore = sensorDataStore
         self.subscriptionManager = subscriptionManager
         self.deviceManager = deviceManager
-        self.deviceManagerAdapter = DeviceManagerAdapter(deviceManager: deviceManager, sensorDataProcessor: sensorDataProcessor)
+        self.sessionHistoryStore = sessionHistoryStore
+        self.deviceManagerAdapter = DeviceManagerAdapter(
+            deviceManager: deviceManager,
+            sensorDataProcessor: sensorDataProcessor,
+            sessionHistoryStore: sessionHistoryStore
+        )
         self.sensorDataProcessor = sensorDataProcessor
         self.appStateManager = appStateManager
         self.sharedDataManager = sharedDataManager
@@ -115,6 +122,7 @@ struct DependenciesModifier: ViewModifier {
             .environmentObject(dependencies.historicalDataManager)
             .environmentObject(dependencies.deviceManager)
             .environmentObject(dependencies.deviceManagerAdapter)
+            .environmentObject(dependencies.sessionHistoryStore)
             .environmentObject(dependencies.sensorDataProcessor)
             .environmentObject(dependencies.sensorDataStore)
             .environmentObject(dependencies.subscriptionManager)

@@ -473,10 +473,13 @@ struct DevicesView_Previews: PreviewProvider {
         let appState = AppStateManager()
         let sensorStore = SensorDataStore()
         let recordingSession = RecordingSessionManager()
+        let sessionHistoryStore = SessionHistoryStore()
+        recordingSession.sessionHistoryStore = sessionHistoryStore
         let historicalData = HistoricalDataManager(sensorDataProcessor: SensorDataProcessor.shared)
         let authManager = AuthenticationManager()
         let subscription = SubscriptionManager()
         let device = DeviceManager()
+        sessionHistoryStore.attach(recordingManager: recordingSession, deviceManager: device)
         let sharedData = SharedDataManager(
             authenticationManager: authManager,
             sensorDataProcessor: SensorDataProcessor.shared
@@ -491,6 +494,7 @@ struct DevicesView_Previews: PreviewProvider {
             subscriptionManager: subscription,
             deviceManager: device,
             sensorDataProcessor: SensorDataProcessor.shared,
+            sessionHistoryStore: sessionHistoryStore,
             appStateManager: appState,
             sharedDataManager: sharedData,
             designSystem: designSystem

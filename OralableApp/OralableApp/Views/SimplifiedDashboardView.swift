@@ -18,6 +18,7 @@ import OralableCore
 
 struct SimplifiedDashboardView: View {
     @EnvironmentObject var designSystem: DesignSystem
+    @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
     @ObservedObject var viewModel: DashboardViewModel
 
     // Computed positioning state
@@ -54,6 +55,10 @@ struct SimplifiedDashboardView: View {
                             isCalibrating: viewModel.isCalibrating,
                             calibrationProgress: viewModel.calibrationProgress
                         )
+
+                        if viewModel.oralableConnected {
+                            TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
+                        }
 
                         // Event summary
                         eventSummary

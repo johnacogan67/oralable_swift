@@ -68,6 +68,8 @@ struct ShareView: View {
                 // Share CSV section - ALWAYS SHOWN
                 shareCSVSection
 
+                clinicalTemporalisPDFSection
+
                 // Share with Professional section - CONDITIONAL (CloudKit sharing)
                 if featureFlags.showCloudKitShare {
                     shareCodeSection
@@ -168,6 +170,51 @@ struct ShareView: View {
         case .continuous:
             let recordCount = sensorDataProcessor.sensorDataHistory.count
             return Text("Export \(recordCount) sensor samples (may take longer)")
+        }
+    }
+
+    // MARK: - Clinical Temporalis PDF
+    private var clinicalTemporalisPDFSection: some View {
+        Section {
+            Button(action: exportClinicalTemporalisPDF) {
+                HStack {
+                    Image(systemName: "doc.richtext")
+                        .foregroundColor(designSystem.colors.info)
+                        .frame(width: designSystem.spacing.xl)
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
+                        Text("Export PDF — Oralable MAM: Clinical Temporalis Report")
+                            .font(designSystem.typography.body)
+                            .foregroundColor(designSystem.colors.textPrimary)
+                        Text("Patient metadata, smoking gun correlation, TFI")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(designSystem.colors.textTertiary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        } header: {
+            Text("Clinical report")
+        }
+    }
+
+    private func exportClinicalTemporalisPDF() {
+        let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
+        let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
+        let payload = ClinicalReportPayload(
+            patient: .loadFromUserDefaults(),
+            spO2ClenchCorrelation: r,
+            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+            generatedAt: Date()
+        )
+        do {
+            shareURL = try ClinicalReportGenerator.writeToTemporaryFile(payload: payload)
+            showingShareSheet = true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
 

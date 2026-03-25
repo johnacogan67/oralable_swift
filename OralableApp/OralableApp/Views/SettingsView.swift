@@ -259,36 +259,39 @@ struct SettingsView: View {
 // MARK: - Preview
 
 #Preview("Settings View") {
-    let designSystem = DesignSystem()
-
-    // Build the processing stack
-    let calculator = BioMetricCalculator()
-    let sensorDataProcessor = SensorDataProcessor(calculator: calculator)
-
-    let authManager = AuthenticationManager()
-    let recordingSessionManager = RecordingSessionManager()
-    let historicalDataManager = HistoricalDataManager(sensorDataProcessor: sensorDataProcessor)
-    let sensorDataStore = SensorDataStore()
-    let subscriptionManager = SubscriptionManager()
-    let deviceManager = DeviceManager()
-    let appStateManager = AppStateManager()
-    let sharedDataManager = SharedDataManager(
-        authenticationManager: authManager,
-        sensorDataProcessor: sensorDataProcessor
-    )
-
-    let dependencies = AppDependencies(
-        authenticationManager: authManager,
-        recordingSessionManager: recordingSessionManager,
-        historicalDataManager: historicalDataManager,
-        sensorDataStore: sensorDataStore,
-        subscriptionManager: subscriptionManager,
-        deviceManager: deviceManager,
-        sensorDataProcessor: sensorDataProcessor,
-        appStateManager: appStateManager,
-        sharedDataManager: sharedDataManager,
-        designSystem: designSystem
-    )
+    let (dependencies, designSystem): (AppDependencies, DesignSystem) = {
+        let designSystem = DesignSystem()
+        let calculator = BioMetricCalculator()
+        let sensorDataProcessor = SensorDataProcessor(calculator: calculator)
+        let authManager = AuthenticationManager()
+        let sessionHistoryStore = SessionHistoryStore()
+        let recordingSessionManager = RecordingSessionManager()
+        recordingSessionManager.sessionHistoryStore = sessionHistoryStore
+        let historicalDataManager = HistoricalDataManager(sensorDataProcessor: sensorDataProcessor)
+        let sensorDataStore = SensorDataStore()
+        let subscriptionManager = SubscriptionManager()
+        let deviceManager = DeviceManager()
+        sessionHistoryStore.attach(recordingManager: recordingSessionManager, deviceManager: deviceManager)
+        let appStateManager = AppStateManager()
+        let sharedDataManager = SharedDataManager(
+            authenticationManager: authManager,
+            sensorDataProcessor: sensorDataProcessor
+        )
+        let dependencies = AppDependencies(
+            authenticationManager: authManager,
+            recordingSessionManager: recordingSessionManager,
+            historicalDataManager: historicalDataManager,
+            sensorDataStore: sensorDataStore,
+            subscriptionManager: subscriptionManager,
+            deviceManager: deviceManager,
+            sensorDataProcessor: sensorDataProcessor,
+            sessionHistoryStore: sessionHistoryStore,
+            appStateManager: appStateManager,
+            sharedDataManager: sharedDataManager,
+            designSystem: designSystem
+        )
+        return (dependencies, designSystem)
+    }()
 
     SettingsView(viewModel: dependencies.makeSettingsViewModel())
         .withDependencies(dependencies)

@@ -38,6 +38,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
     private let deviceManager: DeviceManager
     private let sensorDataProcessor: SensorDataProcessor
+    private let sessionHistoryStore: SessionHistoryStore?
+    private let unifiedBiometricProcessor = UnifiedBiometricProcessor()
     private let bioMetricCalculator = BioMetricCalculator()
     private let heartRateCalculator = HeartRateCalculator(sampleRate: 50.0)
     private var cancellables = Set<AnyCancellable>()
@@ -71,12 +73,24 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var isRecording: Bool = false
     @Published var deviceState: DeviceStateResult?
 
+    @Published var temporalisFatigueIndexPercent: Double = 50
+    @Published private(set) var latestTemporalisProbabilities: TemporalisProbabilities?
+
     // MARK: - Initialization
 
-    init(deviceManager: DeviceManager, sensorDataProcessor: SensorDataProcessor) {
+    init(deviceManager: DeviceManager, sensorDataProcessor: SensorDataProcessor, sessionHistoryStore: SessionHistoryStore? = nil) {
         self.deviceManager = deviceManager
         self.sensorDataProcessor = sensorDataProcessor
+        self.sessionHistoryStore = sessionHistoryStore
         setupBindings()
+        Task {
+            await unifiedBiometricProcessor.setOnTemporalisProbabilities { [weak self] probs in
+                Task { @MainActor in
+                    self?.latestTemporalisProbabilities = probs
+                    self?.sessionHistoryStore?.recordTemporalis(probs, at: Date())
+                }
+            }
+        }
         Logger.shared.info("[DeviceManagerAdapter] Initialized with DeviceManager and SensorDataProcessor")
     }
 
@@ -128,6 +142,19 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         //         }
         //     }
         //     .store(in: &cancellables)
+
+        $isConnected
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] connected in
+                guard let self = self else { return }
+                if !connected {
+                    self.sessionHistoryStore?.resetForDisconnect()
+                    self.temporalisFatigueIndexPercent = 50
+                    Task { await self.unifiedBiometricProcessor.reset() }
+                }
+            }
+            .store(in: &cancellables)
 
         Logger.shared.info("[DeviceManagerAdapter] Bindings configured - direct history storage enabled")
     }
@@ -286,6 +313,25 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
             // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
             sensorDataProcessor.appendToHistory(oralableSensorData)
+
+            Task { [weak self] in
+                guard let self = self else { return }
+                let r = await self.unifiedBiometricProcessor.process(
+                    ir: self.ppgIRValue,
+                    red: self.ppgRedValue,
+                    green: self.ppgGreenValue,
+                    accelX: self.accelX,
+                    accelY: self.accelY,
+                    accelZ: self.accelZ
+                )
+                await MainActor.run {
+                    self.temporalisFatigueIndexPercent = r.tfiPercent
+                    self.sessionHistoryStore?.recordSpO2Sample(
+                        percent: self.spO2 > 0 ? Double(self.spO2) : nil,
+                        at: timestamp
+                    )
+                }
+            }
 
             // Log every 500 samples to verify storage
             if sensorDataProcessor.sensorDataHistory.count % 500 == 0 {

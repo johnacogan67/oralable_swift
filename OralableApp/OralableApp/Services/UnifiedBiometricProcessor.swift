@@ -67,6 +67,9 @@ struct BiometricResult {
     let signalStrength: SignalStrength    // Derived from perfusion index
     let processingMethod: ProcessingMethod
 
+    /// Temporalis Fatigue Index (0–100%) — matches research `tanh` composite from IR-DC / AC trends.
+    let tfiPercent: Double
+
     /// Empty result for when processing cannot produce valid output
     static let empty = BiometricResult(
         heartRate: 0,
@@ -79,7 +82,8 @@ struct BiometricResult {
         activity: .relaxed,
         motionLevel: 0,
         signalStrength: .none,
-        processingMethod: .realtime
+        processingMethod: .realtime,
+        tfiPercent: 50
     )
 }
 
@@ -190,12 +194,27 @@ actor UnifiedBiometricProcessor {
     private var greenHighPass: Double = 0
     private var redLowPass: Double = 0
     private var redHighPass: Double = 0
-    private var irDC: Double = 0
-    private var irDCInitialized: Bool = false
 
-    // MARK: - MAM Inference (bruxism classification)
+    // MARK: - Temporalis MAM inference
 
     private let mamInferenceManager: MAMInferenceManager
+    private let irDCFilter = TransferFunctionFilter.irDCLowpass()
+    private let greenTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
+    private let redTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
+
+    // MARK: - Temporalis Fatigue Index (session trend, 5 s decimation)
+
+    private var lastIRDCForTFI: Double = 0
+    private var lastGreenACForTFI: Double = 0
+    private var tfiDecimationCounter: Int = 0
+    private var tfiSliceIR: [Double] = []
+    private var tfiSliceGreenAC: [Double] = []
+    private var tfiTimeSeconds: [Double] = []
+    private var tfiDCMeans: [Double] = []
+    private var tfiACRMS: [Double] = []
+    private var tfiNextTimeStamp: Double = 0
+    private let tfiDecimationSamples: Int = 250 // 5 s @ 50 Hz
+    private let tfiMaxPoints: Int = 720 // up to 1 h of 5 s bins
 
     // MARK: - Baseline State
 
@@ -264,8 +283,10 @@ actor UnifiedBiometricProcessor {
 
         // Stage 4: Update buffers with filtered values and feed MAM inference (non-blocking)
         updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel, accelMagnitude: accelMagnitude, accelX: accelX, accelY: accelY, accelZ: accelZ)
+        appendTFISegmentFromLiveSample()
 
         // Stage 5: Check if we have enough data
+        let tfiNow = computeTFIPercent()
         guard irBuffer.count >= config.hrWindowSize else {
             return BiometricResult(
                 heartRate: 0,
@@ -278,7 +299,8 @@ actor UnifiedBiometricProcessor {
                 activity: activity,
                 motionLevel: motionLevel,
                 signalStrength: .none,
-                processingMethod: .realtime
+                processingMethod: .realtime,
+                tfiPercent: tfiNow
             )
         }
 
@@ -322,7 +344,8 @@ actor UnifiedBiometricProcessor {
             activity: activity,
             motionLevel: motionLevel,
             signalStrength: signalStrength,
-            processingMethod: .realtime
+            processingMethod: .realtime,
+            tfiPercent: tfiNow
         )
     }
 
@@ -377,8 +400,15 @@ actor UnifiedBiometricProcessor {
             activity: lastResult.activity,
             motionLevel: lastResult.motionLevel,
             signalStrength: lastResult.signalStrength,
-            processingMethod: .batch
+            processingMethod: .batch,
+            tfiPercent: lastResult.tfiPercent
         )
+    }
+
+    // MARK: - Temporalis streaming hook
+
+    func setOnTemporalisProbabilities(_ handler: (@Sendable (TemporalisProbabilities) -> Void)?) {
+        mamInferenceManager.onTemporalisProbabilities = handler
     }
 
     // MARK: - Reset
@@ -396,13 +426,24 @@ actor UnifiedBiometricProcessor {
         greenHighPass = 0
         redLowPass = 0
         redHighPass = 0
-        irDC = 0
-        irDCInitialized = false
         irBaseline = 0
         isBaselineInitialized = false
 
         motionCompensator.reset()
+        irDCFilter.reset()
+        greenTemporalisBandpass.reset()
+        redTemporalisBandpass.reset()
         mamInferenceManager.reset()
+
+        lastIRDCForTFI = 0
+        lastGreenACForTFI = 0
+        tfiDecimationCounter = 0
+        tfiSliceIR.removeAll(keepingCapacity: false)
+        tfiSliceGreenAC.removeAll(keepingCapacity: false)
+        tfiTimeSeconds.removeAll(keepingCapacity: false)
+        tfiDCMeans.removeAll(keepingCapacity: false)
+        tfiACRMS.removeAll(keepingCapacity: false)
+        tfiNextTimeStamp = 0
 
         // Note: FFT setup is intentionally NOT destroyed on reset.
         // It is reused across sessions since the FFT size rarely changes.
@@ -435,6 +476,75 @@ actor UnifiedBiometricProcessor {
         return (motionLevel, magnitude, isMoving)
     }
 
+    // MARK: - Private: TFI (Python `calculate_tfi` parity — decimated regression)
+
+    private func appendTFISegmentFromLiveSample() {
+        tfiDecimationCounter += 1
+        tfiSliceIR.append(lastIRDCForTFI)
+        tfiSliceGreenAC.append(lastGreenACForTFI)
+        guard tfiDecimationCounter >= tfiDecimationSamples else { return }
+        tfiDecimationCounter = 0
+        guard !tfiSliceIR.isEmpty else { return }
+        let dcMean = tfiSliceIR.reduce(0, +) / Double(tfiSliceIR.count)
+        let ms = tfiSliceGreenAC.map { $0 * $0 }.reduce(0, +) / Double(tfiSliceGreenAC.count)
+        let acRms = sqrt(max(0, ms))
+        tfiSliceIR.removeAll(keepingCapacity: true)
+        tfiSliceGreenAC.removeAll(keepingCapacity: true)
+        tfiTimeSeconds.append(tfiNextTimeStamp)
+        tfiNextTimeStamp += 5.0
+        tfiDCMeans.append(dcMean)
+        tfiACRMS.append(acRms)
+        while tfiTimeSeconds.count > tfiMaxPoints {
+            tfiTimeSeconds.removeFirst()
+            tfiDCMeans.removeFirst()
+            tfiACRMS.removeFirst()
+        }
+    }
+
+    private func computeTFIPercent() -> Double {
+        guard tfiTimeSeconds.count >= 12 else { return 50.0 }
+        let dcSlope = linearSlope(x: tfiTimeSeconds, y: tfiDCMeans)
+        let acSlope = linearSlope(x: tfiTimeSeconds, y: tfiACRMS)
+        let dcScale = robustScale(tfiDCMeans)
+        let acScale = robustScale(tfiACRMS)
+        let dur = (tfiTimeSeconds.last ?? 0) - (tfiTimeSeconds.first ?? 0)
+        guard dur > 1, dcScale > 0, acScale > 0 else { return 50.0 }
+        let dcContrib = -(dcSlope * dur) / dcScale
+        let acContrib = -(acSlope * dur) / acScale
+        let combined = 0.5 * dcContrib + 0.5 * acContrib
+        return BiometricProcessor.temporalisFatigueIndex(driftCombined: combined)
+    }
+
+    private func linearSlope(x: [Double], y: [Double]) -> Double {
+        guard x.count == y.count, x.count >= 2 else { return 0 }
+        let n = Double(x.count)
+        let meanX = x.reduce(0, +) / n
+        let meanY = y.reduce(0, +) / n
+        var num = 0.0
+        var den = 0.0
+        for i in 0..<x.count {
+            let dx = x[i] - meanX
+            num += dx * (y[i] - meanY)
+            den += dx * dx
+        }
+        guard den > 1e-12 else { return 0 }
+        return num / den
+    }
+
+    private func robustScale(_ values: [Double]) -> Double {
+        guard values.count >= 2 else { return 1 }
+        let s = values.sorted()
+        let i5 = min(s.count - 1, max(0, (s.count * 5) / 100))
+        let i95 = min(s.count - 1, max(0, (s.count * 95) / 100))
+        let spread = abs(s[i95] - s[i5])
+        if spread < 1e-9 {
+            let mean = s.reduce(0, +) / Double(s.count)
+            let varsum = s.map { pow($0 - mean, 2) }.reduce(0, +) / Double(s.count)
+            return sqrt(varsum) + 1e-9
+        }
+        return spread
+    }
+
     // MARK: - Private: Buffer Management
 
     private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double, accelX: Double, accelY: Double, accelZ: Double) {
@@ -453,13 +563,7 @@ actor UnifiedBiometricProcessor {
         greenHighPass = config.alphaHP * (greenHighPass + green - previousGreen)
         greenLowPass = greenLowPass + config.alphaLP * (greenHighPass - greenLowPass)
 
-        // IR DC (low-pass for muscle occlusion) — alpha 0.02 for ~0.8 Hz effective
-        if !irDCInitialized {
-            irDC = ir
-            irDCInitialized = true
-        } else {
-            irDC = irDC + 0.02 * (ir - irDC)
-        }
+        let irDCFiltered = irDCFilter.processSample(ir)
 
         // Append filtered values (CircularBuffer automatically overwrites oldest when full)
         irBuffer.append(irLowPass)
@@ -467,12 +571,15 @@ actor UnifiedBiometricProcessor {
         greenBuffer.append(greenLowPass)
         accelMagnitudeBuffer.append(motion)
 
-        // MAM inference: addSample computes accel magnitude internally (√(x²+y²+z²) in g)
-        // accelX/Y/Z are raw (16384 = 1g); convert to g for addSample
+        let greenAC = greenTemporalisBandpass.processSample(green)
+        let redAC = redTemporalisBandpass.processSample(red)
+        lastIRDCForTFI = irDCFiltered
+        lastGreenACForTFI = greenAC
         let scale = 16384.0
         mamInferenceManager.addSample(
-            ppgRedAC: redLowPass,
-            ppgIRDC: irDC,
+            greenAC: greenAC,
+            irDC: irDCFiltered,
+            redAC: redAC,
             accelX: accelX / scale,
             accelY: accelY / scale,
             accelZ: accelZ / scale
