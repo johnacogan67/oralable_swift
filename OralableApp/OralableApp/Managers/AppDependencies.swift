@@ -27,6 +27,7 @@
 //
 
 import SwiftUI
+import Combine
 
 @MainActor
 final class AppDependencies: ObservableObject {
@@ -43,9 +44,12 @@ final class AppDependencies: ObservableObject {
     let appStateManager: AppStateManager
     let sharedDataManager: SharedDataManager
     let designSystem: DesignSystem
+    let appleHealthManager: AppleHealthManager
 
     // Cached view models to preserve state across views
     private var _cachedDashboardViewModel: DashboardViewModel?
+
+    private var clinicalMetricsCancellables = Set<AnyCancellable>()
 
     init(authenticationManager: AuthenticationManager,
          recordingSessionManager: RecordingSessionManager,
@@ -57,7 +61,8 @@ final class AppDependencies: ObservableObject {
          sessionHistoryStore: SessionHistoryStore,
          appStateManager: AppStateManager,
          sharedDataManager: SharedDataManager,
-         designSystem: DesignSystem) {
+         designSystem: DesignSystem,
+         appleHealthManager: AppleHealthManager = AppleHealthManager()) {
         self.authenticationManager = authenticationManager
         self.recordingSessionManager = recordingSessionManager
         self.historicalDataManager = historicalDataManager
@@ -74,6 +79,23 @@ final class AppDependencies: ObservableObject {
         self.appStateManager = appStateManager
         self.sharedDataManager = sharedDataManager
         self.designSystem = designSystem
+        self.appleHealthManager = appleHealthManager
+
+        Publishers.CombineLatest3(
+            deviceManager.$primaryDevice,
+            deviceManager.$deviceReadiness,
+            deviceManager.$connectedDevices
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _, _, _ in
+            guard let self else { return }
+            self.appStateManager.refreshOralableClinicalMetrics(
+                primaryBLE: self.deviceManager.primaryBLEDevice
+            )
+        }
+        .store(in: &clinicalMetricsCancellables)
+
+        appStateManager.refreshOralableClinicalMetrics(primaryBLE: deviceManager.primaryBLEDevice)
 
         Logger.shared.info("[AppDependencies] Initialized with automatic recording support")
     }
@@ -129,6 +151,7 @@ struct DependenciesModifier: ViewModifier {
             .environmentObject(dependencies.appStateManager)
             .environmentObject(dependencies.sharedDataManager)
             .environmentObject(dependencies.designSystem)
+            .environmentObject(dependencies.appleHealthManager)
     }
 }
 

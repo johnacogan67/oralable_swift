@@ -103,6 +103,15 @@ class DeviceManager: ObservableObject {
     
     /// Primary active device
     @Published var primaryDevice: DeviceInfo?
+
+    /// Discovery / connect path selected from Withings-style UI (`DeviceManagerFactory`).
+    @Published var preferredDiscoveryProduct: DeviceManagerFactory.Product = .temporalisHeadband
+
+    /// Shared OralableCore ring buffer for loss-bounded 50 Hz `SensorData` (all product lines).
+    let unifiedSensorDataBuffer: SensorDataBuffer
+
+    /// Future ANR transport; already wired to `unifiedSensorDataBuffer`.
+    let anrMuscleManager: ANRMuscleManager
     
     /// All sensor readings from all devices
     @Published var allSensorReadings: [SensorReading] = []
@@ -190,6 +199,9 @@ class DeviceManager: ObservableObject {
 
     /// Default initializer using concrete BLECentralManager
     init() {
+        let buffer = SensorDataBuffer(maxCapacity: 1_800_000)
+        self.unifiedSensorDataBuffer = buffer
+        self.anrMuscleManager = ANRMuscleManager(sensorDataBuffer: buffer)
         Logger.shared.info("[DeviceManager] Initializing with default BLECentralManager...")
         self.bleService = BLECentralManager()
         self.backgroundWorker = BLEBackgroundWorker()
@@ -204,6 +216,9 @@ class DeviceManager: ObservableObject {
     ///   - bleService: Any BLEService conforming instance
     ///   - backgroundWorker: Optional custom background worker (defaults to new instance)
     init(bleService: BLEService, backgroundWorker: BLEBackgroundWorker? = nil) {
+        let buffer = SensorDataBuffer(maxCapacity: 1_800_000)
+        self.unifiedSensorDataBuffer = buffer
+        self.anrMuscleManager = ANRMuscleManager(sensorDataBuffer: buffer)
         Logger.shared.info("[DeviceManager] Initializing with injected BLEService...")
         self.bleService = bleService
         self.backgroundWorker = backgroundWorker ?? BLEBackgroundWorker()
@@ -559,6 +574,17 @@ class DeviceManager: ObservableObject {
             Logger.shared.info("[DeviceManager] Clearing primary device")
         }
         primaryDevice = deviceInfo
+    }
+
+    /// Active `BLEDeviceProtocol` instance for the primary slot (nil if unknown / demo-only).
+    var primaryBLEDevice: BLEDeviceProtocol? {
+        guard let pid = primaryDevice?.peripheralIdentifier else { return nil }
+        return devices[pid]
+    }
+
+    /// Append resampled / framed `SensorData` into the shared OralableCore buffer (50 Hz lane).
+    func appendToUnifiedSensorStream(_ data: SensorData) {
+        Task { await unifiedSensorDataBuffer.append(data) }
     }
 
     // MARK: - Auto-Reconnect to Remembered Devices

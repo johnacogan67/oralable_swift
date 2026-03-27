@@ -14,7 +14,17 @@ class AppStateManager: ObservableObject {
         return false
     }
 
+    /// TFI / Temporalis / gated SpO2 — only when primary **connected** unit supports the
+    /// Temporalis clinical dashboard (REV10 via `OralableClinicalDeviceAdapter`), not ANR-only.
+    @Published private(set) var showsOralableClinicalMetrics: Bool = false
+
     init() {}
+
+    func refreshOralableClinicalMetrics(primaryBLE: BLEDeviceProtocol?) {
+        showsOralableClinicalMetrics = OralableClinicalMetricsGate.shouldShowTemporalisClinicalDashboard(
+            primaryBLE: primaryBLE
+        )
+    }
 
     // Mode management not needed for patient app, but keep for compatibility
     func setMode(_ mode: HistoricalAppMode) {

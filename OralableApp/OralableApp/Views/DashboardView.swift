@@ -44,10 +44,12 @@ struct DashboardView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
     @EnvironmentObject var deviceManager: DeviceManager
+    @EnvironmentObject var appStateManager: AppStateManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     @State private var viewModel: DashboardViewModel?
     @State private var showingProfile = false
+    @State private var showingDeviceDiscovery = false
     @State private var dismissedErrorDescription: String?
 
     var body: some View {
@@ -80,6 +82,7 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func dashboardContent(viewModel: DashboardViewModel) -> some View {
+        let showClinicalOralable = appStateManager.showsOralableClinicalMetrics
         NavigationStack {
             ScrollView {
                 VStack(spacing: designSystem.spacing.buttonPadding) {
@@ -142,7 +145,7 @@ struct DashboardView: View {
                         .padding(.vertical, designSystem.spacing.sm)
                     }
 
-                    if viewModel.oralableConnected || featureFlags.demoModeEnabled {
+                    if showClinicalOralable {
                         TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
                         let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
                         let chartModel = TemporalisAnalysisChart.build(
@@ -223,8 +226,8 @@ struct DashboardView: View {
                         )
                     }
 
-                    // SpO2 card - CONDITIONAL
-                    if featureFlags.showSpO2Card {
+                    // SpO2 card - CONDITIONAL (Oralable REV10 clinical path only)
+                    if featureFlags.showSpO2Card && showClinicalOralable {
                         NavigationLink(destination: LazyView(
                             HistoricalView(metricType: "SpO2")
                                 .environmentObject(designSystem)
@@ -283,6 +286,14 @@ struct DashboardView: View {
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showingDeviceDiscovery = true }) {
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(designSystem.typography.body)
+                            .foregroundColor(designSystem.colors.textPrimary)
+                    }
+                    .accessibilityLabel("Manage devices")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingProfile = true }) {
                         Image(systemName: "person.circle")
@@ -291,6 +302,11 @@ struct DashboardView: View {
                     }
                     .accessibilityLabel("Profile")
                 }
+            }
+            .sheet(isPresented: $showingDeviceDiscovery) {
+                DeviceDiscoveryView()
+                    .environmentObject(deviceManager)
+                    .environmentObject(designSystem)
             }
             .sheet(isPresented: $showingProfile) {
                 ProfileView()

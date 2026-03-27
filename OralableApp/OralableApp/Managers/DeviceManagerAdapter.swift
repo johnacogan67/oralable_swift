@@ -313,6 +313,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
             // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
             sensorDataProcessor.appendToHistory(oralableSensorData)
+            deviceManager.appendToUnifiedSensorStream(oralableSensorData)
 
             Task { [weak self] in
                 guard let self = self else { return }
@@ -374,6 +375,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
             // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
             sensorDataProcessor.appendToHistory(anrSensorData)
+            deviceManager.appendToUnifiedSensorStream(anrSensorData)
         }
 
         // Trim history to cap
