@@ -112,10 +112,6 @@ struct BiometricConfiguration {
     let minSpO2: Double
     let maxSpO2: Double
 
-    // Filter coefficients
-    let alphaLP: Double              // Low-pass smoothing
-    let alphaHP: Double              // High-pass baseline tracking
-
     /// Default configuration for Oralable device (50 Hz)
     static let oralable = BiometricConfiguration(
         sampleRate: 50.0,
@@ -128,9 +124,7 @@ struct BiometricConfiguration {
         minBPM: 40,
         maxBPM: 180,
         minSpO2: 70,
-        maxSpO2: 100,
-        alphaLP: 0.15,
-        alphaHP: 0.05
+        maxSpO2: 100
     )
 
     /// Configuration for ANR device (if different sample rate)
@@ -145,9 +139,7 @@ struct BiometricConfiguration {
         minBPM: 40,
         maxBPM: 180,
         minSpO2: 70,
-        maxSpO2: 100,
-        alphaLP: 0.15,
-        alphaHP: 0.05
+        maxSpO2: 100
     )
 
     /// Computed window size in samples
@@ -186,19 +178,18 @@ actor UnifiedBiometricProcessor {
     private var greenBuffer: CircularBuffer<Double>
     private var accelMagnitudeBuffer: CircularBuffer<Double>
 
-    // MARK: - Filter State (for real-time processing)
+    // MARK: - PPG filtering (AlgorithmSpec HR bandpass 0.5–8 Hz, real-time `processSample`)
 
-    private var irLowPass: Double = 0
-    private var irHighPass: Double = 0
-    private var greenLowPass: Double = 0
-    private var greenHighPass: Double = 0
-    private var redLowPass: Double = 0
-    private var redHighPass: Double = 0
+    private let irFilter: ButterworthFilter
+    private let redFilter: ButterworthFilter
+    private let greenFilter: ButterworthFilter
+
+    /// IR DC / occlusion track (low-pass per `AlgorithmSpec`, scipy `(b,a)` via `TransferFunctionFilter`).
+    private let irdcProcessor: IRDCProcessor
 
     // MARK: - Temporalis MAM inference
 
     private let mamInferenceManager: MAMInferenceManager
-    private let irDCFilter = TransferFunctionFilter.irDCLowpass()
     private let greenTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
     private let redTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
 
@@ -248,6 +239,12 @@ actor UnifiedBiometricProcessor {
         self.greenBuffer = CircularBuffer<Double>(capacity: capacity)
         self.accelMagnitudeBuffer = CircularBuffer<Double>(capacity: capacity)
         self.mamInferenceManager = MAMInferenceManager()
+
+        let fs = config.sampleRate
+        self.irFilter = ButterworthFilter.hrBandpass(sampleRate: fs)
+        self.redFilter = ButterworthFilter.hrBandpass(sampleRate: fs)
+        self.greenFilter = ButterworthFilter.hrBandpass(sampleRate: fs)
+        self.irdcProcessor = IRDCProcessor(sampleRate: fs)
     }
 
     // MARK: - Real-time Processing
@@ -420,17 +417,14 @@ actor UnifiedBiometricProcessor {
         greenBuffer.removeAll()
         accelMagnitudeBuffer.removeAll()
 
-        irLowPass = 0
-        irHighPass = 0
-        greenLowPass = 0
-        greenHighPass = 0
-        redLowPass = 0
-        redHighPass = 0
         irBaseline = 0
         isBaselineInitialized = false
 
         motionCompensator.reset()
-        irDCFilter.reset()
+        irFilter.reset()
+        redFilter.reset()
+        greenFilter.reset()
+        irdcProcessor.reset()
         greenTemporalisBandpass.reset()
         redTemporalisBandpass.reset()
         mamInferenceManager.reset()
@@ -548,27 +542,15 @@ actor UnifiedBiometricProcessor {
     // MARK: - Private: Buffer Management
 
     private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double, accelX: Double, accelY: Double, accelZ: Double) {
-        // Apply bandpass filtering for IR
-        let previousIR = irBuffer.last ?? ir
-        irHighPass = config.alphaHP * (irHighPass + ir - previousIR)
-        irLowPass = irLowPass + config.alphaLP * (irHighPass - irLowPass)
+        let irBP = irFilter.processSample(ir)
+        let greenBP = greenFilter.processSample(green)
+        _ = redFilter.processSample(red)
 
-        // Apply bandpass filtering for Red (for MAM Net)
-        let previousRed = redBuffer.last ?? red
-        redHighPass = config.alphaHP * (redHighPass + red - previousRed)
-        redLowPass = redLowPass + config.alphaLP * (redHighPass - redLowPass)
+        let irDCFiltered = irdcProcessor.processSample(ir).dcValue
 
-        // Apply bandpass filtering for Green
-        let previousGreen = greenBuffer.last ?? green
-        greenHighPass = config.alphaHP * (greenHighPass + green - previousGreen)
-        greenLowPass = greenLowPass + config.alphaLP * (greenHighPass - greenLowPass)
-
-        let irDCFiltered = irDCFilter.processSample(ir)
-
-        // Append filtered values (CircularBuffer automatically overwrites oldest when full)
-        irBuffer.append(irLowPass)
-        redBuffer.append(red)  // Red uses raw for SpO2 AC/DC calculation
-        greenBuffer.append(greenLowPass)
+        irBuffer.append(irBP)
+        redBuffer.append(red)
+        greenBuffer.append(greenBP)
         accelMagnitudeBuffer.append(motion)
 
         let greenAC = greenTemporalisBandpass.processSample(green)
@@ -656,65 +638,12 @@ actor UnifiedBiometricProcessor {
 
     private func calculateHeartRateFromSignal(_ signal: [Double]) -> (bpm: Int, quality: Double)? {
         guard signal.count >= config.hrWindowSize else { return nil }
-
-        // Calculate statistics
-        let mean = signal.reduce(0, +) / Double(signal.count)
-        let sumSquaredDiff = signal.map { pow($0 - mean, 2) }.reduce(0, +)
-        let stdDev = sqrt(sumSquaredDiff / Double(signal.count))
-
-        // Signal too flat = poor quality
-        guard stdDev > 1.0 else { return nil }
-
-        // Adaptive threshold for peak detection
-        let threshold = mean + (stdDev * 0.6)
-
-        // Find peaks
-        var peaks: [Int] = []
-        for i in 2..<(signal.count - 2) {
-            let current = signal[i]
-            if current > signal[i-1] && current > signal[i+1] && current > threshold {
-                // Ensure minimum distance between peaks (max 180 BPM)
-                if let lastPeak = peaks.last {
-                    let intervalSamples = i - lastPeak
-                    let intervalSeconds = Double(intervalSamples) / config.sampleRate
-                    if intervalSeconds < 0.33 { continue }  // 180 BPM limit
-                }
-                peaks.append(i)
-            }
-        }
-
-        guard peaks.count >= 2 else { return nil }
-
-        // Calculate inter-beat intervals
-        var intervals: [Double] = []
-        for j in 1..<peaks.count {
-            let intervalSamples = Double(peaks[j] - peaks[j-1])
-            let intervalSeconds = intervalSamples / config.sampleRate
-
-            // Filter by physiological bounds
-            if intervalSeconds > (60.0 / config.maxBPM) && intervalSeconds < (60.0 / config.minBPM) {
-                intervals.append(intervalSeconds)
-            }
-        }
-
-        guard !intervals.isEmpty else { return nil }
-
-        // Use median interval (robust to outliers)
-        let sortedIntervals = intervals.sorted()
-        let medianInterval = sortedIntervals[sortedIntervals.count / 2]
-
-        let bpm = Int(60.0 / medianInterval)
-
-        // Validate BPM
-        guard bpm >= Int(config.minBPM) && bpm <= Int(config.maxBPM) else { return nil }
-
-        // Calculate quality score
-        // Higher AC/DC ratio and more consistent intervals = higher quality
-        let acdc = min(1.0, stdDev / max(1.0, abs(mean)))
-        let peakFactor = min(1.0, Double(intervals.count) / 10.0)
-        let quality = 0.6 * acdc + 0.4 * peakFactor
-
-        return (bpm, max(0, min(1.0, quality)))
+        return PPGProcessor.heartRateFromBandpassedSignal(
+            signal,
+            sampleRate: config.sampleRate,
+            minBPM: config.minBPM,
+            maxBPM: config.maxBPM
+        )
     }
 
     // MARK: - Private: FFT Heart Rate Calculation

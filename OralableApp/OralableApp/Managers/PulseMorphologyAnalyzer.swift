@@ -9,6 +9,7 @@
 
 import Foundation
 import Accelerate
+import OralableCore
 
 /// Analyzes pulse morphology from PPG signal
 public class PulseMorphologyAnalyzer {
@@ -40,11 +41,11 @@ public class PulseMorphologyAnalyzer {
     public init(sampleRate: Double = 50.0) {
         self.sampleRate = sampleRate
         self.bandpassFilter = ButterworthFilter(
-            type: .bandpass,
+            type: ButterworthFilterType.bandpass,
             cutoffLow: bandpassLowHz,
             cutoffHigh: bandpassHighHz,
             sampleRate: sampleRate,
-            order: 4
+            order: AlgorithmSpec.filterOrder
         )
     }
 

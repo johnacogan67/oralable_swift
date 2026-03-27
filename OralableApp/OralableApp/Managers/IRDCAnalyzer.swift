@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import OralableCore
 
 /// Analyzes IR DC baseline for blood volume and occlusion detection
 public class IRDCAnalyzer {
@@ -44,10 +45,10 @@ public class IRDCAnalyzer {
         self.maxBufferSize = Int(sampleRate * 60)  // 1 minute max
 
         self.lowpassFilter = ButterworthFilter(
-            type: .lowpass,
+            type: ButterworthFilterType.lowpass,
             cutoffLow: lowpassCutoffHz,
             sampleRate: sampleRate,
-            order: 4
+            order: AlgorithmSpec.filterOrder
         )
     }
 
