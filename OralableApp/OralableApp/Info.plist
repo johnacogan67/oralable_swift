@@ -35,6 +35,12 @@
 	<string>Oralable uses Bluetooth to connect to your Oralable device for real-time health monitoring.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Oralable needs Bluetooth to connect to your Oralable device for real-time health monitoring of PPG, heart rate, and accelerometer data.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Oralable uses the camera as a mirror to guide Temporalis sensor placement on your temple before sleep studies.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Oralable reads oxygen saturation from Health when you choose to sync clinical summaries.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Oralable writes session-average SpO₂ from your Oralable recordings to the Health app when you enable sync or export.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>bluetooth-le</string>

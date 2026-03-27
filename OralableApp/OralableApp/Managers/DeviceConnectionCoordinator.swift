@@ -111,6 +111,26 @@ extension DeviceManager {
             }
             updateDeviceReadiness(peripheral.identifier, to: .characteristicsDiscovered)
 
+            // Firmware safety gate (REV10): read version before enabling notifications / streaming.
+            if let oralableDevice = device as? OralableDevice {
+                let version = try await withTimeout(seconds: 5) {
+                    try await oralableDevice.readFirmwareVersion()
+                }
+                applyDiscoveredFirmwareVersion(peripheralId: peripheral.identifier, version: version)
+                if FirmwareGate.isOralableVersionOutdated(version) {
+                    lastError = .firmwareUpdateRequired(
+                        requiredMinimum: FirmwareGate.minimumOralableSemanticVersion,
+                        reported: version
+                    )
+                    oralableFirmwareBlockedPeripheralIds.insert(peripheral.identifier)
+                    isConnecting = false
+                    updateDeviceReadiness(peripheral.identifier, to: .failed("Firmware update required"))
+                    bleService?.disconnect(from: peripheral)
+                    return
+                }
+                oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
+            }
+
             // Step 3: Enable notifications on main characteristic (10-second timeout)
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
             try await withTimeout(seconds: 10) {

@@ -20,6 +20,8 @@ struct HourlyTemporalisSegment: Codable, Equatable, Sendable {
     /// Cumulative hypoxic burden for this hour: ∫ max(0, 90 − SpO₂) dt when SpO₂ < 90 (%·s).
     var sashbHypoxicBurden: Double
     var rescueEventCount: Int
+    /// Temporalis fatigue index (0–100 %) — hourly mean when samples were recorded.
+    var tfiPercent: Double = 0
 }
 
 /// Represents a single data recording session

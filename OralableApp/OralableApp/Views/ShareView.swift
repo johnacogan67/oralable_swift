@@ -55,7 +55,7 @@ struct ShareView: View {
     @State private var isGeneratingCode = false
     @State private var showCopiedFeedback = false
     @State private var showingShareSheet = false
-    @State private var shareURL: URL? = nil
+    @State private var shareItems: [Any] = []
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isSharing = false
@@ -80,8 +80,8 @@ struct ShareView: View {
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showingShareSheet) {
-                if let url = shareURL {
-                    ShareSheet(items: [url])
+                if !shareItems.isEmpty {
+                    ShareSheet(items: shareItems)
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -203,14 +203,29 @@ struct ShareView: View {
     private func exportClinicalTemporalisPDF() {
         let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
         let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
+        let studyDate: Date = {
+            if let t = dependencies.recordingSessionManager.currentSession?.startTime { return t }
+            if let t = dependencies.deviceManager.automaticRecordingSession?.sessionStartTime { return t }
+            let sessions = dependencies.recordingSessionManager.sessions
+            if let last = sessions.max(by: { $0.startTime < $1.startTime }) { return last.startTime }
+            return Calendar.current.startOfDay(for: Date())
+        }()
+        let sync = shareCode.trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = ClinicalReportPayload(
             patient: .loadFromUserDefaults(),
+            patientName: dependencies.authenticationManager.displayName,
+            dateOfStudy: studyDate,
+            clinicianSyncCode: sync,
             spO2ClenchCorrelation: r,
             tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
             generatedAt: Date()
         )
         do {
-            shareURL = try ClinicalReportGenerator.writeToTemporaryFile(payload: payload)
+            var calURL: URL?
+            if let name = dependencies.sessionHistoryStore.temporalisSleepCalibration?.rawCalibrationCSVFileName {
+                calURL = try? SessionHistoryStore.researchCalibrationURL(fileName: name)
+            }
+            shareItems = try ClinicalReportGenerator.writeResearchShareItems(payload: payload, calibrationRawCSV: calURL)
             showingShareSheet = true
         } catch {
             errorMessage = error.localizedDescription
@@ -371,7 +386,7 @@ struct ShareView: View {
                 await MainActor.run {
                     isSharing = false
                     shareProgress = ""
-                    shareURL = url
+                    shareItems = [url]
                     showingShareSheet = true
                 }
             } else {

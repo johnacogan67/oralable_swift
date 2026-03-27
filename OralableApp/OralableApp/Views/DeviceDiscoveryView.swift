@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct DeviceDiscoveryView: View {
     @EnvironmentObject var deviceManager: DeviceManager
@@ -107,21 +108,31 @@ struct DeviceDiscoveryView: View {
                     .font(designSystem.typography.bodySmall)
                     .foregroundColor(designSystem.colors.textSecondary)
 
-                Button {
-                    DeviceManagerFactory.performHandshake(for: product, deviceManager: deviceManager)
-                    Task {
-                        try? await deviceManager.connect(to: found)
+                let blockedOralableFirmware: Bool = {
+                    guard product.coreDeviceType == .oralable,
+                          let pid = found.peripheralIdentifier else { return false }
+                    return deviceManager.oralableFirmwareBlockedPeripheralIds.contains(pid)
+                }()
+
+                if blockedOralableFirmware {
+                    firmwareUpdateRequiredCard(found: found)
+                } else {
+                    Button {
+                        DeviceManagerFactory.performHandshake(for: product, deviceManager: deviceManager)
+                        Task {
+                            try? await deviceManager.connect(to: found)
+                        }
+                    } label: {
+                        Text("Connect")
+                            .font(designSystem.typography.labelMedium)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(designSystem.colors.primaryBlack)
+                            .foregroundColor(designSystem.colors.primaryWhite)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
-                } label: {
-                    Text("Connect")
-                        .font(designSystem.typography.labelMedium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(designSystem.colors.primaryBlack)
-                        .foregroundColor(designSystem.colors.primaryWhite)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .disabled(deviceManager.isConnecting)
                 }
-                .disabled(deviceManager.isConnecting)
             } else if deviceManager.isScanning {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -146,6 +157,41 @@ struct DeviceDiscoveryView: View {
                 .stroke(designSystem.colors.border.opacity(0.45), lineWidth: 1)
         )
         .designShadow(.small)
+    }
+
+    @ViewBuilder
+    private func firmwareUpdateRequiredCard(found: DeviceInfo) -> some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Firmware update required")
+                        .font(designSystem.typography.headline)
+                        .foregroundColor(designSystem.colors.textPrimary)
+                    Text("This Oralable REV10 must run firmware \(FirmwareGate.minimumOralableSemanticVersion) or newer for research capture. Update the headset, then tap Scan again.")
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let v = found.firmwareVersion {
+                        Text("Reported version: \(v)")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.textTertiary)
+                    }
+                }
+            }
+        }
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.orange.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.orange.opacity(0.35), lineWidth: 1)
+        )
     }
 }
 

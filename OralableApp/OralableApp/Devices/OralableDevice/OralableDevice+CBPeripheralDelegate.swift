@@ -109,6 +109,10 @@ extension OralableDevice: CBPeripheralDelegate {
                 peripheral.setNotifyValue(true, for: characteristic)
                 foundCount += 1
 
+            case firmwareVersionCharUUID:
+                firmwareVersionCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ✅ Firmware version characteristic found (3A0FF006)")
+
             default:
                 Logger.shared.debug("[OralableDevice] Other characteristic: \(characteristic.uuid.uuidString)")
             }
@@ -210,16 +214,39 @@ extension OralableDevice: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Value update error: \(error.localizedDescription)")
+            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
+                firmwareReadContinuation = nil
+                c.resume(throwing: error)
+            }
             return
         }
 
         guard let data = characteristic.value else {
             Logger.shared.warning("[OralableDevice] ⚠️ Received nil data from characteristic")
+            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
+                firmwareReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            }
             return
         }
 
         // Route data based on characteristic UUID
         switch characteristic.uuid {
+        case firmwareVersionCharUUID:
+            let raw = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if raw.isEmpty {
+                if let c = firmwareReadContinuation {
+                    firmwareReadContinuation = nil
+                    c.resume(throwing: DeviceError.invalidData)
+                }
+                return
+            }
+            deviceInfo.firmwareVersion = raw
+            if let c = firmwareReadContinuation {
+                firmwareReadContinuation = nil
+                c.resume(returning: raw)
+            }
+
         case sensorDataCharUUID:
             // PPG data (244 bytes typically: 4 + 20x12)
             #if DEBUG

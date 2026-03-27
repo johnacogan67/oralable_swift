@@ -11,6 +11,8 @@ import Foundation
 import OralableCore
 
 /// App-level hardware abstraction for discovery, onboarding, and capability gating.
+/// Isolated to MainActor: ANR stack is MainActor; REV10 UI paths resolve adapters on main.
+@MainActor
 protocol OralableDeviceProtocol: AnyObject {
     var connectionStatus: DeviceConnectionState { get }
     var batteryLevel: Double { get }
@@ -26,6 +28,7 @@ protocol OralableDeviceProtocol: AnyObject {
 // MARK: - REV10
 
 /// Bridges `OralableDevice` to `OralableDeviceProtocol`.
+@MainActor
 final class OralableClinicalDeviceAdapter: OralableDeviceProtocol {
     private weak var oralable: OralableDevice?
 
@@ -39,14 +42,15 @@ final class OralableClinicalDeviceAdapter: OralableDeviceProtocol {
 
     var batteryLevel: Double {
         guard let o = oralable else { return 0 }
-        if let g = o.batteryLevel { return Double(g) }
-        if let b = o.deviceInfo.batteryLevel { return Double(b) }
+        if let g = o.batteryLevel { return Self.doublePercent(g) }
+        if let b = o.deviceInfo.batteryLevel { return Self.doublePercent(b) }
         return 0
     }
 
     var firmwareVersion: String {
         guard let o = oralable else { return "—" }
-        return o.deviceInfo.firmwareVersion ?? o.firmwareVersion ?? "—"
+        let raw = o.deviceInfo.firmwareVersion ?? o.firmwareVersion
+        return Self.sanitizedFirmwareString(raw)
     }
 
     var nominalSamplingRateHz: Int {
@@ -66,6 +70,17 @@ final class OralableClinicalDeviceAdapter: OralableDeviceProtocol {
             try? await o.startDataStream()
         }
     }
+
+    private static func doublePercent(_ value: Int) -> Double {
+        Double(value)
+    }
+
+    private static func sanitizedFirmwareString(_ raw: String?) -> String {
+        guard let s = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else {
+            return "—"
+        }
+        return s
+    }
 }
 
 // MARK: - ANR Muscle Sense
@@ -75,9 +90,15 @@ final class OralableClinicalDeviceAdapter: OralableDeviceProtocol {
 final class ANRMuscleClinicalDeviceAdapter: OralableDeviceProtocol {
     private weak var device: ANRMuscleSenseDevice?
 
+    /// Peak-normalized EMG (0–100) for REV10 + ANR dual sessions; driven by `DeviceManagerAdapter`.
+    static var dashboardEmgActivityPercent: Double = 0
+
     init(wrapping device: ANRMuscleSenseDevice) {
         self.device = device
     }
+
+    /// Secondary metric for researcher dashboards when ANR is paired with REV10.
+    var emgActivityPercent: Double { Self.dashboardEmgActivityPercent }
 
     var connectionStatus: DeviceConnectionState {
         device?.deviceInfo.connectionState ?? .disconnected
@@ -85,14 +106,15 @@ final class ANRMuscleClinicalDeviceAdapter: OralableDeviceProtocol {
 
     var batteryLevel: Double {
         guard let d = device else { return 0 }
-        if let b = d.batteryLevel { return Double(b) }
-        if let i = d.deviceInfo.batteryLevel { return Double(i) }
+        if let b = d.batteryLevel { return Self.doublePercent(b) }
+        if let i = d.deviceInfo.batteryLevel { return Self.doublePercent(i) }
         return 0
     }
 
     var firmwareVersion: String {
         guard let d = device else { return "—" }
-        return d.deviceInfo.firmwareVersion ?? d.firmwareVersion ?? "—"
+        let raw = d.deviceInfo.firmwareVersion ?? d.firmwareVersion
+        return Self.sanitizedFirmwareString(raw)
     }
 
     var nominalSamplingRateHz: Int {
@@ -112,6 +134,17 @@ final class ANRMuscleClinicalDeviceAdapter: OralableDeviceProtocol {
             try? await d.startDataStream()
         }
     }
+
+    private static func doublePercent(_ value: Int) -> Double {
+        Double(value)
+    }
+
+    private static func sanitizedFirmwareString(_ raw: String?) -> String {
+        guard let s = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else {
+            return "—"
+        }
+        return s
+    }
 }
 
 // MARK: - Gating
@@ -119,6 +152,7 @@ final class ANRMuscleClinicalDeviceAdapter: OralableDeviceProtocol {
 enum OralableClinicalMetricsGate {
 
     /// Builds the appropriate adapter for supported BLE device types.
+    @MainActor
     static func hardwareAdapter(from primary: BLEDeviceProtocol?) -> OralableDeviceProtocol? {
         guard let primary else { return nil }
         if let o = primary as? OralableDevice {
@@ -131,6 +165,7 @@ enum OralableClinicalMetricsGate {
     }
 
     /// Dashboard "Clinical Metrics" (TFI, Temporalis chart, gated SpO2) — primary must be connected REV10.
+    @MainActor
     static func shouldShowTemporalisClinicalDashboard(primaryBLE: BLEDeviceProtocol?) -> Bool {
         guard let p = primaryBLE, p.connectionState == .connected else { return false }
         return hardwareAdapter(from: p)?.supportsTemporalisClinicalDashboard ?? false

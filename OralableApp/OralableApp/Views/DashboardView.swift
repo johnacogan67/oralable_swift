@@ -47,6 +47,12 @@ struct DashboardView: View {
     @EnvironmentObject var appStateManager: AppStateManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
+    /// When true, Temporalis TFI + HOI chart are omitted (shown in the Health summary strip instead).
+    var suppressTemporalisSummary: Bool = false
+
+    /// When true, inserts Apple Health–style summary cards (TFI, SASHB) at the top of this scroll.
+    var showAppleHealthSummary: Bool = false
+
     @State private var viewModel: DashboardViewModel?
     @State private var showingProfile = false
     @State private var showingDeviceDiscovery = false
@@ -86,6 +92,10 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: designSystem.spacing.buttonPadding) {
+                    if showAppleHealthSummary, appStateManager.showsOralableClinicalMetrics {
+                        appleHealthSummarySection
+                    }
+
                     // Error Banner
                     if let error = deviceManager.lastError,
                        error.errorDescription != dismissedErrorDescription {
@@ -145,17 +155,19 @@ struct DashboardView: View {
                         .padding(.vertical, designSystem.spacing.sm)
                     }
 
-                    if showClinicalOralable {
+                    if showClinicalOralable && !suppressTemporalisSummary {
                         TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
                         let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
                         let chartModel = TemporalisAnalysisChart.build(
                             from: dependencies.sensorDataProcessor.sensorDataHistory,
-                            hourlyRescue: hourlySorted
+                            hourlyRescue: hourlySorted,
+                            scope: .day
                         )
                         TemporalisAnalysisChart(
                             lineSeries: chartModel.line,
                             rescuePerHour: chartModel.bars,
-                            hypoxiaMarkers: chartModel.markers
+                            hypoxiaMarkers: chartModel.markers,
+                            detailCaption: chartModel.detailCaption
                         )
                     }
 
@@ -191,6 +203,25 @@ struct DashboardView: View {
                                 unit: viewModel.anrConnected ? "ANR M40 µV" : "Not Connected",
                                 color: .blue,
                                 sparklineData: viewModel.emgHistory,
+                                showChevron: true
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+
+                    if viewModel.oralableConnected && viewModel.anrConnected {
+                        NavigationLink(destination: LazyView(
+                            HistoricalView(metricType: "EMG Activity")
+                                .environmentObject(designSystem)
+                                .environmentObject(dependencies.recordingSessionManager)
+                        )) {
+                            HealthMetricCard(
+                                icon: "percent",
+                                title: "EMG activity",
+                                value: String(format: "%.0f", max(0, viewModel.emgActivityPercent)),
+                                unit: "ANR · vs session peak",
+                                color: .teal,
+                                sparklineData: [],
                                 showChevron: true
                             )
                         }
@@ -315,6 +346,89 @@ struct DashboardView: View {
                     .environmentObject(dependencies.subscriptionManager)
             }
         }
+    }
+
+    // MARK: - Apple Health–style summary (home)
+
+    private var sashbSessionTotal: Double {
+        dependencies.sessionHistoryStore.segmentByHour.values.map(\.sashbHypoxicBurden).reduce(0, +)
+    }
+
+    @ViewBuilder
+    private var appleHealthSummarySection: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.md) {
+            Text(Date(), format: .dateTime.weekday(.wide).month().day())
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("Summary")
+                .font(designSystem.typography.h2)
+                .foregroundColor(designSystem.colors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(alignment: .top, spacing: designSystem.spacing.md) {
+                TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
+                    .frame(maxWidth: .infinity)
+                hypoxicBurdenSummaryCard
+                    .frame(maxWidth: .infinity)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            NavigationLink {
+                HistoricalMetricDetailView()
+                    .environmentObject(dependencies)
+                    .environmentObject(designSystem)
+                    .environmentObject(dependencies.appleHealthManager)
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Temporalis HOI")
+                            .font(designSystem.typography.labelMedium)
+                            .foregroundColor(designSystem.colors.textPrimary)
+                        Text("Hour, day, and week trends")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(designSystem.colors.textTertiary)
+                }
+                .padding(designSystem.spacing.md)
+                .background(designSystem.colors.backgroundPrimary)
+                .cornerRadius(designSystem.cornerRadius.card)
+                .designShadow(.small)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, designSystem.spacing.md)
+    }
+
+    private var hypoxicBurdenSummaryCard: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+            HStack {
+                Image(systemName: "lungs.fill")
+                    .foregroundColor(designSystem.colors.info)
+                Text("Hypoxic burden")
+                    .font(designSystem.typography.labelMedium)
+                    .foregroundColor(designSystem.colors.textPrimary)
+            }
+            Text(sashbSessionTotal > 0.01 ? String(format: "%.0f", sashbSessionTotal) : "—")
+                .font(designSystem.typography.displaySmall)
+                .foregroundColor(designSystem.colors.textPrimary)
+            Text("SASHB")
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textSecondary)
+            Text("Integral of SpO₂ below 90% (%·s) this session.")
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(designSystem.colors.backgroundPrimary)
+        .cornerRadius(designSystem.cornerRadius.card)
+        .designShadow(.small)
     }
 
     // MARK: - Device Status Indicator (Simplified - matches Devices screen)

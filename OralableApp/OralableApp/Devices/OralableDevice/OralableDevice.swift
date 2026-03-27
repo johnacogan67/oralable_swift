@@ -46,6 +46,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     let accelerometerCharUUID = CBUUID(string: "3A0FF002-98C4-46B2-94AF-1AEE0FD4C48E")    // Accelerometer
     let commandCharUUID = CBUUID(string: "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")          // Temperature/Command
     let tgmBatteryCharUUID = CBUUID(string: "3A0FF004-98C4-46B2-94AF-1AEE0FD4C48E")       // Battery (millivolts)
+    let firmwareVersionCharUUID = CBUUID(string: "3A0FF006-98C4-46B2-94AF-1AEE0FD4C48E")  // Firmware string (read)
 
     // Standard Battery Service
     let batteryServiceUUID = CBUUID(string: "180F")
@@ -63,7 +64,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var connectionState: DeviceConnectionState { deviceInfo.connectionState }
     var isConnected: Bool { peripheral?.state == .connected }
     var signalStrength: Int? { deviceInfo.signalStrength }
-    var firmwareVersion: String? { nil }
+    var firmwareVersion: String? { deviceInfo.firmwareVersion }
     var hardwareVersion: String? { nil }
 
     var supportedSensors: [SensorType] {
@@ -90,6 +91,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var accelerometerCharacteristic: CBCharacteristic?
     var commandCharacteristic: CBCharacteristic?
     var tgmBatteryCharacteristic: CBCharacteristic?
+    var firmwareVersionCharacteristic: CBCharacteristic?
     var batteryLevelCharacteristic: CBCharacteristic?
 
     // MARK: - Connection State Machine (Fix 3)
@@ -120,6 +122,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var connectionReadyContinuation: CheckedContinuation<Void, Never>?
     var accelerometerNotificationContinuation: CheckedContinuation<Void, Error>?
     var writeCompletionContinuation: CheckedContinuation<Void, Error>?
+    var firmwareReadContinuation: CheckedContinuation<String, Error>?
 
     // MARK: - Frame Counter Tracking (Fix 9)
 
@@ -198,6 +201,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         accelerometerNotificationContinuation = nil
         writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         writeCompletionContinuation = nil
+        firmwareReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
@@ -255,9 +260,28 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         return try await withCheckedThrowingContinuation { continuation in
             self.characteristicDiscoveryContinuation = continuation
             peripheral.discoverCharacteristics(
-                [sensorDataCharUUID, accelerometerCharUUID, commandCharUUID, tgmBatteryCharUUID],
+                [
+                    sensorDataCharUUID,
+                    accelerometerCharUUID,
+                    commandCharUUID,
+                    tgmBatteryCharUUID,
+                    firmwareVersionCharUUID
+                ],
                 for: service
             )
+        }
+    }
+
+    /// Reads `3A0FF006` firmware string (must run after characteristic discovery).
+    func readFirmwareVersion() async throws -> String {
+        guard let peripheral = peripheral,
+              let characteristic = firmwareVersionCharacteristic else {
+            throw DeviceError.characteristicNotFound("Firmware version characteristic not found")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.firmwareReadContinuation = continuation
+            peripheral.readValue(for: characteristic)
         }
     }
 

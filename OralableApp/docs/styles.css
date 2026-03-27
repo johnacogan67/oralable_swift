@@ -115,6 +115,15 @@ a:hover {
     color: var(--color-text-primary);
 }
 
+.disclaimer p {
+    margin: 0 auto;
+    max-width: 56rem;
+}
+
+.disclaimer p + p {
+    margin-top: 8px;
+}
+
 /* ============================================
    Navigation
    ============================================ */

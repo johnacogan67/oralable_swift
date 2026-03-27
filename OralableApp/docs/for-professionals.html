@@ -38,6 +38,13 @@
         .disclaimer-banner strong {
             color: #856404;
         }
+        .disclaimer-banner p {
+            margin: 0;
+            color: #333;
+        }
+        .disclaimer-banner p + p {
+            margin-top: 10px;
+        }
         nav {
             display: flex;
             justify-content: center;
@@ -244,12 +251,14 @@
 </head>
 <body>
     <div class="disclaimer-banner">
-        <strong>WELLNESS DEVICE</strong> - Oralable is a muscle activity monitor for personal awareness. Not a medical device.
+        <p><strong>WELLNESS DEVICE</strong> — Oralable is a muscle activity monitor for personal awareness. Not a medical device.</p>
+        <p><strong>Clinical validation trials</strong> are underway at <strong>Beacon Hospital</strong> as part of our research program. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
     </div>
 
     <nav>
         <a href="index.html">Home</a>
         <a href="product.html">Product</a>
+        <a href="for-researchers.html">For Researchers</a>
         <a href="for-professionals.html">For Professionals</a>
         <a href="about.html">About</a>
         <a href="beta.html">Early Access</a>
@@ -306,7 +315,7 @@
 
         <div class="info-box">
             <h3>Important: Wellness Data Only</h3>
-            <p>Oralable is a consumer wellness device, not a medical device. The data should be used to support conversations and awareness, not for diagnosis or treatment decisions. Always rely on clinical examination and professional judgment.</p>
+            <p>Oralable is a consumer wellness device, not a medical device. The data should be used to support conversations and awareness, not for diagnosis or treatment decisions. Always rely on clinical examination and professional judgment. <strong>Clinical validation trials</strong> are underway at <strong>Beacon Hospital</strong>; the app remains a wellness tool unless and until regulatory clearances apply.</p>
         </div>
 
         <h2>How It Works</h2>
@@ -374,10 +383,10 @@
     </div>
 
     <footer>
+        <p style="margin-bottom: 16px; font-size: 13px; color: #86868b;">© 2026 JAC Dental Solutions Limited (Amstrow). All rights reserved.</p>
         <a href="privacy.html">Privacy</a>
         <a href="terms.html">Terms</a>
         <a href="support.html">Support</a>
-        <p style="margin-top: 20px;">&copy; 2026 JAC Dental Solutions Limited. All rights reserved.</p>
     </footer>
 </body>
 </html>

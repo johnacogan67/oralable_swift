@@ -2,7 +2,7 @@
 //  TFIFatigueGaugeView.swift
 //  OralableApp
 //
-//  Oralable MAM — Temporalis Fatigue Index (0–100%) radial gauge for dashboard home.
+//  Temporalis HOI / TFI — Fatigue Index (0–100%) radial gauge for dashboard home.
 //
 
 import SwiftUI
@@ -11,7 +11,7 @@ struct TFIFatigueGaugeView: View {
     @EnvironmentObject var designSystem: DesignSystem
     /// 0 ... 100
     var valuePercent: Double
-    var subtitle: String = "Morning-after muscle exhaustion proxy"
+    var subtitle: String = "Temporalis HOI muscle exhaustion proxy"
 
     private var clamped: Double {
         min(100, max(0, valuePercent))
@@ -49,7 +49,7 @@ struct TFIFatigueGaugeView: View {
             }
             .frame(width: 132, height: 132)
 
-            Text("Temporalis Fatigue Index (TFI)")
+            Text("Temporalis HOI · TFI")
                 .font(designSystem.typography.labelMedium)
                 .foregroundColor(designSystem.colors.textPrimary)
             Text(subtitle)

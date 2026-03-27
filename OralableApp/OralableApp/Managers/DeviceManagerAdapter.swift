@@ -46,7 +46,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     private let deviceStateDetector = DeviceStateDetector()
     private var sensorDataBuffer: [SensorData] = []
     private let sensorDataBufferLimit = 20
-    
+    private var emgSessionPeak: Double = 1
+
     // Local sensor data history (since SensorDataProcessor's history is private(set))
     private var localSensorDataHistory: [SensorData] = []
     private let maxLocalHistoryCount = 10000
@@ -70,6 +71,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var ppgIRValue: Double = 0.0
     @Published var ppgGreenValue: Double = 0.0
     @Published var emgValue: Double = 0.0  // EMG value from ANR M40
+    /// Session-peak–normalized EMG (0–100) for dual REV10 + ANR secondary card.
+    @Published private(set) var emgActivityPercent: Double = 0
     @Published var isRecording: Bool = false
     @Published var deviceState: DeviceStateResult?
 
@@ -151,6 +154,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 if !connected {
                     self.sessionHistoryStore?.resetForDisconnect()
                     self.temporalisFatigueIndexPercent = 50
+                    self.emgSessionPeak = 1
+                    self.emgActivityPercent = 0
+                    ANRMuscleClinicalDeviceAdapter.dashboardEmgActivityPercent = 0
                     Task { await self.unifiedBiometricProcessor.reset() }
                 }
             }
@@ -212,6 +218,12 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         if let reading = readings[.muscleActivity] {
             emgValue = reading.value
             Logger.shared.debug("[DeviceManagerAdapter] ⚡ Muscle Activity (EMG): \(Int(emgValue)) µV")
+        }
+
+        if readings[.emg] != nil || readings[.muscleActivity] != nil, emgValue > 0 {
+            emgSessionPeak = max(emgSessionPeak, emgValue)
+            emgActivityPercent = min(100, (emgValue / emgSessionPeak) * 100)
+            ANRMuscleClinicalDeviceAdapter.dashboardEmgActivityPercent = emgActivityPercent
         }
 
         // Update PPG values
@@ -327,6 +339,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 )
                 await MainActor.run {
                     self.temporalisFatigueIndexPercent = r.tfiPercent
+                    self.sessionHistoryStore?.recordTFI(percent: r.tfiPercent, at: timestamp)
                     self.sessionHistoryStore?.recordSpO2Sample(
                         percent: self.spO2 > 0 ? Double(self.spO2) : nil,
                         at: timestamp
@@ -475,6 +488,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     var ppgIRValuePublisher: Published<Double>.Publisher { $ppgIRValue }
     var ppgGreenValuePublisher: Published<Double>.Publisher { $ppgGreenValue }
     var emgValuePublisher: Published<Double>.Publisher { $emgValue }  // EMG publisher for ANR M40
+    var emgActivityPercentPublisher: Published<Double>.Publisher { $emgActivityPercent }
     var accelXPublisher: Published<Double>.Publisher { $accelX }
     var accelYPublisher: Published<Double>.Publisher { $accelY }
     var accelZPublisher: Published<Double>.Publisher { $accelZ }

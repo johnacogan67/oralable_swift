@@ -54,6 +54,7 @@ class DashboardViewModel: ObservableObject {
     // MARK: - Dual Device Sensor Values
     @Published var ppgIRValue: Double = 0.0      // IR sensor value from Oralable
     @Published var emgValue: Double = 0.0        // EMG value from ANR M40
+    @Published var emgActivityPercent: Double = 0
     @Published var ppgHistory: [Double] = []     // PPG sparkline data
     @Published var emgHistory: [Double] = []     // EMG sparkline data
 
@@ -454,6 +455,13 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &bleCancellables)
 
+        deviceManagerAdapter.emgActivityPercentPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] value in
+                self?.emgActivityPercent = value
+            }
+            .store(in: &bleCancellables)
+
         // Subscribe to accelerometer data
         deviceManagerAdapter.accelXPublisher
             .combineLatest(deviceManagerAdapter.accelYPublisher, deviceManagerAdapter.accelZPublisher)
@@ -721,6 +729,7 @@ class DashboardViewModel: ObservableObject {
         // Reset dual-device specific values
         ppgIRValue = 0.0
         emgValue = 0.0
+        emgActivityPercent = 0
         ppgHistory = []
         emgHistory = []
         oralableConnected = false

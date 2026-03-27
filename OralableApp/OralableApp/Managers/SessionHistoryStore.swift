@@ -26,17 +26,143 @@ final class SessionHistoryStore: ObservableObject {
     private var hourProbCount: Int = 0
     private var hourSashbAccumulator: Double = 0
     private var hourRescueEvents: Int = 0
+    private var hourTfiSum: Double = 0
+    private var hourTfiCount: Int = 0
     private var lastSpO2Timestamp: Date?
     private var currentHourIndex: Int = 0
     private var autoSessionUUID: UUID?
 
     private let spo2HypoxiaThreshold: Double = 90
 
-    init() {}
+    // MARK: - Temporalis sleep study (fit guide + 10-minute calibration)
+
+    struct TemporalisSleepCalibrationRecord: Codable, Equatable, Sendable {
+        let calibrationId: UUID
+        let baselineVoltage: Double
+        let completedAt: Date
+        let peripheralId: UUID
+        /// File name only; resolved via `researchCalibrationURL(fileName:)`.
+        let rawCalibrationCSVFileName: String?
+
+        init(
+            calibrationId: UUID,
+            baselineVoltage: Double,
+            completedAt: Date,
+            peripheralId: UUID,
+            rawCalibrationCSVFileName: String? = nil
+        ) {
+            self.calibrationId = calibrationId
+            self.baselineVoltage = baselineVoltage
+            self.completedAt = completedAt
+            self.peripheralId = peripheralId
+            self.rawCalibrationCSVFileName = rawCalibrationCSVFileName
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case calibrationId, baselineVoltage, completedAt, peripheralId, rawCalibrationCSVFileName
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            calibrationId = try c.decode(UUID.self, forKey: .calibrationId)
+            baselineVoltage = try c.decode(Double.self, forKey: .baselineVoltage)
+            completedAt = try c.decode(Date.self, forKey: .completedAt)
+            peripheralId = try c.decode(UUID.self, forKey: .peripheralId)
+            rawCalibrationCSVFileName = try c.decodeIfPresent(String.self, forKey: .rawCalibrationCSVFileName)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(calibrationId, forKey: .calibrationId)
+            try c.encode(baselineVoltage, forKey: .baselineVoltage)
+            try c.encode(completedAt, forKey: .completedAt)
+            try c.encode(peripheralId, forKey: .peripheralId)
+            try c.encodeIfPresent(rawCalibrationCSVFileName, forKey: .rawCalibrationCSVFileName)
+        }
+    }
+
+    private static let researchCalibrationFolder = "Oralable/ResearchCalibration"
+
+    static func researchCalibrationDirectoryURL() throws -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = base.appendingPathComponent(researchCalibrationFolder, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    static func researchCalibrationURL(fileName: String) throws -> URL {
+        try researchCalibrationDirectoryURL().appendingPathComponent(fileName)
+    }
+
+    @Published private(set) var temporalisSleepCalibration: TemporalisSleepCalibrationRecord?
+
+    private let sleepCalDefaultsKey = "oralable.temporalis_sleep_calibration"
+
+    init() {
+        loadSleepCalibration()
+    }
+
+    func recordTemporalisSleepCalibration(
+        calibrationId: UUID,
+        baselineVoltage: Double,
+        peripheralId: UUID,
+        rawCalibrationCSVFileName: String? = nil
+    ) {
+        let record = TemporalisSleepCalibrationRecord(
+            calibrationId: calibrationId,
+            baselineVoltage: baselineVoltage,
+            completedAt: Date(),
+            peripheralId: peripheralId,
+            rawCalibrationCSVFileName: rawCalibrationCSVFileName
+        )
+        temporalisSleepCalibration = record
+        persistSleepCalibration()
+    }
+
+    func clearTemporalisSleepCalibration() {
+        temporalisSleepCalibration = nil
+        persistSleepCalibration()
+    }
+
+    /// Call when BLE primary changes: drop stored calibration if a different peripheral is now primary.
+    func applyPrimaryDeviceForSleepGate(primaryPeripheralId: UUID?) {
+        guard let cal = temporalisSleepCalibration, let pid = primaryPeripheralId else { return }
+        if cal.peripheralId != pid {
+            temporalisSleepCalibration = nil
+            persistSleepCalibration()
+        }
+    }
+
+    /// Enables "Start overnight session" only for the REV10 unit that completed calibration while connected.
+    func isOvernightSessionAllowed(primaryPeripheralId: UUID?, isPrimaryConnected: Bool) -> Bool {
+        guard isPrimaryConnected,
+              let pid = primaryPeripheralId,
+              let cal = temporalisSleepCalibration,
+              cal.peripheralId == pid else { return false }
+        return true
+    }
+
+    private func loadSleepCalibration() {
+        guard let data = UserDefaults.standard.data(forKey: sleepCalDefaultsKey),
+              let decoded = try? JSONDecoder().decode(TemporalisSleepCalibrationRecord.self, from: data) else {
+            return
+        }
+        temporalisSleepCalibration = decoded
+    }
+
+    private func persistSleepCalibration() {
+        if let record = temporalisSleepCalibration,
+           let data = try? JSONEncoder().encode(record) {
+            UserDefaults.standard.set(data, forKey: sleepCalDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: sleepCalDefaultsKey)
+        }
+    }
 
     func attach(recordingManager: RecordingSessionManager, deviceManager: DeviceManager) {
         self.recordingManager = recordingManager
         self.deviceManager = deviceManager
+        applyPrimaryDeviceForSleepGate(primaryPeripheralId: deviceManager.primaryDevice?.peripheralIdentifier)
     }
 
     func beginSession(anchor: Date, sessionId: UUID) {
@@ -88,6 +214,23 @@ final class SessionHistoryStore: ObservableObject {
         if probabilities.dominantState == .rescue {
             hourRescueEvents += 1
         }
+    }
+
+    func recordTFI(percent: Double, at date: Date) {
+        guard isRecordingContextActive else { return }
+        guard percent.isFinite else { return }
+        ensureAnchor(at: date)
+        guard sessionAnchor != nil else { return }
+
+        let idx = hourIndex(for: date)
+        if idx != currentHourIndex {
+            flushCurrentHour(at: date)
+            currentHourIndex = idx
+            resetHourBucket()
+        }
+
+        hourTfiSum += min(100, max(0, percent))
+        hourTfiCount += 1
     }
 
     func recordSpO2Sample(percent: Double?, at date: Date) {
@@ -145,10 +288,11 @@ final class SessionHistoryStore: ObservableObject {
 
     private func flushCurrentHour(at date: Date) {
         guard let anchor = sessionAnchor else { return }
-        guard hourProbCount > 0 || hourSashbAccumulator > 0 || hourRescueEvents > 0 else { return }
+        guard hourProbCount > 0 || hourSashbAccumulator > 0 || hourRescueEvents > 0 || hourTfiCount > 0 else { return }
         let start = anchor.addingTimeInterval(Double(currentHourIndex) * 3600)
         let end = min(date, anchor.addingTimeInterval(Double(currentHourIndex + 1) * 3600))
         let n = max(1, hourProbCount)
+        let tfiHourly: Double = hourTfiCount > 0 ? hourTfiSum / Double(hourTfiCount) : 0
         let seg = HourlyTemporalisSegment(
             hourIndex: currentHourIndex,
             segmentStart: start,
@@ -158,7 +302,8 @@ final class SessionHistoryStore: ObservableObject {
             tonic: hourProbSumTonic / Double(n),
             rescue: hourProbSumRescue / Double(n),
             sashbHypoxicBurden: hourSashbAccumulator,
-            rescueEventCount: hourRescueEvents
+            rescueEventCount: hourRescueEvents,
+            tfiPercent: tfiHourly
         )
         segmentByHour[currentHourIndex] = seg
         resetHourBucket()
@@ -173,6 +318,8 @@ final class SessionHistoryStore: ObservableObject {
         hourProbCount = 0
         hourSashbAccumulator = 0
         hourRescueEvents = 0
+        hourTfiSum = 0
+        hourTfiCount = 0
     }
 
     private func pushToRecordingSession() {
@@ -187,6 +334,40 @@ final class SessionHistoryStore: ObservableObject {
             manager.sessions[idx] = session
         }
         manager.saveSessionsToDisk()
+    }
+
+    /// JSON suitable for OralableForProfessionals (hourly TFI + SASHB + `SharedSessionData`).
+    func encodeProfessionalHandshakeExportJSON(
+        linkUUID: UUID,
+        sensorHistory: [SensorData]
+    ) throws -> Data {
+        let displayCode = ClinicianLinkCodeFormatter.sixCharacterCode(linkUUID: linkUUID)
+        let sharedSession = SharedSessionData(from: sensorHistory)
+        let hourlySorted = segmentByHour.keys.sorted().compactMap { segmentByHour[$0] }
+        let rollups: [ProfessionalHourlyRollupExport] = hourlySorted.map { seg in
+            ProfessionalHourlyRollupExport(
+                hourIndex: seg.hourIndex,
+                segmentStart: seg.segmentStart,
+                segmentEnd: seg.segmentEnd,
+                tfiPercent: seg.tfiPercent,
+                sashbHypoxicBurden: seg.sashbHypoxicBurden,
+                quiet: seg.quiet,
+                phasic: seg.phasic,
+                tonic: seg.tonic,
+                rescue: seg.rescue,
+                rescueEventCount: seg.rescueEventCount
+            )
+        }
+        let payload = ProfessionalHandshakeExport(
+            linkUUID: linkUUID,
+            displayCode: displayCode,
+            sharedSession: sharedSession,
+            hourlyRollups: rollups
+        )
+        let enc = JSONEncoder()
+        enc.outputFormatting = [.sortedKeys]
+        enc.dateEncodingStrategy = .iso8601
+        return try enc.encode(payload)
     }
 }
 

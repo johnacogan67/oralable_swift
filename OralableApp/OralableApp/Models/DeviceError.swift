@@ -57,6 +57,9 @@ enum DeviceError: LocalizedError {
     // General errors
     case unknownError(String)
 
+    /// REV10 firmware is below the minimum required for research-safe capture.
+    case firmwareUpdateRequired(requiredMinimum: String, reported: String?)
+
     var errorDescription: String? {
         switch self {
         case .invalidPeripheral(let reason):
@@ -109,6 +112,9 @@ enum DeviceError: LocalizedError {
             return "Authentication failed. Please try signing in again."
         case .unknownError(let message):
             return "Unknown error: \(message)"
+        case .firmwareUpdateRequired(let minimum, let reported):
+            let cur = reported ?? "unknown"
+            return "Firmware update required: device reports \(cur); minimum \(minimum) for clinical research capture."
         }
     }
 
@@ -137,6 +143,8 @@ enum DeviceError: LocalizedError {
             return "Start a recording session first."
         case .authenticationRequired, .authenticationFailed:
             return "Sign in with your Apple ID to access this feature."
+        case .firmwareUpdateRequired:
+            return "Update your Oralable REV10 to the latest firmware using Oralable’s researcher release channel, then try again."
         case .operationNotSupported:
             return "This feature is not available for your device model."
         default:
@@ -150,7 +158,7 @@ enum DeviceError: LocalizedError {
         case .notConnected, .disconnected, .connectionFailed, .connectionLost,
              .timeout, .deviceBusy, .dataCollectionFailed:
             return true
-        case .bluetoothUnavailable, .operationNotSupported, .invalidPeripheral:
+        case .bluetoothUnavailable, .operationNotSupported, .invalidPeripheral, .firmwareUpdateRequired:
             return false
         default:
             return true

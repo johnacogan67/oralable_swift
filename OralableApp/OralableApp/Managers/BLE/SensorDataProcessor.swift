@@ -24,6 +24,7 @@
 
 import Foundation
 import Combine
+import OralableCore
 
 class SensorDataProcessor: ObservableObject {
     @MainActor static let shared = SensorDataProcessor(calculator: BioMetricCalculator())
@@ -34,8 +35,44 @@ class SensorDataProcessor: ObservableObject {
     @Published private(set) var sensorDataHistory: [SensorData] = []
     private let maxHistoryCount = 10000
 
+    private var calibrationCaptureOralable: [SensorData] = []
+    private var isCalibrationWindowActive = false
+
     init(calculator: BioMetricCalculator) {
         self.calculator = calculator
+    }
+
+    /// Start capturing Oralable 50 Hz samples for the 10-minute Temporalis calibration wizard.
+    func beginCalibrationOralableCapture() {
+        calibrationCaptureOralable.removeAll()
+        calibrationCaptureOralable.reserveCapacity(40_000)
+        isCalibrationWindowActive = true
+    }
+
+    /// Stops capture and returns Oralable samples collected during calibration.
+    func endCalibrationOralableCapture() -> [SensorData] {
+        guard isCalibrationWindowActive else { return [] }
+        isCalibrationWindowActive = false
+        let out = calibrationCaptureOralable
+        calibrationCaptureOralable.removeAll()
+        return out
+    }
+
+    /// Every ~60 minutes while recording: spill CSV to tmp and clear RAM.
+    @MainActor
+    func flushLiveHistoryToTempFileIfNonEmpty() {
+        guard !sensorDataHistory.isEmpty else { return }
+        let batch = sensorDataHistory
+        do {
+            let name = "oralable_processor_flush_\(Int(Date().timeIntervalSince1970)).csv"
+            let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
+            try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
+            MemoryFlushStatus.shared.recordFlushSuccess()
+            Logger.shared.info("[SensorDataProcessor] Auto-flush: \(batch.count) rows → Application Support/\(name)")
+        } catch {
+            Logger.shared.warning("[SensorDataProcessor] Auto-flush failed: \(error.localizedDescription)")
+        }
+        clearHistory()
     }
     
     /// Clear the sensor data history
@@ -56,6 +93,10 @@ class SensorDataProcessor: ObservableObject {
     /// Append a single SensorData reading to history (called from DeviceManagerAdapter)
     func appendToHistory(_ data: SensorData) {
         sensorDataHistory.append(data)
+
+        if isCalibrationWindowActive && data.deviceType == .oralable {
+            calibrationCaptureOralable.append(data)
+        }
 
         // Trim history if needed
         if sensorDataHistory.count > maxHistoryCount {

@@ -23,17 +23,25 @@ struct LaunchCoordinator: View {
     @EnvironmentObject var authenticationManager: AuthenticationManager
     @EnvironmentObject var historicalDataManager: HistoricalDataManager
     @EnvironmentObject var deviceManager: DeviceManager
+    @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
 
     var body: some View {
         Group {
             // IMPORTANT: Check authentication BEFORE first launch
-            // Once authenticated, always show main tab view regardless of first launch status
+            // Once authenticated, show first-fit onboarding until Temporalis calibration completes.
             if authenticationManager.isAuthenticated {
-                // MainTabView has the bottom tab bar with Dashboard, Devices, Share, Settings
-                MainTabView()
-                    .onAppear {
-                        Logger.shared.info("🟢 LaunchCoordinator: Showing MainTabView (authenticated)")
-                    }
+                if firstLaunchManager.hasCompletedFirstFit {
+                    MainTabView()
+                        .onAppear {
+                            Logger.shared.info("🟢 LaunchCoordinator: Showing MainTabView (authenticated)")
+                        }
+                } else {
+                    FirstLaunchOnboardingView(firstLaunchManager: firstLaunchManager)
+                        .onAppear {
+                            Logger.shared.info("🟡 LaunchCoordinator: Showing FirstLaunchOnboardingView (fit gate)")
+                        }
+                }
             } else if authenticationManager.isFirstLaunch {
                 OnboardingView()
                     .onAppear {
@@ -48,6 +56,11 @@ struct LaunchCoordinator: View {
         }
         .onAppear {
             Logger.shared.info("🔵 LaunchCoordinator appeared - isAuthenticated: \(authenticationManager.isAuthenticated), isFirstLaunch: \(authenticationManager.isFirstLaunch)")
+            if authenticationManager.isAuthenticated,
+               !firstLaunchManager.hasCompletedFirstFit,
+               sessionHistoryStore.temporalisSleepCalibration != nil {
+                firstLaunchManager.markFirstFitCompleted()
+            }
             // Attempt to auto-reconnect to remembered devices on app launch
             deviceManager.attemptAutoReconnect()
         }

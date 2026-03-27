@@ -26,6 +26,7 @@ struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @EnvironmentObject var dependencies: AppDependencies
     @EnvironmentObject var designSystem: DesignSystem
+    @EnvironmentObject var appleHealthManager: AppleHealthManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     @State private var showSubscriptionInfo = false
@@ -34,6 +35,7 @@ struct SettingsView: View {
 
     /// Toggle between standard and simplified dashboard
     @AppStorage("useSimplifiedDashboard") private var useSimplifiedDashboard: Bool = false
+    @AppStorage("oralable.settings.appleHealthSync") private var appleHealthSyncEnabled: Bool = false
 
     init(viewModel: SettingsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -68,6 +70,58 @@ struct SettingsView: View {
                     Text("Display")
                 } footer: {
                     Text("Simplified dashboard shows a single status card with color-coded positioning.")
+                }
+
+                Section {
+                    Toggle(isOn: $appleHealthSyncEnabled) {
+                        Label("Apple Health Sync", systemImage: "heart.text.square.fill")
+                    }
+                    .disabled(!appleHealthManager.isHealthDataAvailable)
+                    .tint(designSystem.colors.info)
+                    .onChange(of: appleHealthSyncEnabled) { _, enabled in
+                        guard enabled else { return }
+                        Task {
+                            try? await appleHealthManager.requestAuthorization()
+                        }
+                    }
+
+                    if appleHealthManager.isHealthDataAvailable {
+                        if let last = appleHealthManager.lastSuccessfulSpO2SyncAt {
+                            Text("Last successful sync: \(last.formatted(date: .abbreviated, time: .shortened))")
+                                .font(designSystem.typography.bodySmall)
+                                .foregroundColor(designSystem.colors.textSecondary)
+                        } else {
+                            Text("No SpO₂ written to Health yet")
+                                .font(designSystem.typography.bodySmall)
+                                .foregroundColor(designSystem.colors.textSecondary)
+                        }
+                    } else {
+                        Text("Health data is not available on this device.")
+                            .font(designSystem.typography.bodySmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+
+                    NavigationLink {
+                        ProfessionalShareView()
+                    } label: {
+                        Label("Share with clinician", systemImage: "stethoscope")
+                    }
+                } header: {
+                    Text("Clinical data")
+                } footer: {
+                    Text("Enable sync to authorize Health access. Session-average SpO₂ is saved from the Temporalis HOI export action. Use clinician sharing to generate a secure code and export package for Oralable for Professionals.")
+                }
+
+                Section {
+                    NavigationLink {
+                        MainDashboardView()
+                    } label: {
+                        Label("Sleep study setup", systemImage: "moon.zzz.fill")
+                    }
+                } header: {
+                    Text("Sleep study")
+                } footer: {
+                    Text("Temporalis mirror fit, IR-DC placement check, and 10-minute calibration gate before overnight recording.")
                 }
 
                 // About Section - ALWAYS SHOWN (with hidden developer access)

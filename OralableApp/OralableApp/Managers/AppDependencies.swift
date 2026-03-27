@@ -45,6 +45,7 @@ final class AppDependencies: ObservableObject {
     let sharedDataManager: SharedDataManager
     let designSystem: DesignSystem
     let appleHealthManager: AppleHealthManager
+    let memoryFlushStatus: MemoryFlushStatus
 
     // Cached view models to preserve state across views
     private var _cachedDashboardViewModel: DashboardViewModel?
@@ -80,6 +81,7 @@ final class AppDependencies: ObservableObject {
         self.sharedDataManager = sharedDataManager
         self.designSystem = designSystem
         self.appleHealthManager = appleHealthManager
+        self.memoryFlushStatus = MemoryFlushStatus.shared
 
         Publishers.CombineLatest3(
             deviceManager.$primaryDevice,
@@ -89,6 +91,9 @@ final class AppDependencies: ObservableObject {
         .receive(on: RunLoop.main)
         .sink { [weak self] _, _, _ in
             guard let self else { return }
+            self.sessionHistoryStore.applyPrimaryDeviceForSleepGate(
+                primaryPeripheralId: self.deviceManager.primaryDevice?.peripheralIdentifier
+            )
             self.appStateManager.refreshOralableClinicalMetrics(
                 primaryBLE: self.deviceManager.primaryBLEDevice
             )
@@ -96,6 +101,8 @@ final class AppDependencies: ObservableObject {
         .store(in: &clinicalMetricsCancellables)
 
         appStateManager.refreshOralableClinicalMetrics(primaryBLE: deviceManager.primaryBLEDevice)
+
+        AutoFlushService.shared.start(deviceManager: deviceManager, sensorDataProcessor: sensorDataProcessor)
 
         Logger.shared.info("[AppDependencies] Initialized with automatic recording support")
     }
@@ -152,6 +159,7 @@ struct DependenciesModifier: ViewModifier {
             .environmentObject(dependencies.sharedDataManager)
             .environmentObject(dependencies.designSystem)
             .environmentObject(dependencies.appleHealthManager)
+            .environmentObject(dependencies.memoryFlushStatus)
     }
 }
 

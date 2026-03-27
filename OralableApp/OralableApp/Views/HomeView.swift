@@ -2,13 +2,17 @@
 //  HomeView.swift
 //  OralableApp
 //
-//  Primary home surface: full dashboard (Temporalis TFI and live metrics).
+//  Primary home tab: Apple Health–style Summary (TFI + hypoxic burden) lives in `DashboardView`
+//  (`showAppleHealthSummary`); metric cards and recording flow follow below.
 //
 
 import SwiftUI
 
 struct HomeView: View {
     var body: some View {
-        DashboardView()
+        DashboardView(
+            suppressTemporalisSummary: true,
+            showAppleHealthSummary: true
+        )
     }
 }

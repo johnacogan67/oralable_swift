@@ -126,6 +126,9 @@ class DeviceManager: ObservableObject {
     /// Errors
     @Published var lastError: DeviceError?
 
+    /// REV10 peripherals that failed the minimum firmware gate (UUID matches `DeviceInfo.peripheralIdentifier`).
+    @Published var oralableFirmwareBlockedPeripheralIds: Set<UUID> = []
+
     /// Bluetooth state for UI display
     @Published var bluetoothState: CBManagerState = .unknown
 
@@ -541,6 +544,39 @@ class DeviceManager: ObservableObject {
         if readiness == .ready && isScanning {
             Logger.shared.info("[DeviceManager] 🛑 Device ready - auto-stopping scan")
             stopScanning()
+        }
+
+        if readiness == .ready {
+            oralableFirmwareBlockedPeripheralIds.remove(peripheralId)
+        }
+    }
+
+    /// Sync firmware string read from GATT into list models for discovery UI.
+    func applyDiscoveredFirmwareVersion(peripheralId: UUID, version: String) {
+        if let index = discoveredDevices.firstIndex(where: { $0.peripheralIdentifier == peripheralId }) {
+            discoveredDevices[index].firmwareVersion = version
+        }
+        if let index = connectedDevices.firstIndex(where: { $0.peripheralIdentifier == peripheralId }) {
+            connectedDevices[index].firmwareVersion = version
+        }
+        if var p = primaryDevice, p.peripheralIdentifier == peripheralId {
+            p.firmwareVersion = version
+            primaryDevice = p
+        }
+    }
+
+    /// Writes the unified ring buffer to a temp CSV and clears memory (paired with `SensorDataProcessor` flush).
+    func flushUnifiedSensorBufferToTempFile() async {
+        let batch = await unifiedSensorDataBuffer.removeAllCopying()
+        guard !batch.isEmpty else { return }
+        do {
+            let name = "oralable_unified_flush_\(Int(Date().timeIntervalSince1970)).csv"
+            let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
+            try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
+            MemoryFlushStatus.shared.recordFlushSuccess()
+            Logger.shared.info("[DeviceManager] Unified buffer auto-flush: \(batch.count) samples → Application Support/\(name)")
+        } catch {
+            Logger.shared.warning("[DeviceManager] Unified buffer flush failed: \(error.localizedDescription)")
         }
     }
     

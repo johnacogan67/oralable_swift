@@ -15,6 +15,7 @@ struct OralableApp: App {
     @StateObject private var sharedDataManager: SharedDataManager
     @StateObject private var designSystem: DesignSystem
     @StateObject private var dependencies: AppDependencies
+    @StateObject private var firstLaunchManager = FirstLaunchManager()
 
     init() {
         let authenticationManager = AuthenticationManager()
@@ -77,6 +78,7 @@ struct OralableApp: App {
         WindowGroup {
             LaunchCoordinator()
                 .withDependencies(dependencies)
+                .environmentObject(firstLaunchManager)
                 .onChange(of: scenePhase) { oldPhase, newPhase in
                     handleScenePhaseChange(from: oldPhase, to: newPhase)
                 }
