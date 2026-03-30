@@ -17,6 +17,7 @@ struct MainDashboardView: View {
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
     @EnvironmentObject var sensorDataProcessor: SensorDataProcessor
     @EnvironmentObject var memoryFlushStatus: MemoryFlushStatus
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
 
     @State private var showTemporalisFitGuide = false
     @State private var showOvernightNotice = false
@@ -157,6 +158,7 @@ struct MainDashboardView: View {
             .environmentObject(deviceManager)
             .environmentObject(sessionHistoryStore)
             .environmentObject(sensorDataProcessor)
+            .environmentObject(firstLaunchManager)
         }
         .alert("Overnight session", isPresented: $showOvernightNotice) {
             Button("OK", role: .cancel) {}

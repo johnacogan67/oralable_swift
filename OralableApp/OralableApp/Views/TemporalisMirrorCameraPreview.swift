@@ -60,7 +60,12 @@ struct FrontMirrorCameraPreview: UIViewRepresentable {
         let host = PreviewHostView()
         let layer = AVCaptureVideoPreviewLayer(session: session)
         layer.videoGravity = .resizeAspectFill
-        layer.connection?.isVideoMirrored = true
+        
+        if let connection = layer.connection, connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = true
+        }
+        
         host.layer.insertSublayer(layer, at: 0)
         host.previewLayer = layer
         return host

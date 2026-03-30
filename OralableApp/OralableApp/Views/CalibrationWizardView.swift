@@ -15,15 +15,19 @@ struct CalibrationWizardView: View {
     @EnvironmentObject var sensorDataProcessor: SensorDataProcessor
 
     let lockedBaselineVoltage: Double
+    /// When true, calibration CSV rows include `is_manual_override=1` (research fit-gate bypass).
+    let isManualPlacementOverride: Bool
     let onSuccessfulCalibration: (() -> Void)?
     let onFinished: () -> Void
 
     init(
         lockedBaselineVoltage: Double,
+        isManualPlacementOverride: Bool = false,
         onSuccessfulCalibration: (() -> Void)? = nil,
         onFinished: @escaping () -> Void
     ) {
         self.lockedBaselineVoltage = lockedBaselineVoltage
+        self.isManualPlacementOverride = isManualPlacementOverride
         self.onSuccessfulCalibration = onSuccessfulCalibration
         self.onFinished = onFinished
     }
@@ -154,7 +158,11 @@ struct CalibrationWizardView: View {
             let name = "temporalis_cal_\(id.uuidString).csv"
             do {
                 let url = try SessionHistoryStore.researchCalibrationURL(fileName: name)
-                try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: samples, to: url)
+                try ResearchRawDataExport.writeOralableRaw50HzCSV(
+                    samples: samples,
+                    to: url,
+                    isManualOverride: isManualPlacementOverride
+                )
                 csvName = name
                 Logger.shared.info("[CalibrationWizard] Raw calibration CSV: \(samples.count) Oralable samples → \(name)")
             } catch {

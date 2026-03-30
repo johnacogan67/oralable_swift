@@ -22,9 +22,13 @@ enum TemporalisIRDCVoltageEstimator {
     private static let voltsAtMin: Double = 1.0
     private static let voltsAtMax: Double = 3.0
 
-    private static let placementGoodLower: Double = 1.5
-    private static let placementGoodUpper: Double = 2.5
-    private static let lightLeakThreshold: Double = 2.8
+    static let placementGoodLowerVolts: Double = 1.5
+    static let placementGoodUpperVolts: Double = 2.5
+
+    /// Below this estimated voltage (strict) counts as light leak before a stable baseline exists.
+    static let lightLeakThresholdStrict: Double = 2.8
+    /// After stable coupling is established, allow up to this voltage before calling light leak (clench / transient lift).
+    static let lightLeakThresholdRelaxed: Double = 4.5
 
     /// Monotonic map from reported IR (firmware raw) to a representative DC voltage for UX thresholds.
     static func estimateVolts(fromIRRaw raw: Double) -> Double {
@@ -34,12 +38,12 @@ enum TemporalisIRDCVoltageEstimator {
         return voltsAtMin + t * (voltsAtMax - voltsAtMin)
     }
 
-    static func placementState(irRaw: Double) -> TemporalisIRDCPlacementState {
+    static func placementState(irRaw: Double, lightLeakThreshold: Double = lightLeakThresholdStrict) -> TemporalisIRDCPlacementState {
         let v = estimateVolts(fromIRRaw: irRaw)
         if irRaw <= 0 || v <= 0 { return .noSignal }
-        if v < placementGoodLower { return .tooLow }
+        if v < placementGoodLowerVolts { return .tooLow }
         if v > lightLeakThreshold { return .lightLeak }
-        if v <= placementGoodUpper { return .good }
+        if v <= placementGoodUpperVolts { return .good }
         return .tooLow
     }
 }

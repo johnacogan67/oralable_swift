@@ -464,7 +464,7 @@ struct ShareView: View {
         lines.reserveCapacity(totalCount + 1)
 
         // Build header based on enabled features
-        var headerParts = ["Timestamp", "Device_Type", "EMG", "PPG_IR", "PPG_Red", "PPG_Green"]
+        var headerParts = ["Timestamp", "Device_Type", "EMG", "PPG_IR", "Raw_Ambient_IR", "PPG_Red", "PPG_Green"]
         if includeMovement {
             headerParts.append(contentsOf: ["Accel_X", "Accel_Y", "Accel_Z"])
         }
@@ -513,6 +513,7 @@ struct ShareView: View {
                 timestamp,
                 deviceTypeName,
                 String(emgValue),
+                String(ppgIRValue),
                 String(ppgIRValue),
                 String(data.ppg.red),
                 String(data.ppg.green)

@@ -2,7 +2,7 @@
 //  FirstLaunchOnboardingView.swift
 //  OralableApp
 //
-//  Post-sign-in wizard: video placeholder, researcher one-sheet, then Temporalis fit gate.
+//  Post-sign-in setup: pair REV10 first, then Temporalis fit + calibration.
 //
 
 import SwiftUI
@@ -15,7 +15,11 @@ struct FirstLaunchOnboardingView: View {
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
     @EnvironmentObject var sensorDataProcessor: SensorDataProcessor
 
+    @State private var showDeviceDiscoverySheet = false
     @State private var showFitGuide = false
+    /// 0 = pairing, 1 = fitting (mirror guide), 2 = calibrating
+    @State private var setupProgressIndex = 0
+    @State private var pairingJustCompletedSession = false
 
     var body: some View {
         NavigationStack {
@@ -25,18 +29,16 @@ struct FirstLaunchOnboardingView: View {
                         .font(designSystem.typography.h2)
                         .foregroundColor(designSystem.colors.textPrimary)
 
-                    Text("Complete this short setup once. It aligns every trial night with the same Temporalis placement standard.")
+                    Text("Connect your Oralable REV10, then complete the Temporalis fit and calibration once. This aligns every trial night with the same placement standard.")
                         .font(designSystem.typography.body)
                         .foregroundColor(designSystem.colors.textSecondary)
 
-                    videoPlaceholderCard
-
-                    researcherOneSheetCard
+                    setupProgressIndicator
 
                     Button {
-                        showFitGuide = true
+                        showDeviceDiscoverySheet = true
                     } label: {
-                        Label("Open Temporalis fit guide", systemImage: "camera.viewfinder")
+                        Label("Connect Oralable Node", systemImage: "link.circle.fill")
                             .font(designSystem.typography.labelMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -45,21 +47,70 @@ struct FirstLaunchOnboardingView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
 
-                    Text("Connect your Oralable REV10 as primary on the Devices tab if you have not already.")
-                        .font(designSystem.typography.caption)
-                        .foregroundColor(designSystem.colors.textTertiary)
+                    if firstLaunchManager.hasPairedOralablePrimary, !showFitGuide {
+                        Button {
+                            showFitGuide = true
+                            setupProgressIndex1IfNeeded()
+                        } label: {
+                            Label("Continue to Temporalis fit guide", systemImage: "camera.viewfinder")
+                                .font(designSystem.typography.labelMedium)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(designSystem.colors.backgroundPrimary)
+                                .foregroundColor(designSystem.colors.primaryBlack)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(designSystem.colors.border.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+                    }
+
+                    videoPlaceholderCard
+                    researcherOneSheetCard
                 }
                 .padding(designSystem.spacing.lg)
             }
             .background(designSystem.colors.backgroundSecondary)
             .navigationTitle("Setup")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                syncProgressIndexFromState()
+            }
+            .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, _ in
+                syncProgressIndexFromState()
+            }
+        }
+        .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
+            if !pairingJustCompletedSession,
+               !firstLaunchManager.hasPairedOralablePrimary {
+                firstLaunchManager.enterTrialSetupMode()
+            }
+            pairingJustCompletedSession = false
+        }) {
+            DeviceDiscoveryView(
+                onOralablePrimaryReady: {
+                    pairingJustCompletedSession = true
+                    firstLaunchManager.markOralablePaired()
+                    setupProgressIndex = 1
+                    showDeviceDiscoverySheet = false
+                    showFitGuide = true
+                }
+            )
+            .environmentObject(deviceManager)
+            .environmentObject(designSystem)
         }
         .fullScreenCover(isPresented: $showFitGuide) {
             TemporalisFitGuideView(
-                onExit: { showFitGuide = false },
+                onExit: {
+                    showFitGuide = false
+                    syncProgressIndexFromState()
+                },
                 onCalibrationSucceeded: {
                     firstLaunchManager.markFirstFitCompleted()
+                },
+                onBeginCalibration: {
+                    setupProgressIndex = 2
                 }
             )
             .environmentObject(designSystem)
@@ -67,6 +118,83 @@ struct FirstLaunchOnboardingView: View {
             .environmentObject(deviceManager)
             .environmentObject(sessionHistoryStore)
             .environmentObject(sensorDataProcessor)
+            .environmentObject(firstLaunchManager)
+        }
+    }
+
+    private var setupProgressIndicator: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+            Text("Setup progress")
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textTertiary)
+            HStack(alignment: .top, spacing: 0) {
+                progressSegment(title: "Pairing", step: 0)
+                progressChevron
+                progressSegment(title: "Fitting", step: 1)
+                progressChevron
+                progressSegment(title: "Calibrating", step: 2)
+            }
+        }
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(designSystem.colors.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.spacing.sm, style: .continuous))
+    }
+
+    private var progressChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption.weight(.semibold))
+            .foregroundColor(designSystem.colors.textTertiary)
+            .padding(.top, 4)
+    }
+
+    private func progressSegment(title: String, step: Int) -> some View {
+        let active = setupProgressIndex == step
+        let done = setupProgressIndex > step
+        return VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(done ? designSystem.colors.primaryBlack : designSystem.colors.gray200)
+                    .frame(width: 26, height: 26)
+                if done {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(designSystem.colors.primaryWhite)
+                } else if active {
+                    Circle()
+                        .strokeBorder(designSystem.colors.primaryBlack, lineWidth: 2)
+                        .frame(width: 22, height: 22)
+                }
+            }
+            Text(title)
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(active || done ? designSystem.colors.textPrimary : designSystem.colors.textTertiary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func setupProgressIndex1IfNeeded() {
+        if setupProgressIndex < 1 {
+            setupProgressIndex = 1
+        }
+    }
+
+    private func syncProgressIndexFromState() {
+        if firstLaunchManager.hasCompletedFirstFit {
+            setupProgressIndex = 2
+            return
+        }
+        if setupProgressIndex >= 2, !firstLaunchManager.hasCompletedFirstFit {
+            return
+        }
+        if firstLaunchManager.hasPairedOralablePrimary {
+            if setupProgressIndex == 0 {
+                setupProgressIndex = 1
+            }
+        } else {
+            setupProgressIndex = 0
         }
     }
 

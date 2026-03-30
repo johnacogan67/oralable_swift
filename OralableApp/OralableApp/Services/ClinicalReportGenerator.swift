@@ -220,7 +220,7 @@ enum ClinicalReportGenerator {
     }
 
     /// Convenience: write Oralable trial raw lane (exported from `SensorData` history).
-    static func writeOralableRaw50HzCSV(samples: [SensorData], to url: URL) throws {
-        try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: samples, to: url)
+    static func writeOralableRaw50HzCSV(samples: [SensorData], to url: URL, isManualOverride: Bool = false) throws {
+        try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: samples, to: url, isManualOverride: isManualOverride)
     }
 }

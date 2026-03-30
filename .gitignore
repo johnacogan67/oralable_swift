@@ -13,3 +13,6 @@
 # OS-specific
 .DS_Store
 /OralableApp/.build/
+
+# Xcode user-specific UI state
+*.xcuserstate

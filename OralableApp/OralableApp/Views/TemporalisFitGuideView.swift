@@ -15,14 +15,22 @@ struct TemporalisFitGuideView: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
     @EnvironmentObject var sensorDataProcessor: SensorDataProcessor
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
 
     let onExit: () -> Void
     /// Called only after the 10-minute calibration saves baseline (not on Cancel).
     var onCalibrationSucceeded: (() -> Void)?
+    /// Called when the user starts the 10-minute IR-DC calibration wizard (setup step 3).
+    var onBeginCalibration: (() -> Void)?
 
-    init(onExit: @escaping () -> Void, onCalibrationSucceeded: (() -> Void)? = nil) {
+    init(
+        onExit: @escaping () -> Void,
+        onCalibrationSucceeded: (() -> Void)? = nil,
+        onBeginCalibration: (() -> Void)? = nil
+    ) {
         self.onExit = onExit
         self.onCalibrationSucceeded = onCalibrationSucceeded
+        self.onBeginCalibration = onBeginCalibration
     }
 
     @StateObject private var camera = FrontMirrorCaptureSession()
@@ -33,10 +41,22 @@ struct TemporalisFitGuideView: View {
     @State private var estimatedVolts: Double = 0
     @State private var goodVoltageSamples: [Double] = []
     @State private var stableGoodSince: Date?
+    /// After `minGoodSamples` in-band, use relaxed light-leak ceiling instead of 2.8 V (clench hysteresis).
+    @State private var allowRelaxedLightLeakThreshold = false
+    /// Require this long over threshold before showing red leak UI (sensor settle time).
+    @State private var lightLeakPendingSince: Date?
+    @State private var lastNonLeakDisplayState: TemporalisIRDCPlacementState = .noSignal
     @State private var showCalibrationWizard = false
+    @State private var showSetupSuccess = false
+    /// Set when `CalibrationWizardView` saves calibration; cleared when presenting `SetupSuccessView`.
+    @State private var calibrationEndedSuccessfully = false
     @State private var lockedBaselineVoltage: Double = 0
+    @State private var isResearchOverrideActive = false
+    @State private var showResearchOverridePrompt = false
+    @State private var manualOverrideForCurrentCalibration = false
 
-    private let stableHoldSeconds: TimeInterval = 2
+    private let stableHoldSeconds: TimeInterval = 3
+    private let lightLeakConfirmDelay: TimeInterval = 0.75
     private let minGoodSamples = 8
     private let maxGoodSamples = 20
 
@@ -50,7 +70,14 @@ struct TemporalisFitGuideView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.card))
                                 .overlay {
                                     GeometryReader { g in
-                                        templeReticle(in: g.size)
+                                        ZStack {
+                                            templeReticle(in: g.size)
+                                            Color.clear
+                                                .contentShape(Rectangle())
+                                                .onLongPressGesture(minimumDuration: 2) {
+                                                    showResearchOverridePrompt = true
+                                                }
+                                        }
                                     }
                                 }
                         } else {
@@ -67,17 +94,19 @@ struct TemporalisFitGuideView: View {
                     if placementState == .lightLeak {
                         lightLeakBanner
                     }
-                    if canAdvanceToCalibration {
+                    if shouldShowPlacementBypass && !canAdvanceToCalibration && !isResearchOverrideActive {
+                        placementBypassPanel
+                    }
+                    if canStartCalibration {
                         Button {
-                            lockedBaselineVoltage = averagedGoodVoltage
-                            showCalibrationWizard = true
+                            startCalibrationWizard()
                         } label: {
-                            Text("Signal locked — start 10-minute calibration")
+                            Text(startCalibrationButtonTitle)
                                 .font(designSystem.typography.labelMedium)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .background(designSystem.colors.primaryBlack)
-                                .foregroundColor(designSystem.colors.primaryWhite)
+                                .background(isResearchOverrideActive && !canAdvanceToCalibration ? designSystem.colors.warning : designSystem.colors.primaryBlack)
+                                .foregroundColor(isResearchOverrideActive && !canAdvanceToCalibration ? designSystem.colors.primaryBlack : designSystem.colors.primaryWhite)
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                         .padding(.horizontal, designSystem.spacing.md)
@@ -98,6 +127,14 @@ struct TemporalisFitGuideView: View {
                     }
                 }
             }
+            .alert("Research override", isPresented: $showResearchOverridePrompt) {
+                Button("Cancel", role: .cancel) {}
+                Button("Yes") {
+                    isResearchOverrideActive = true
+                }
+            } message: {
+                Text("Enter Research Override? This will bypass voltage safety gates.")
+            }
         }
         .onAppear {
             requestCameraIfNeeded()
@@ -113,17 +150,33 @@ struct TemporalisFitGuideView: View {
         .fullScreenCover(isPresented: $showCalibrationWizard) {
             CalibrationWizardView(
                 lockedBaselineVoltage: lockedBaselineVoltage,
-                onSuccessfulCalibration: onCalibrationSucceeded,
+                isManualPlacementOverride: manualOverrideForCurrentCalibration,
+                onSuccessfulCalibration: {
+                    calibrationEndedSuccessfully = true
+                },
                 onFinished: {
                     showCalibrationWizard = false
                     camera.stop()
-                    onExit()
+                    if calibrationEndedSuccessfully {
+                        calibrationEndedSuccessfully = false
+                        showSetupSuccess = true
+                    } else {
+                        onExit()
+                    }
                 }
             )
             .environmentObject(designSystem)
             .environmentObject(sessionHistoryStore)
             .environmentObject(deviceManager)
             .environmentObject(sensorDataProcessor)
+        }
+        .fullScreenCover(isPresented: $showSetupSuccess) {
+            SetupSuccessView {
+                showSetupSuccess = false
+                onCalibrationSucceeded?()
+                onExit()
+            }
+            .environmentObject(designSystem)
         }
     }
 
@@ -173,6 +226,11 @@ struct TemporalisFitGuideView: View {
                 .foregroundColor(designSystem.colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, designSystem.spacing.lg)
+            Text("Ensure the headband is tight. The sensor must remain flush with the temple bulge even during a strong clench.")
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textPrimary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, designSystem.spacing.lg)
             Text("Use the mirror to align the headband. Relax, then gently clench to confirm coupling.")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textSecondary)
@@ -203,13 +261,16 @@ struct TemporalisFitGuideView: View {
         .background(designSystem.colors.backgroundPrimary)
         .cornerRadius(designSystem.cornerRadius.card)
         .padding(.horizontal, designSystem.spacing.md)
+        .onLongPressGesture(minimumDuration: 2) {
+            showResearchOverridePrompt = true
+        }
     }
 
     private var lightLeakBanner: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "sun.max.trianglebadge.exclamationmark")
                 .foregroundColor(designSystem.colors.warning)
-            Text("Light leakage detected: tighten the headband to block ambient light.")
+            Text("Placement gate (audit only): IR-DC reads high versus our nominal dark-coupling band—often firmware ambient / coupling scaling, not necessarily a real leak. You can still proceed with the bypass below; raw ambient IR counts are logged in CSV (ambient_ir_raw).")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textPrimary)
         }
@@ -225,11 +286,14 @@ struct TemporalisFitGuideView: View {
         case .noSignal:
             return "Waiting for REV10 IR signal…"
         case .tooLow:
+            if estimatedVolts > TemporalisIRDCVoltageEstimator.placementGoodUpperVolts {
+                return "Placement error — IR-DC above target band"
+            }
             return "Adjust placement — signal low"
         case .good:
             return "Placement OK — hold steady"
         case .lightLeak:
-            return "Too bright — reduce stray light"
+            return "Placement error — high IR / ambient"
         }
     }
 
@@ -245,6 +309,64 @@ struct TemporalisFitGuideView: View {
         guard rev10PrimaryConnected else { return false }
         guard let start = stableGoodSince else { return false }
         return Date().timeIntervalSince(start) >= stableHoldSeconds && goodVoltageSamples.count >= minGoodSamples
+    }
+
+    private var canStartCalibration: Bool {
+        if canAdvanceToCalibration { return true }
+        if isResearchOverrideActive, deviceManagerAdapter.isConnected { return true }
+        return false
+    }
+
+    private var startCalibrationButtonTitle: String {
+        if isResearchOverrideActive && !canAdvanceToCalibration {
+            return "Start 10-minute calibration (research override)"
+        }
+        return "Signal locked — start 10-minute calibration"
+    }
+
+    /// Elevated IR (above good window) or confirmed leak UI — user may bypass to 10-minute lock for research captures.
+    private var shouldShowPlacementBypass: Bool {
+        guard rev10PrimaryConnected else { return false }
+        if placementState == .lightLeak { return true }
+        if placementState == .tooLow, estimatedVolts > TemporalisIRDCVoltageEstimator.placementGoodUpperVolts { return true }
+        return false
+    }
+
+    private var placementBypassPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Bypass placement warning")
+                .font(designSystem.typography.labelMedium)
+                .foregroundColor(designSystem.colors.textPrimary)
+            Text("Use only if you are confident the sensor is light-tight. Baseline will use the current IR-DC estimate.")
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textSecondary)
+            Button {
+                startCalibrationWizard()
+            } label: {
+                Text("Proceed to 10-minute calibration anyway")
+                    .font(designSystem.typography.labelMedium)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(designSystem.colors.warning)
+                    .foregroundColor(designSystem.colors.primaryBlack)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(designSystem.colors.warning.opacity(0.12))
+        .cornerRadius(designSystem.cornerRadius.card)
+        .padding(.horizontal, designSystem.spacing.md)
+    }
+
+    private func startCalibrationWizard() {
+        manualOverrideForCurrentCalibration = isResearchOverrideActive
+        if isResearchOverrideActive {
+            firstLaunchManager.markOralablePaired()
+        }
+        lockedBaselineVoltage = goodVoltageSamples.isEmpty ? estimatedVolts : averagedGoodVoltage
+        onBeginCalibration?()
+        showCalibrationWizard = true
     }
 
     private var averagedGoodVoltage: Double {
@@ -264,12 +386,32 @@ struct TemporalisFitGuideView: View {
 
     private func syncPlacement(from irRaw: Double) {
         let v = TemporalisIRDCVoltageEstimator.estimateVolts(fromIRRaw: irRaw)
-        let state = TemporalisIRDCVoltageEstimator.placementState(irRaw: irRaw)
         estimatedVolts = v
-        placementState = state
 
-        switch state {
-        case .good:
+        let leakThreshold = allowRelaxedLightLeakThreshold
+            ? TemporalisIRDCVoltageEstimator.lightLeakThresholdRelaxed
+            : TemporalisIRDCVoltageEstimator.lightLeakThresholdStrict
+        let rawState = TemporalisIRDCVoltageEstimator.placementState(irRaw: irRaw, lightLeakThreshold: leakThreshold)
+
+        let committedState: TemporalisIRDCPlacementState
+        if rawState == .lightLeak {
+            if lightLeakPendingSince == nil {
+                lightLeakPendingSince = Date()
+            }
+            if Date().timeIntervalSince(lightLeakPendingSince!) >= lightLeakConfirmDelay {
+                committedState = .lightLeak
+            } else {
+                committedState = lastNonLeakDisplayState
+            }
+        } else {
+            lightLeakPendingSince = nil
+            committedState = rawState
+            lastNonLeakDisplayState = rawState
+        }
+
+        placementState = committedState
+
+        if rawState == .good {
             goodVoltageSamples.append(v)
             if goodVoltageSamples.count > maxGoodSamples {
                 goodVoltageSamples.removeFirst(goodVoltageSamples.count - maxGoodSamples)
@@ -277,11 +419,15 @@ struct TemporalisFitGuideView: View {
             if goodVoltageSamples.count >= minGoodSamples {
                 if stableGoodSince == nil {
                     stableGoodSince = Date()
+                    allowRelaxedLightLeakThreshold = true
                 }
             } else {
                 stableGoodSince = nil
             }
-        default:
+        } else if rawState == .lightLeak, committedState == .lightLeak {
+            goodVoltageSamples = []
+            stableGoodSince = nil
+        } else if rawState != .lightLeak {
             goodVoltageSamples = []
             stableGoodSince = nil
         }

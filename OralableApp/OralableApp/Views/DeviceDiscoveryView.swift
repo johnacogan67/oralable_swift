@@ -13,6 +13,11 @@ struct DeviceDiscoveryView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @Environment(\.dismiss) private var dismiss
 
+    /// When set (e.g. first-launch onboarding), invoked once when Oralable REV10 primary is fully ready (PPG streaming).
+    var onOralablePrimaryReady: (() -> Void)? = nil
+
+    @State private var didFireOralableReady = false
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -64,6 +69,18 @@ struct DeviceDiscoveryView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .onAppear {
+                if onOralablePrimaryReady != nil {
+                    didFireOralableReady = false
+                }
+            }
+            .onChange(of: deviceManager.primaryDeviceReadiness) { _, readiness in
+                guard let onReady = onOralablePrimaryReady, !didFireOralableReady else { return }
+                guard readiness == .ready,
+                      deviceManager.primaryDevice?.type == .oralable else { return }
+                didFireOralableReady = true
+                onReady()
+            }
         }
     }
 
@@ -109,9 +126,10 @@ struct DeviceDiscoveryView: View {
                     .foregroundColor(designSystem.colors.textSecondary)
 
                 let blockedOralableFirmware: Bool = {
-                    guard product.coreDeviceType == .oralable,
-                          let pid = found.peripheralIdentifier else { return false }
-                    return deviceManager.oralableFirmwareBlockedPeripheralIds.contains(pid)
+                    guard product.coreDeviceType == .oralable else { return false }
+                    let v = found.firmwareVersion?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    guard !v.isEmpty else { return false }
+                    return FirmwareGate.isOralableVersionOutdated(v)
                 }()
 
                 if blockedOralableFirmware {

@@ -11,10 +11,13 @@ import OralableCore
 enum ResearchRawDataExport {
 
     /// One row per `SensorData` sample (deviceType, ISO8601 timestamp, PPG RGB raw, accel raw, optional HR/SpO2).
-    static func writeOralableRaw50HzCSV(samples: [SensorData], to url: URL) throws {
+    /// `ambient_ir_raw` duplicates `ir` (REV10 IR-DC counts) for leakage / ambient-saturation analysis (e.g. McGill).
+    /// `is_manual_override` is `1` when the fit gate was bypassed via research override for that export (otherwise `0`).
+    static func writeOralableRaw50HzCSV(samples: [SensorData], to url: URL, isManualOverride: Bool = false) throws {
         var lines: [String] = []
         lines.reserveCapacity(samples.count + 1)
-        lines.append("device_type,iso8601_timestamp,red,ir,green,accel_x,accel_y,accel_z,temp_celsius,battery_percent,heart_rate_bpm,spo2_percent")
+        let overrideFlag = isManualOverride ? "1" : "0"
+        lines.append("device_type,iso8601_timestamp,red,ir,ambient_ir_raw,green,accel_x,accel_y,accel_z,temp_celsius,battery_percent,heart_rate_bpm,spo2_percent,is_manual_override")
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
@@ -26,6 +29,7 @@ enum ResearchRawDataExport {
                 ts,
                 "\(s.ppg.red)",
                 "\(s.ppg.ir)",
+                "\(s.ppg.ir)",
                 "\(s.ppg.green)",
                 "\(s.accelerometer.x)",
                 "\(s.accelerometer.y)",
@@ -33,7 +37,8 @@ enum ResearchRawDataExport {
                 String(format: "%.3f", s.temperature.celsius),
                 "\(s.battery.percentage)",
                 hr,
-                ox
+                ox,
+                overrideFlag
             ].joined(separator: ",")
             lines.append(row)
         }

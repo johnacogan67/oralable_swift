@@ -8,11 +8,15 @@
 import Foundation
 
 enum FirmwareGate {
-    /// Minimum REV10 semantic version for McGill / Beacon trial capture.
-    static let minimumOralableSemanticVersion = "1.0.5"
+    /// Minimum REV10 semantic version for trial capture. Blocked only when reported is strictly below this (so `1.0.0` is allowed).
+    static let minRequiredVersion = "1.0.0"
 
+    /// Alias for UI copy and existing call sites.
+    static let minimumOralableSemanticVersion = minRequiredVersion
+
+    /// `true` iff `reported` is **strictly less than** `minRequiredVersion`.
     static func isOralableVersionOutdated(_ reported: String) -> Bool {
-        compare(reported, isLessThan: minimumOralableSemanticVersion)
+        compare(reported, isLessThan: minRequiredVersion)
     }
 
     /// Lexicographic numeric semver compare (major.minor.patch); ignores common pre-release suffix after '-'.
