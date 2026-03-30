@@ -417,7 +417,7 @@ class DashboardViewModel: ObservableObject {
     private func setupBLESubscriptions() {
         // Subscribe to Heart Rate
         deviceManagerAdapter.heartRatePublisher
-            .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
+            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] hr in
                 self?.heartRate = hr
             }
@@ -425,17 +425,19 @@ class DashboardViewModel: ObservableObject {
 
         // Subscribe to SpO2
         deviceManagerAdapter.spO2Publisher
-            .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
+            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] spo2 in
                 self?.spO2 = spo2
             }
             .store(in: &bleCancellables)
 
-        // Subscribe to PPG IR data for Oralable card
+        // PPG IR: 100ms windows → append all samples in one update (fewer SwiftUI redraws)
         deviceManagerAdapter.ppgIRValuePublisher
-            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self] value in
-                self?.processPPGIRData(value)
+            .collect(.byTime(DispatchQueue.main, .milliseconds(100)))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] window in
+                guard let self = self, !window.isEmpty else { return }
+                self.processPPGIRDataChunk(window)
             }
             .store(in: &bleCancellables)
 
@@ -447,11 +449,13 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &bleCancellables)
 
-        // Subscribe to EMG data for ANR M40 card
+        // EMG: 100ms windows → batch-append sparkline
         deviceManagerAdapter.emgValuePublisher
-            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self] value in
-                self?.processEMGData(value)
+            .collect(.byTime(DispatchQueue.main, .milliseconds(100)))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] window in
+                guard let self = self, !window.isEmpty else { return }
+                self.processEMGDataChunk(window)
             }
             .store(in: &bleCancellables)
 
@@ -550,20 +554,26 @@ class DashboardViewModel: ObservableObject {
     }
 
     // MARK: - PPG IR Data Processing (Oralable)
+    /// Single-sample path (e.g. demo mode) — keeps sparkline cap consistent with chunked updates.
     private func processPPGIRData(_ value: Double) {
-        ppgIRValue = value
+        processPPGIRDataChunk([value])
+    }
 
-        ppgHistory.append(value)
-        if ppgHistory.count > 20 {
-            ppgHistory.removeFirst()
+    /// ~100ms batch of IR samples → one UI transaction, capped history.
+    private func processPPGIRDataChunk(_ values: [Double]) {
+        guard let last = values.last else { return }
+        ppgIRValue = last
+
+        ppgHistory.append(contentsOf: values)
+        while ppgHistory.count > 20 {
+            ppgHistory.removeFirst(ppgHistory.count - 20)
         }
 
-        // Also update legacy muscle activity if Oralable is the primary device
         if connectedDeviceType == .oralable {
-            muscleActivity = value
-            muscleActivityHistory.append(value)
-            if muscleActivityHistory.count > 20 {
-                muscleActivityHistory.removeFirst()
+            muscleActivity = last
+            muscleActivityHistory.append(contentsOf: values)
+            while muscleActivityHistory.count > 20 {
+                muscleActivityHistory.removeFirst(muscleActivityHistory.count - 20)
             }
         }
 
@@ -621,20 +631,20 @@ class DashboardViewModel: ObservableObject {
     }
 
     // MARK: - EMG Data Processing (ANR M40)
-    private func processEMGData(_ value: Double) {
-        emgValue = value
+    private func processEMGDataChunk(_ values: [Double]) {
+        guard let last = values.last else { return }
+        emgValue = last
 
-        emgHistory.append(value)
-        if emgHistory.count > 20 {
-            emgHistory.removeFirst()
+        emgHistory.append(contentsOf: values)
+        while emgHistory.count > 20 {
+            emgHistory.removeFirst(emgHistory.count - 20)
         }
 
-        // Also update legacy muscle activity if ANR is the primary device
         if connectedDeviceType == .anr {
-            muscleActivity = value
-            muscleActivityHistory.append(value)
-            if muscleActivityHistory.count > 20 {
-                muscleActivityHistory.removeFirst()
+            muscleActivity = last
+            muscleActivityHistory.append(contentsOf: values)
+            while muscleActivityHistory.count > 20 {
+                muscleActivityHistory.removeFirst(muscleActivityHistory.count - 20)
             }
         }
     }

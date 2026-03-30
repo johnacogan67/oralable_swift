@@ -266,116 +266,48 @@ actor UnifiedBiometricProcessor {
         accelY: Double,
         accelZ: Double
     ) -> BiometricResult {
-
-        // Stage 1: Motion detection
-        let (motionLevel, accelMagnitude, isMoving) = calculateMotion(x: accelX, y: accelY, z: accelZ)
-
-        // Stage 2: Motion compensation
-        let compensatedIR = motionCompensator.filter(signal: ir, noiseReference: motionLevel)
-        let compensatedRed = motionCompensator.filter(signal: red, noiseReference: motionLevel)
-        let compensatedGreen = motionCompensator.filter(signal: green, noiseReference: motionLevel)
-
-        // Stage 3: Activity classification
-        let activity = activityClassifier.classify(ir: compensatedIR, accMagnitude: motionLevel + 1.0)
-
-        // Stage 4: Update buffers with filtered values and feed MAM inference (non-blocking)
-        updateBuffers(ir: compensatedIR, red: compensatedRed, green: compensatedGreen, motion: motionLevel, accelMagnitude: accelMagnitude, accelX: accelX, accelY: accelY, accelZ: accelZ)
-        appendTFISegmentFromLiveSample()
-
-        // Stage 5: Check if we have enough data
-        let tfiNow = computeTFIPercent()
-        guard irBuffer.count >= config.hrWindowSize else {
-            return BiometricResult(
-                heartRate: 0,
-                heartRateQuality: 0,
-                heartRateSource: .unavailable,
-                spo2: 0,
-                spo2Quality: 0,
-                perfusionIndex: 0,
-                isWorn: false,
-                activity: activity,
-                motionLevel: motionLevel,
-                signalStrength: .none,
-                processingMethod: .realtime,
-                tfiPercent: tfiNow
-            )
-        }
-
-        // Stage 6: Calculate perfusion index
-        let perfusionIndex = calculatePerfusionIndex(signal: irBuffer.all)
-        let signalStrength = SignalStrength(perfusionIndex: perfusionIndex)
-
-        // Stage 7: Calculate heart rate (skip if too much motion)
-        var heartRate = 0
-        var heartRateQuality = 0.0
-        var heartRateSource = HRSource.unavailable
-
-        if activity != .motion {
-            (heartRate, heartRateQuality, heartRateSource) = calculateHeartRate()
-        }
-
-        // Stage 8: Calculate SpO2 (skip if too much motion or weak signal)
-        var spo2 = 0.0
-        var spo2Quality = 0.0
-
-        if activity != .motion && signalStrength != .none && signalStrength != .weak {
-            (spo2, spo2Quality) = calculateSpO2()
-        }
-
-        // Stage 9: Determine worn status
-        let isWorn = perfusionIndex > config.minPerfusionIndex &&
-                     heartRate > 0 &&
-                     heartRateQuality > config.minHRQuality
-
-        // Suppress unused variable warning
-        _ = isMoving
-
-        return BiometricResult(
-            heartRate: heartRate,
-            heartRateQuality: heartRateQuality,
-            heartRateSource: heartRateSource,
-            spo2: spo2,
-            spo2Quality: spo2Quality,
-            perfusionIndex: perfusionIndex,
-            isWorn: isWorn,
-            activity: activity,
-            motionLevel: motionLevel,
-            signalStrength: signalStrength,
-            processingMethod: .realtime,
-            tfiPercent: tfiNow
+        let (motionLevel, activity) = ingestSample(
+            ir: ir,
+            red: red,
+            green: green,
+            accelX: accelX,
+            accelY: accelY,
+            accelZ: accelZ
         )
+        return computeSummaryResult(activity: activity, motionLevel: motionLevel, processingMethod: .realtime)
     }
 
     // MARK: - Batch Processing
 
-    /// Process arrays of samples (for historical data or CSV import)
-    /// - Parameters:
-    ///   - irSamples: Array of IR values
-    ///   - redSamples: Array of Red values
-    ///   - greenSamples: Array of Green values
-    ///   - accelX: Array of accelerometer X values
-    ///   - accelY: Array of accelerometer Y values
-    ///   - accelZ: Array of accelerometer Z values
-    /// - Returns: BiometricResult for the entire batch
+    /// Process arrays of samples (e.g. CSV import with `resetState: true`, or live 100 ms windows with `resetState: false`).
+    /// Runs filters and buffers for every sample, then computes HR / SpO2 / TFI once at the end.
     func processBatch(
         irSamples: [Double],
         redSamples: [Double],
         greenSamples: [Double],
         accelX: [Double],
         accelY: [Double],
-        accelZ: [Double]
+        accelZ: [Double],
+        resetState: Bool = true
     ) -> BiometricResult {
+        if resetState {
+            reset()
+        }
 
-        // Reset state for batch processing
-        reset()
+        let count = min(
+            irSamples.count,
+            redSamples.count,
+            greenSamples.count,
+            accelX.count,
+            accelY.count,
+            accelZ.count
+        )
 
-        // Process all samples
-        var lastResult = BiometricResult.empty
-
-        let count = min(irSamples.count, redSamples.count, greenSamples.count, accelX.count, accelY.count, accelZ.count)
+        var lastMotion: Double = 0
+        var lastActivity: ActivityType = .relaxed
 
         for i in 0..<count {
-            lastResult = process(
+            let (m, a) = ingestSample(
                 ir: irSamples[i],
                 red: redSamples[i],
                 green: greenSamples[i],
@@ -383,23 +315,12 @@ actor UnifiedBiometricProcessor {
                 accelY: accelY[i],
                 accelZ: accelZ[i]
             )
+            lastMotion = m
+            lastActivity = a
         }
 
-        // Return with batch processing method
-        return BiometricResult(
-            heartRate: lastResult.heartRate,
-            heartRateQuality: lastResult.heartRateQuality,
-            heartRateSource: lastResult.heartRateSource,
-            spo2: lastResult.spo2,
-            spo2Quality: lastResult.spo2Quality,
-            perfusionIndex: lastResult.perfusionIndex,
-            isWorn: lastResult.isWorn,
-            activity: lastResult.activity,
-            motionLevel: lastResult.motionLevel,
-            signalStrength: lastResult.signalStrength,
-            processingMethod: .batch,
-            tfiPercent: lastResult.tfiPercent
-        )
+        let method: ProcessingMethod = resetState ? .batch : .realtime
+        return computeSummaryResult(activity: lastActivity, motionLevel: lastMotion, processingMethod: method)
     }
 
     // MARK: - Temporalis streaming hook
@@ -448,6 +369,102 @@ actor UnifiedBiometricProcessor {
         if let setup = fftSetup {
             vDSP_destroy_fftsetup(setup)
         }
+    }
+
+    // MARK: - Private: Sample ingestion & summary
+
+    /// Per-sample pipeline: motion, compensation, activity, buffers, TFI decimation — no HR/SpO2.
+    private func ingestSample(
+        ir: Double,
+        red: Double,
+        green: Double,
+        accelX: Double,
+        accelY: Double,
+        accelZ: Double
+    ) -> (motionLevel: Double, activity: ActivityType) {
+        let (motionLevel, accelMagnitude, isMoving) = calculateMotion(x: accelX, y: accelY, z: accelZ)
+
+        let compensatedIR = motionCompensator.filter(signal: ir, noiseReference: motionLevel)
+        let compensatedRed = motionCompensator.filter(signal: red, noiseReference: motionLevel)
+        let compensatedGreen = motionCompensator.filter(signal: green, noiseReference: motionLevel)
+
+        let activity = activityClassifier.classify(ir: compensatedIR, accMagnitude: motionLevel + 1.0)
+
+        updateBuffers(
+            ir: compensatedIR,
+            red: compensatedRed,
+            green: compensatedGreen,
+            motion: motionLevel,
+            accelMagnitude: accelMagnitude,
+            accelX: accelX,
+            accelY: accelY,
+            accelZ: accelZ
+        )
+        appendTFISegmentFromLiveSample()
+        _ = isMoving
+
+        return (motionLevel, activity)
+    }
+
+    private func computeSummaryResult(
+        activity: ActivityType,
+        motionLevel: Double,
+        processingMethod: ProcessingMethod
+    ) -> BiometricResult {
+        let tfiNow = computeTFIPercent()
+        guard irBuffer.count >= config.hrWindowSize else {
+            return BiometricResult(
+                heartRate: 0,
+                heartRateQuality: 0,
+                heartRateSource: .unavailable,
+                spo2: 0,
+                spo2Quality: 0,
+                perfusionIndex: 0,
+                isWorn: false,
+                activity: activity,
+                motionLevel: motionLevel,
+                signalStrength: .none,
+                processingMethod: processingMethod,
+                tfiPercent: tfiNow
+            )
+        }
+
+        let perfusionIndex = calculatePerfusionIndex(signal: irBuffer.all)
+        let signalStrength = SignalStrength(perfusionIndex: perfusionIndex)
+
+        var heartRate = 0
+        var heartRateQuality = 0.0
+        var heartRateSource = HRSource.unavailable
+
+        if activity != .motion {
+            (heartRate, heartRateQuality, heartRateSource) = calculateHeartRate()
+        }
+
+        var spo2 = 0.0
+        var spo2Quality = 0.0
+
+        if activity != .motion && signalStrength != .none && signalStrength != .weak {
+            (spo2, spo2Quality) = calculateSpO2()
+        }
+
+        let isWorn = perfusionIndex > config.minPerfusionIndex &&
+            heartRate > 0 &&
+            heartRateQuality > config.minHRQuality
+
+        return BiometricResult(
+            heartRate: heartRate,
+            heartRateQuality: heartRateQuality,
+            heartRateSource: heartRateSource,
+            spo2: spo2,
+            spo2Quality: spo2Quality,
+            perfusionIndex: perfusionIndex,
+            isWorn: isWorn,
+            activity: activity,
+            motionLevel: motionLevel,
+            signalStrength: signalStrength,
+            processingMethod: processingMethod,
+            tfiPercent: tfiNow
+        )
     }
 
     // MARK: - Private: Motion Detection

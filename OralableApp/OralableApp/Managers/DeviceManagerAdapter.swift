@@ -129,22 +129,39 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             }
             .store(in: &cancellables)
 
-        // DISABLED: Batch publisher subscription caused PPG rotation bugs in CSV export
-        // The batch grouping by timestamp had floating-point precision issues
-        // Now using direct SensorData creation in updateSensorValues() instead
-        //
-        // deviceManager.readingsBatchPublisher
-        //     .collect(.byTime(DispatchQueue.main, .seconds(3)))
-        //     .sink { [weak self] batchesOfReadings in
-        //         guard let self = self else { return }
-        //         let allReadings = batchesOfReadings.flatMap { $0 }
-        //         if !allReadings.isEmpty {
-        //             Task {
-        //                 await self.sensorDataProcessor.updateLegacySensorData(with: allReadings)
-        //             }
-        //         }
-        //     }
-        //     .store(in: &cancellables)
+        // Biometrics: one background batch every 100ms (avoids per-sample Task pile-up on MainActor)
+        let biometricProcessor = unifiedBiometricProcessor
+        deviceManager.readingsBatchPublisher
+            .collect(.byTime(DispatchQueue.global(qos: .userInitiated), .milliseconds(100)))
+            .receive(on: DispatchQueue.global(qos: .userInitiated))
+            .sink { [weak self] batches in
+                let flat = batches.flatMap { $0 }
+                guard !flat.isEmpty else { return }
+                let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
+                guard !arrays.ir.isEmpty else { return }
+                Task {
+                    let result = await biometricProcessor.processBatch(
+                        irSamples: arrays.ir,
+                        redSamples: arrays.red,
+                        greenSamples: arrays.green,
+                        accelX: arrays.ax,
+                        accelY: arrays.ay,
+                        accelZ: arrays.az,
+                        resetState: false
+                    )
+                    let ts = Date()
+                    await MainActor.run { [weak self] in
+                        guard let self = self else { return }
+                        self.temporalisFatigueIndexPercent = result.tfiPercent
+                        self.sessionHistoryStore?.recordTFI(percent: result.tfiPercent, at: ts)
+                        self.sessionHistoryStore?.recordSpO2Sample(
+                            percent: self.spO2 > 0 ? Double(self.spO2) : nil,
+                            at: ts
+                        )
+                    }
+                }
+            }
+            .store(in: &cancellables)
 
         $isConnected
             .removeDuplicates()
@@ -327,25 +344,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             sensorDataProcessor.appendToHistory(oralableSensorData)
             deviceManager.appendToUnifiedSensorStream(oralableSensorData)
 
-            Task { [weak self] in
-                guard let self = self else { return }
-                let r = await self.unifiedBiometricProcessor.process(
-                    ir: self.ppgIRValue,
-                    red: self.ppgRedValue,
-                    green: self.ppgGreenValue,
-                    accelX: self.accelX,
-                    accelY: self.accelY,
-                    accelZ: self.accelZ
-                )
-                await MainActor.run {
-                    self.temporalisFatigueIndexPercent = r.tfiPercent
-                    self.sessionHistoryStore?.recordTFI(percent: r.tfiPercent, at: timestamp)
-                    self.sessionHistoryStore?.recordSpO2Sample(
-                        percent: self.spO2 > 0 ? Double(self.spO2) : nil,
-                        at: timestamp
-                    )
-                }
-            }
+            // TFI / unified biometrics run from readingsBatchPublisher (100ms batched, background)
 
             // Log every 500 samples to verify storage
             if sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
@@ -513,6 +512,62 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         if let result = deviceStateDetector.analyzeDeviceState(sensorData: sensorDataBuffer) {
             self.deviceState = result
         }
+    }
+
+    /// Aligns PPG triplets to time-buckets (~0.1ms); carries last known accel sample per PPG row.
+    nonisolated private static func biometricSampleArrays(from readings: [SensorReading]) -> (
+        ir: [Double], red: [Double], green: [Double], ax: [Double], ay: [Double], az: [Double]
+    ) {
+        let sorted = readings.sorted { $0.timestamp < $1.timestamp }
+        var lastAx = 0.0, lastAy = 0.0, lastAz = 16384.0
+        var ir: [Double] = []
+        var red: [Double] = []
+        var green: [Double] = []
+        var ax: [Double] = []
+        var ay: [Double] = []
+        var az: [Double] = []
+
+        var bucket: [SensorType: Double] = [:]
+        var bucketKey: Int64?
+
+        func flushBucket() {
+            guard let irv = bucket[.ppgInfrared],
+                  let redv = bucket[.ppgRed],
+                  let greenv = bucket[.ppgGreen] else {
+                bucket.removeAll(keepingCapacity: true)
+                return
+            }
+            ir.append(irv)
+            red.append(redv)
+            green.append(greenv)
+            ax.append(lastAx)
+            ay.append(lastAy)
+            az.append(lastAz)
+            bucket.removeAll(keepingCapacity: true)
+        }
+
+        for r in sorted {
+            switch r.sensorType {
+            case .accelerometerX:
+                lastAx = r.value
+            case .accelerometerY:
+                lastAy = r.value
+            case .accelerometerZ:
+                lastAz = r.value
+            case .ppgRed, .ppgInfrared, .ppgGreen:
+                let key = Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                if bucketKey != key {
+                    flushBucket()
+                    bucketKey = key
+                }
+                bucket[r.sensorType] = r.value
+            default:
+                break
+            }
+        }
+        flushBucket()
+
+        return (ir, red, green, ax, ay, az)
     }
 
     /// Converts an array of SensorReading to a single SensorData object
