@@ -122,42 +122,65 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             .map { $0.isEmpty ? "Disconnected" : "Connected" }
             .assign(to: &$connectionState)
 
-        // Bind latest sensor readings to individual properties (real-time display)
+        // UI: throttle merged latest readings so labels/battery/temp do not run at packet rate
         deviceManager.$latestReadings
+            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] readings in
                 self?.updateSensorValues(from: readings)
             }
             .store(in: &cancellables)
 
-        // Biometrics: one background batch every 100ms (avoids per-sample Task pile-up on MainActor)
+        // Single 100ms pipeline: history + unified biometrics (one Task per tick, no per-packet work)
         let biometricProcessor = unifiedBiometricProcessor
         deviceManager.readingsBatchPublisher
             .collect(.byTime(DispatchQueue.global(qos: .userInitiated), .milliseconds(100)))
             .receive(on: DispatchQueue.global(qos: .userInitiated))
             .sink { [weak self] batches in
+                guard let self else { return }
                 let flat = batches.flatMap { $0 }
                 guard !flat.isEmpty else { return }
-                let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
-                guard !arrays.ir.isEmpty else { return }
                 Task {
-                    let result = await biometricProcessor.processBatch(
-                        irSamples: arrays.ir,
-                        redSamples: arrays.red,
-                        greenSamples: arrays.green,
-                        accelX: arrays.ax,
-                        accelY: arrays.ay,
-                        accelZ: arrays.az,
-                        resetState: false
+                    let snap = await MainActor.run { [weak self] () -> (Int, Double, Double, Double, Int)? in
+                        guard let self else { return nil }
+                        return (self.heartRate, self.heartRateQuality, self.temperature, self.batteryLevel, self.spO2)
+                    }
+                    guard let snap else { return }
+
+                    let oral = Self.oralableSensorDataRows(
+                        from: flat,
+                        heartRate: snap.0,
+                        heartRateQuality: snap.1,
+                        temperature: snap.2,
+                        batteryLevel: snap.3
                     )
-                    let ts = Date()
-                    await MainActor.run { [weak self] in
-                        guard let self = self else { return }
-                        self.temporalisFatigueIndexPercent = result.tfiPercent
-                        self.sessionHistoryStore?.recordTFI(percent: result.tfiPercent, at: ts)
-                        self.sessionHistoryStore?.recordSpO2Sample(
-                            percent: self.spO2 > 0 ? Double(self.spO2) : nil,
-                            at: ts
+                    let anr = Self.anrSensorDataRows(from: flat)
+                    if !oral.isEmpty || !anr.isEmpty {
+                        await MainActor.run { [weak self] in
+                            self?.applyStreamingHistoryRows(oral: oral, anr: anr)
+                        }
+                    }
+
+                    let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
+                    if !arrays.ir.isEmpty {
+                        let result = await biometricProcessor.processBatch(
+                            irSamples: arrays.ir,
+                            redSamples: arrays.red,
+                            greenSamples: arrays.green,
+                            accelX: arrays.ax,
+                            accelY: arrays.ay,
+                            accelZ: arrays.az,
+                            resetState: false
                         )
+                        let ts = Date()
+                        await MainActor.run { [weak self] in
+                            guard let self else { return }
+                            self.temporalisFatigueIndexPercent = result.tfiPercent
+                            self.sessionHistoryStore?.recordTFI(percent: result.tfiPercent, at: ts)
+                            self.sessionHistoryStore?.recordSpO2Sample(
+                                percent: snap.4 > 0 ? Double(snap.4) : nil,
+                                at: ts
+                            )
+                        }
                     }
                 }
             }
@@ -179,7 +202,27 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             }
             .store(in: &cancellables)
 
-        Logger.shared.info("[DeviceManagerAdapter] Bindings configured - direct history storage enabled")
+        Logger.shared.info("[DeviceManagerAdapter] Bindings configured - throttled UI, 100ms batch history + biometrics")
+    }
+
+    /// Apply pre-built rows on the main actor (stores + trim + occasional log).
+    private func applyStreamingHistoryRows(oral oralRows: [SensorData], anr anrRows: [SensorData]) {
+        for row in oralRows {
+            localSensorDataHistory.append(row)
+            sensorDataProcessor.appendToHistory(row)
+            deviceManager.appendToUnifiedSensorStream(row)
+        }
+        for row in anrRows {
+            localSensorDataHistory.append(row)
+            sensorDataProcessor.appendToHistory(row)
+            deviceManager.appendToUnifiedSensorStream(row)
+        }
+        if localSensorDataHistory.count > maxLocalHistoryCount {
+            localSensorDataHistory.removeFirst(localSensorDataHistory.count - maxLocalHistoryCount)
+        }
+        if !oralRows.isEmpty, sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
+            Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
+        }
     }
 
     private func updateSensorValues(from readings: [SensorType: SensorReading]) {
@@ -221,8 +264,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             // Battery readings ONLY come from Oralable hardware
             Logger.shared.info("[DeviceManagerAdapter] 🔋 Oralable Battery: \(Int(batteryLevel))%")
             
-            // Note: Battery data is stored in SensorData objects created below,
-            // so no need for separate updateBatteryLevel method
+            // Battery is copied into `SensorData` in the 100ms readingsBatchPublisher pipeline
         }
 
         // Update EMG value (ANR M40)
@@ -286,114 +328,6 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             Logger.shared.debug("[DeviceManagerAdapter] 📊 Accel Z: \(Int(accelZ))")
         }
 
-        // === Create separate SensorData entries for each device type ===
-        // The latestReadings dictionary merges data from ALL connected devices,
-        // so we need to create separate entries for Oralable and ANR M40
-        let timestamp = Date()
-
-        // Check what we received
-        let hasEMG = readings[.emg] != nil || readings[.muscleActivity] != nil
-        let hasPPGIR = readings[.ppgInfrared] != nil
-
-        // Create Oralable entry if we have PPG data
-        if hasPPGIR && ppgIRValue > 100 {
-            let ppgData = PPGData(
-                red: Int32(ppgRedValue),
-                ir: Int32(ppgIRValue),
-                green: Int32(ppgGreenValue),
-                timestamp: timestamp
-            )
-
-            let accelData = AccelerometerData(
-                x: Int16(clamping: Int(accelX)),
-                y: Int16(clamping: Int(accelY)),
-                z: Int16(clamping: Int(accelZ)),
-                timestamp: timestamp
-            )
-
-            let tempData = TemperatureData(
-                celsius: temperature,
-                timestamp: timestamp
-            )
-
-            let batteryData = BatteryData(
-                percentage: Int(batteryLevel),
-                timestamp: timestamp
-            )
-
-            let hrData: HeartRateData? = heartRate > 0 ? HeartRateData(
-                bpm: Double(heartRate),
-                quality: heartRateQuality,
-                timestamp: timestamp
-            ) : nil
-
-            let oralableSensorData = SensorData(
-                timestamp: timestamp,
-                ppg: ppgData,
-                accelerometer: accelData,
-                temperature: tempData,
-                battery: batteryData,
-                heartRate: hrData,
-                spo2: nil,
-                deviceType: DeviceType.oralable
-            )
-
-            localSensorDataHistory.append(oralableSensorData)
-
-            // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
-            sensorDataProcessor.appendToHistory(oralableSensorData)
-            deviceManager.appendToUnifiedSensorStream(oralableSensorData)
-
-            // TFI / unified biometrics run from readingsBatchPublisher (100ms batched, background)
-
-            // Log every 500 samples to verify storage
-            if sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
-                Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
-                // Log HR storage status
-                if let hr = hrData {
-                    Logger.shared.info("[DeviceManagerAdapter] 💓 HR in SensorData: \(hr.bpm) bpm")
-                } else {
-                    Logger.shared.debug("[DeviceManagerAdapter] 💔 HR nil (heartRate=\(heartRate))")
-                }
-            }
-        }
-
-        // Create ANR M40 entry if we have EMG data
-        if hasEMG && emgValue > 0 {
-            // ANR M40: EMG stored in ppg.ir field, everything else zero
-            let emgPPGData = PPGData(
-                red: 0,
-                ir: Int32(emgValue),
-                green: 0,
-                timestamp: timestamp
-            )
-
-            let zeroAccel = AccelerometerData(x: 0, y: 0, z: 0, timestamp: timestamp)
-            let zeroTemp = TemperatureData(celsius: 0, timestamp: timestamp)
-            let zeroBattery = BatteryData(percentage: 0, timestamp: timestamp)  // ANR doesn't report battery
-
-            let anrSensorData = SensorData(
-                timestamp: timestamp,
-                ppg: emgPPGData,
-                accelerometer: zeroAccel,
-                temperature: zeroTemp,
-                battery: zeroBattery,
-                heartRate: nil,
-                spo2: nil,
-                deviceType: DeviceType.anr
-            )
-
-            localSensorDataHistory.append(anrSensorData)
-
-            // CRITICAL: Also store in SensorDataProcessor for ShareView/CSV export
-            sensorDataProcessor.appendToHistory(anrSensorData)
-            deviceManager.appendToUnifiedSensorStream(anrSensorData)
-        }
-
-        // Trim history to cap
-        if localSensorDataHistory.count > maxLocalHistoryCount {
-            localSensorDataHistory.removeFirst(localSensorDataHistory.count - maxLocalHistoryCount)
-        }
     }
 
     // MARK: - Heart Rate Calculation
@@ -568,6 +502,97 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         flushBucket()
 
         return (ir, red, green, ax, ay, az)
+    }
+
+    /// One `SensorData` row per aligned PPG triplet in the batch (same bucketing as biometrics).
+    nonisolated private static func oralableSensorDataRows(
+        from readings: [SensorReading],
+        heartRate: Int,
+        heartRateQuality: Double,
+        temperature: Double,
+        batteryLevel: Double
+    ) -> [SensorData] {
+        let sorted = readings.sorted { $0.timestamp < $1.timestamp }
+        var lastAx = 0.0, lastAy = 0.0, lastAz = 16384.0
+        var out: [SensorData] = []
+        out.reserveCapacity(sorted.count / 3)
+
+        var bucket: [SensorType: Double] = [:]
+        var bucketKey: Int64?
+        var bucketTime: Date?
+
+        func flushBucket() {
+            defer {
+                bucket.removeAll(keepingCapacity: true)
+                bucketTime = nil
+            }
+            guard let irv = bucket[.ppgInfrared],
+                  let redv = bucket[.ppgRed],
+                  let greenv = bucket[.ppgGreen],
+                  let ts = bucketTime,
+                  irv > 100 else { return }
+
+            let hrData: HeartRateData? = heartRate > 0
+                ? HeartRateData(bpm: Double(heartRate), quality: heartRateQuality, timestamp: ts)
+                : nil
+
+            let row = SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: Int32(redv), ir: Int32(irv), green: Int32(greenv), timestamp: ts),
+                accelerometer: AccelerometerData(
+                    x: Int16(clamping: Int(lastAx)),
+                    y: Int16(clamping: Int(lastAy)),
+                    z: Int16(clamping: Int(lastAz)),
+                    timestamp: ts
+                ),
+                temperature: TemperatureData(celsius: temperature, timestamp: ts),
+                battery: BatteryData(percentage: Int(batteryLevel), timestamp: ts),
+                heartRate: hrData,
+                spo2: nil,
+                deviceType: .oralable
+            )
+            out.append(row)
+        }
+
+        for r in sorted {
+            switch r.sensorType {
+            case .accelerometerX:
+                lastAx = r.value
+            case .accelerometerY:
+                lastAy = r.value
+            case .accelerometerZ:
+                lastAz = r.value
+            case .ppgRed, .ppgInfrared, .ppgGreen:
+                let key = Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                if bucketKey != key {
+                    flushBucket()
+                    bucketKey = key
+                }
+                bucket[r.sensorType] = r.value
+                bucketTime = r.timestamp
+            default:
+                break
+            }
+        }
+        flushBucket()
+        return out
+    }
+
+    nonisolated private static func anrSensorDataRows(from readings: [SensorReading]) -> [SensorData] {
+        let emgReadings = readings.filter { $0.sensorType == .emg || $0.sensorType == .muscleActivity }
+        guard let last = emgReadings.last, last.value > 0 else { return [] }
+        let ts = last.timestamp
+        let row = SensorData(
+            timestamp: ts,
+            ppg: PPGData(red: 0, ir: Int32(last.value), green: 0, timestamp: ts),
+            accelerometer: AccelerometerData(x: 0, y: 0, z: 0, timestamp: ts),
+            temperature: TemperatureData(celsius: 0, timestamp: ts),
+            battery: BatteryData(percentage: 0, timestamp: ts),
+            heartRate: nil,
+            spo2: nil,
+            deviceType: .anr
+        )
+        return [row]
     }
 
     /// Converts an array of SensorReading to a single SensorData object

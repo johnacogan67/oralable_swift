@@ -441,11 +441,13 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &bleCancellables)
 
-        // Subscribe to PPG Red data for waveform (legacy)
+        // PPG Red: 100ms batches only (sparkline / legacy waveform; avoids chart redraw storm)
         deviceManagerAdapter.ppgRedValuePublisher
-            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self] value in
-                self?.processPPGData(value)
+            .collect(.byTime(DispatchQueue.main, .milliseconds(100)))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] window in
+                guard let self = self, !window.isEmpty else { return }
+                self.processPPGDataChunk(window)
             }
             .store(in: &bleCancellables)
 
@@ -649,18 +651,17 @@ class DashboardViewModel: ObservableObject {
         }
     }
 
-    private func processPPGData(_ value: Double) {
-        ppgData.append(value)
-        if ppgData.count > 100 {
-            ppgData.removeFirst()
+    private func processPPGDataChunk(_ values: [Double]) {
+        ppgData.append(contentsOf: values)
+        while ppgData.count > 100 {
+            ppgData.removeFirst(ppgData.count - 100)
         }
 
-        // Legacy: only update muscle activity from PPG Red if no IR data flowing
-        if ppgIRValue == 0 && connectedDeviceType == .oralable {
-            muscleActivity = value
-            muscleActivityHistory.append(value)
-            if muscleActivityHistory.count > 20 {
-                muscleActivityHistory.removeFirst()
+        if ppgIRValue == 0 && connectedDeviceType == .oralable, let last = values.last {
+            muscleActivity = last
+            muscleActivityHistory.append(contentsOf: values)
+            while muscleActivityHistory.count > 20 {
+                muscleActivityHistory.removeFirst(muscleActivityHistory.count - 20)
             }
         }
     }

@@ -684,6 +684,9 @@ actor UnifiedBiometricProcessor {
         let minSamples = 128
         guard signal.count >= minSamples else { return (0, 0) }
 
+        // All-zero (or flat) input can upset Accelerate / produce NaN; skip FFT.
+        guard signal.contains(where: { abs($0) > 1e-12 }) else { return (0, 0) }
+
         // Determine FFT size: next power of 2 >= signal.count
         let log2n = vDSP_Length(ceil(log2(Double(signal.count))))
         let fftSize = Int(1 << log2n)

@@ -67,6 +67,10 @@ extension OralableDevice {
 
         let deviceId = peripheral?.identifier.uuidString
 
+        var latestRed: SensorReading?
+        var latestIR: SensorReading?
+        var latestGreen: SensorReading?
+
         for sample in samples {
             let redReading = SensorReading(
                 sensorType: .ppgRed,
@@ -96,10 +100,9 @@ extension OralableDevice {
             readings.append(irReading)
             readings.append(greenReading)
 
-            // Update latest readings
-            latestReadings[.ppgRed] = redReading
-            latestReadings[.ppgInfrared] = irReading
-            latestReadings[.ppgGreen] = greenReading
+            latestRed = redReading
+            latestIR = irReading
+            latestGreen = greenReading
         }
 
         ppgSampleCount += samples.count
@@ -114,6 +117,11 @@ extension OralableDevice {
             Logger.shared.debug("[OralableDevice] PPG stats: \(samples.count) samples, frame \(frameCounter), total \(ppgSampleCount) samples, \(String(format: "%.1f", sampleRateStats.recentPacketsPerSecond)) pkt/s")
         }
         #endif
+
+        // Single latestReadings update per packet at end of method (minimizes Combine churn)
+        if let r = latestRed { latestReadings[.ppgRed] = r }
+        if let i = latestIR { latestReadings[.ppgInfrared] = i }
+        if let g = latestGreen { latestReadings[.ppgGreen] = g }
     }
 
     // MARK: - Accelerometer Data Parsing
@@ -148,6 +156,10 @@ extension OralableDevice {
 
         let deviceId = peripheral?.identifier.uuidString
 
+        var latestX: SensorReading?
+        var latestY: SensorReading?
+        var latestZ: SensorReading?
+
         for sample in samples {
             let xReading = SensorReading(
                 sensorType: .accelerometerX,
@@ -177,11 +189,14 @@ extension OralableDevice {
             readings.append(yReading)
             readings.append(zReading)
 
-            // Update latest readings
-            latestReadings[.accelerometerX] = xReading
-            latestReadings[.accelerometerY] = yReading
-            latestReadings[.accelerometerZ] = zReading
+            latestX = xReading
+            latestY = yReading
+            latestZ = zReading
         }
+
+        if let x = latestX { latestReadings[.accelerometerX] = x }
+        if let y = latestY { latestReadings[.accelerometerY] = y }
+        if let z = latestZ { latestReadings[.accelerometerZ] = z }
 
         // Emit batch
         if !readings.isEmpty {
