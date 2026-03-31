@@ -68,9 +68,15 @@ struct TemporalisFitGuideView: View {
                         camera.stop()
                         onExit()
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(designSystem.colors.textSecondary)
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                            Text("Close")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(10)
+                        .background(Color.black.opacity(0.6))
+                        .clipShape(Capsule())
                     }
                     .padding(.leading, 20)
                     .padding(.top, 10)

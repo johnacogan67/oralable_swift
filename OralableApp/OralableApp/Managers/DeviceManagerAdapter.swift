@@ -209,19 +209,20 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
     /// Apply pre-built rows on the main actor (stores + trim + occasional log).
     private func applyStreamingHistoryRows(oral oralRows: [SensorData], anr anrRows: [SensorData]) {
-        for row in oralRows {
-            localSensorDataHistory.append(row)
-            sensorDataProcessor.appendToHistory(row)
-            deviceManager.appendToUnifiedSensorStream(row)
-        }
-        for row in anrRows {
-            localSensorDataHistory.append(row)
-            sensorDataProcessor.appendToHistory(row)
-            deviceManager.appendToUnifiedSensorStream(row)
-        }
+        let allNewRows = oralRows + anrRows
+        guard !allNewRows.isEmpty else { return }
+
+        localSensorDataHistory.append(contentsOf: allNewRows)
+
         if localSensorDataHistory.count > maxLocalHistoryCount {
             localSensorDataHistory.removeFirst(localSensorDataHistory.count - maxLocalHistoryCount)
         }
+
+        for row in allNewRows {
+            sensorDataProcessor.appendToHistory(row)
+            deviceManager.appendToUnifiedSensorStream(row)
+        }
+
         if !oralRows.isEmpty, sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
             Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
         }
