@@ -623,6 +623,14 @@ class DeviceManager: ObservableObject {
         Task { await unifiedSensorDataBuffer.append(data) }
     }
 
+    /// Batch append into the unified buffer (single actor hop via `append(contentsOf:)`).
+    func appendBatchToUnifiedSensorStream(_ data: [SensorData]) {
+        guard !data.isEmpty else { return }
+        Task {
+            await unifiedSensorDataBuffer.append(contentsOf: data)
+        }
+    }
+
     // MARK: - Auto-Reconnect to Remembered Devices
 
     /// Attempt to auto-reconnect to previously remembered devices

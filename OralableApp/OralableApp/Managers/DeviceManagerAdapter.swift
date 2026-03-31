@@ -207,25 +207,18 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         Logger.shared.info("[DeviceManagerAdapter] Bindings configured - throttled UI, 100ms batch history + biometrics")
     }
 
-    /// Apply pre-built rows on the main actor (stores + trim + occasional log).
+    /// Apply pre-built rows on the main actor (batched @Published updates).
     private func applyStreamingHistoryRows(oral oralRows: [SensorData], anr anrRows: [SensorData]) {
         let allNewRows = oralRows + anrRows
         guard !allNewRows.isEmpty else { return }
 
         localSensorDataHistory.append(contentsOf: allNewRows)
-
         if localSensorDataHistory.count > maxLocalHistoryCount {
             localSensorDataHistory.removeFirst(localSensorDataHistory.count - maxLocalHistoryCount)
         }
 
-        for row in allNewRows {
-            sensorDataProcessor.appendToHistory(row)
-            deviceManager.appendToUnifiedSensorStream(row)
-        }
-
-        if !oralRows.isEmpty, sensorDataProcessor.sensorDataHistory.count % 500 == 0 {
-            Logger.shared.info("[DeviceManagerAdapter] 📊 sensorDataHistory count: \(sensorDataProcessor.sensorDataHistory.count)")
-        }
+        sensorDataProcessor.appendBatchToHistory(allNewRows)
+        deviceManager.appendBatchToUnifiedSensorStream(allNewRows)
     }
 
     private func updateSensorValues(from readings: [SensorType: SensorReading]) {

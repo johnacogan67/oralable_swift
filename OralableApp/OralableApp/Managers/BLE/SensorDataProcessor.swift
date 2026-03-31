@@ -104,6 +104,18 @@ class SensorDataProcessor: ObservableObject {
         }
     }
 
+    /// Append many rows in one `@Published` update (avoids SwiftUI thrash from per-row appends).
+    func appendBatchToHistory(_ data: [SensorData]) {
+        guard !data.isEmpty else { return }
+        sensorDataHistory.append(contentsOf: data)
+        if isCalibrationWindowActive {
+            calibrationCaptureOralable.append(contentsOf: data.filter { $0.deviceType == .oralable })
+        }
+        if sensorDataHistory.count > maxHistoryCount {
+            sensorDataHistory.removeFirst(sensorDataHistory.count - maxHistoryCount)
+        }
+    }
+
     /// Inject a demo reading directly (for demo mode)
     func injectDemoReading(ir: Double, red: Double, green: Double) {
         Task { @MainActor in
