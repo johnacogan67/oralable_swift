@@ -139,21 +139,23 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 guard let self else { return }
                 let flat = batches.flatMap { $0 }
                 guard !flat.isEmpty else { return }
-                Task {
+                let processor = biometricProcessor
+                Task.detached(priority: .userInitiated) { [weak self, processor, flat] in
+                    guard let self else { return }
                     let snap = await MainActor.run { [weak self] () -> (Int, Double, Double, Double, Int)? in
                         guard let self else { return nil }
                         return (self.heartRate, self.heartRateQuality, self.temperature, self.batteryLevel, self.spO2)
                     }
                     guard let snap else { return }
 
-                    let oral = Self.oralableSensorDataRows(
+                    let oral = DeviceManagerAdapter.oralableSensorDataRows(
                         from: flat,
                         heartRate: snap.0,
                         heartRateQuality: snap.1,
                         temperature: snap.2,
                         batteryLevel: snap.3
                     )
-                    let anr = Self.anrSensorDataRows(from: flat)
+                    let anr = DeviceManagerAdapter.anrSensorDataRows(from: flat)
                     if !oral.isEmpty || !anr.isEmpty {
                         await MainActor.run { [weak self] in
                             self?.applyStreamingHistoryRows(oral: oral, anr: anr)
@@ -161,26 +163,28 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                     }
 
                     let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
-                    if !arrays.ir.isEmpty {
-                        let result = await biometricProcessor.processBatch(
-                            irSamples: arrays.ir,
-                            redSamples: arrays.red,
-                            greenSamples: arrays.green,
-                            accelX: arrays.ax,
-                            accelY: arrays.ay,
-                            accelZ: arrays.az,
-                            resetState: false
-                        )
-                        let ts = Date()
-                        await MainActor.run { [weak self] in
-                            guard let self else { return }
-                            self.temporalisFatigueIndexPercent = result.tfiPercent
-                            self.sessionHistoryStore?.recordTFI(percent: result.tfiPercent, at: ts)
-                            self.sessionHistoryStore?.recordSpO2Sample(
-                                percent: snap.4 > 0 ? Double(snap.4) : nil,
-                                at: ts
-                            )
-                        }
+                    guard !arrays.ir.isEmpty else { return }
+
+                    let result = await processor.processBatch(
+                        irSamples: arrays.ir,
+                        redSamples: arrays.red,
+                        greenSamples: arrays.green,
+                        accelX: arrays.ax,
+                        accelY: arrays.ay,
+                        accelZ: arrays.az,
+                        resetState: false
+                    )
+
+                    let ts = Date()
+                    let tfi = result.tfiPercent
+                    let spo2Percent = snap.4 > 0 ? Double(snap.4) : nil
+                    await MainActor.run { [weak self] in
+                        self?.temporalisFatigueIndexPercent = tfi
+                    }
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)
+                        self.sessionHistoryStore?.recordSpO2Sample(percent: spo2Percent, at: ts)
                     }
                 }
             }

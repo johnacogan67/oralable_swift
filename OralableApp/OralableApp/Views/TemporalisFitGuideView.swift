@@ -63,6 +63,19 @@ struct TemporalisFitGuideView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                HStack {
+                    Button(action: {
+                        camera.stop()
+                        onExit()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+                    .padding(.leading, 20)
+                    .padding(.top, 10)
+                    Spacer()
+                }
                 GeometryReader { _ in
                     ZStack {
                         if cameraAuthorized {

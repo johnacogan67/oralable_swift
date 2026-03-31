@@ -365,9 +365,10 @@ actor UnifiedBiometricProcessor {
     }
 
     deinit {
-        // Clean up FFT resources
         if let setup = fftSetup {
             vDSP_destroy_fftsetup(setup)
+            fftSetup = nil
+            fftLog2n = 0
         }
     }
 
@@ -680,12 +681,11 @@ actor UnifiedBiometricProcessor {
         from signal: [Double],
         sampleRate: Double
     ) -> (bpm: Int, quality: Double) {
-        // Require minimum 128 samples (~2.56 seconds at 50 Hz)
-        let minSamples = 128
-        guard signal.count >= minSamples else { return (0, 0) }
-
-        // All-zero (or flat) input can upset Accelerate / produce NaN; skip FFT.
-        guard signal.contains(where: { abs($0) > 1e-12 }) else { return (0, 0) }
+        guard signal.count >= 128 else { return (0, 0) }
+        let minV = signal.min() ?? 0
+        let maxV = signal.max() ?? 0
+        // Guard against flat signals (e.g. sensor not on skin)
+        guard maxV - minV > 0.01 else { return (0, 0) }
 
         // Determine FFT size: next power of 2 >= signal.count
         let log2n = vDSP_Length(ceil(log2(Double(signal.count))))
