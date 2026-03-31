@@ -179,10 +179,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                     let tfi = result.tfiPercent
                     let spo2Percent = snap.4 > 0 ? Double(snap.4) : nil
                     await MainActor.run { [weak self] in
-                        self?.temporalisFatigueIndexPercent = tfi
-                    }
-                    Task { @MainActor [weak self] in
                         guard let self else { return }
+                        self.temporalisFatigueIndexPercent = tfi
                         self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)
                         self.sessionHistoryStore?.recordSpO2Sample(percent: spo2Percent, at: ts)
                     }

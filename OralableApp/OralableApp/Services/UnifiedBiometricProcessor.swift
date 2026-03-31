@@ -682,10 +682,10 @@ actor UnifiedBiometricProcessor {
         sampleRate: Double
     ) -> (bpm: Int, quality: Double) {
         guard signal.count >= 128 else { return (0, 0) }
-        let minV = signal.min() ?? 0
-        let maxV = signal.max() ?? 0
-        // Guard against flat signals (e.g. sensor not on skin)
-        guard maxV - minV > 0.01 else { return (0, 0) }
+        let minVal = signal.min() ?? 0
+        let maxVal = signal.max() ?? 0
+        // Guard against flat signals or zeros (headband not worn)
+        guard maxVal - minVal > 0.01 else { return (0, 0) }
 
         // Determine FFT size: next power of 2 >= signal.count
         let log2n = vDSP_Length(ceil(log2(Double(signal.count))))
