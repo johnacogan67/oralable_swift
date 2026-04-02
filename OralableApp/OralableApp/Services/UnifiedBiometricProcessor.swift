@@ -120,7 +120,7 @@ struct BiometricConfiguration {
         minPerfusionIndex: 0.001,
         minHRQuality: 0.5,
         minSpO2Quality: 0.6,
-        motionThresholdG: 0.15,
+        motionThresholdG: TemporalisProtocolReference.syncTapMotionThresholdG,
         minBPM: 40,
         maxBPM: 180,
         minSpO2: 70,
@@ -135,7 +135,7 @@ struct BiometricConfiguration {
         minPerfusionIndex: 0.001,
         minHRQuality: 0.5,
         minSpO2Quality: 0.6,
-        motionThresholdG: 0.15,
+        motionThresholdG: TemporalisProtocolReference.syncTapMotionThresholdG,
         minBPM: 40,
         maxBPM: 180,
         minSpO2: 70,
@@ -211,13 +211,14 @@ actor UnifiedBiometricProcessor {
 
     private var irBaseline: Double = 0
     private var isBaselineInitialized: Bool = false
+    private var lastStableSpO2: Double?
 
     // MARK: - FFT Setup (cached for reuse; creating FFT plans is expensive)
 
     /// Cached FFT setup for heart rate frequency analysis.
     /// The log2n value corresponds to a 256-point FFT (log2(256) = 8), which gives
     /// ~5.12 seconds of data at 50 Hz and frequency resolution of ~0.195 Hz (~11.7 BPM).
-    private var fftSetup: FFTSetup?
+    private var fftSetup: FFTSetupD?
     /// The log2 of the FFT size currently allocated.
     private var fftLog2n: vDSP_Length = 0
 
@@ -340,6 +341,7 @@ actor UnifiedBiometricProcessor {
 
         irBaseline = 0
         isBaselineInitialized = false
+        lastStableSpO2 = nil
 
         motionCompensator.reset()
         irFilter.reset()
@@ -366,7 +368,7 @@ actor UnifiedBiometricProcessor {
 
     deinit {
         if let setup = fftSetup {
-            vDSP_destroy_fftsetup(setup)
+            vDSP_destroy_fftsetupD(setup)
             fftSetup = nil
             fftLog2n = 0
         }
@@ -446,6 +448,7 @@ actor UnifiedBiometricProcessor {
 
         if activity != .motion && signalStrength != .none && signalStrength != .weak {
             (spo2, spo2Quality) = calculateSpO2()
+            spo2 = stabilizeSpO2Estimate(raw: spo2, quality: spo2Quality, motionLevel: motionLevel)
         }
 
         let isWorn = perfusionIndex > config.minPerfusionIndex &&
@@ -693,9 +696,9 @@ actor UnifiedBiometricProcessor {
         // Create or reuse FFT setup (only reallocate if size changed)
         if fftSetup == nil || fftLog2n != log2n {
             if let existing = fftSetup {
-                vDSP_destroy_fftsetup(existing)
+                vDSP_destroy_fftsetupD(existing)
             }
-            guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else {
+            guard let setup = vDSP_create_fftsetupD(log2n, FFTRadix(kFFTRadix2)) else {
                 return (0, 0)
             }
             fftSetup = setup
@@ -850,7 +853,7 @@ actor UnifiedBiometricProcessor {
         let ratioRed = acRed / dcRed
         let ratioIR = acIR / dcIR
 
-        guard ratioIR > 0 else { return (0, 0) }
+        guard ratioRed > 1e-6, ratioIR > 1e-6 else { return (0, 0) }
 
         let rValue = ratioRed / ratioIR
 
@@ -873,5 +876,29 @@ actor UnifiedBiometricProcessor {
         let quality = min(1.0, avgSNR / 0.1)
 
         return (round(spo2 * 10) / 10, max(0, min(1.0, quality)))
+    }
+
+    /// Damp abrupt low-quality jumps in SpO2 around sync-tap/motion transitions.
+    private func stabilizeSpO2Estimate(raw: Double, quality: Double, motionLevel: Double) -> Double {
+        guard raw > 0 else {
+            lastStableSpO2 = nil
+            return raw
+        }
+        guard let previous = lastStableSpO2 else {
+            lastStableSpO2 = raw
+            return raw
+        }
+
+        // Around sync taps (>0.15 g), clamp low-quality step changes per update.
+        let inSyncTapMotion = motionLevel > TemporalisProtocolReference.syncTapMotionThresholdG
+        let maxStep = inSyncTapMotion ? 0.5 : 2.0
+        if quality < 0.75, abs(raw - previous) > maxStep {
+            let adjusted = previous + (raw > previous ? maxStep : -maxStep)
+            lastStableSpO2 = adjusted
+            return adjusted
+        }
+
+        lastStableSpO2 = raw
+        return raw
     }
 }

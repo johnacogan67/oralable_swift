@@ -90,17 +90,10 @@ class SensorDataProcessor: ObservableObject {
         }
     }
 
-    /// Append a single SensorData reading to history (called from DeviceManagerAdapter)
+    /// Legacy single-row hook: does not append to `sensorDataHistory` (batch path only) to avoid duplicates.
     func appendToHistory(_ data: SensorData) {
-        sensorDataHistory.append(data)
-
         if isCalibrationWindowActive && data.deviceType == .oralable {
             calibrationCaptureOralable.append(data)
-        }
-
-        // Trim history if needed
-        if sensorDataHistory.count > maxHistoryCount {
-            sensorDataHistory.removeFirst()
         }
     }
 

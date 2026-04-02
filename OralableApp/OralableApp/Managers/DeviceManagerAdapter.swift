@@ -122,13 +122,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             .map { $0.isEmpty ? "Disconnected" : "Connected" }
             .assign(to: &$connectionState)
 
-        // UI: throttle merged latest readings so labels/battery/temp do not run at packet rate
-        deviceManager.$latestReadings
-            .throttle(for: .milliseconds(100), scheduler: DispatchQueue.main, latest: true)
-            .sink { [weak self] readings in
-                self?.updateSensorValues(from: readings)
-            }
-            .store(in: &cancellables)
+        // Live metrics, history, and biometrics all arrive via readingsBatchPublisher (see below).
 
         // Single 100ms pipeline: history + unified biometrics (one Task per tick, no per-packet work)
         let biometricProcessor = unifiedBiometricProcessor
@@ -142,23 +136,22 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 let processor = biometricProcessor
                 Task.detached(priority: .userInitiated) { [weak self, processor, flat] in
                     guard let self else { return }
-                    let snap = await MainActor.run { [weak self] () -> (Int, Double, Double, Double, Int)? in
-                        guard let self else { return nil }
-                        return (self.heartRate, self.heartRateQuality, self.temperature, self.batteryLevel, self.spO2)
-                    }
-                    guard let snap else { return }
-
-                    let oral = DeviceManagerAdapter.oralableSensorDataRows(
-                        from: flat,
-                        heartRate: snap.0,
-                        heartRateQuality: snap.1,
-                        temperature: snap.2,
-                        batteryLevel: snap.3
-                    )
-                    let anr = DeviceManagerAdapter.anrSensorDataRows(from: flat)
-                    if !oral.isEmpty || !anr.isEmpty {
-                        await MainActor.run { [weak self] in
-                            self?.applyStreamingHistoryRows(oral: oral, anr: anr)
+                    let latestByType = DeviceManagerAdapter.latestBySensorType(from: flat)
+                    await MainActor.run { [weak self] in
+                        guard let self else { return }
+                        self.ingestLiveMetricsFromLatestReadings(latestByType)
+                        let oral = DeviceManagerAdapter.oralableSensorDataRows(
+                            from: flat,
+                            heartRate: self.heartRate,
+                            heartRateQuality: self.heartRateQuality,
+                            temperature: self.temperature,
+                            batteryLevel: self.batteryLevel
+                        )
+                        let anr = DeviceManagerAdapter.anrSensorDataRows(from: flat)
+                        if !oral.isEmpty || !anr.isEmpty {
+                            let allNew = oral + anr
+                            self.applyStreamingHistoryRows(oral: oral, anr: anr)
+                            self.deviceManager.appendBatchToUnifiedSensorStream(allNew)
                         }
                     }
 
@@ -177,9 +170,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
 
                     let ts = Date()
                     let tfi = result.tfiPercent
-                    let spo2Percent = snap.4 > 0 ? Double(snap.4) : nil
                     await MainActor.run { [weak self] in
                         guard let self else { return }
+                        let spo2Percent = self.spO2 > 0 ? Double(self.spO2) : nil
                         self.temporalisFatigueIndexPercent = tfi
                         self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)
                         self.sessionHistoryStore?.recordSpO2Sample(percent: spo2Percent, at: ts)
@@ -207,7 +200,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         Logger.shared.info("[DeviceManagerAdapter] Bindings configured - throttled UI, 100ms batch history + biometrics")
     }
 
-    /// Apply pre-built rows on the main actor (batched @Published updates).
+    /// Batched `localSensorDataHistory` + `SensorDataProcessor` history (ring buffer updated alongside in batch sink).
     private func applyStreamingHistoryRows(oral oralRows: [SensorData], anr anrRows: [SensorData]) {
         let allNewRows = oralRows + anrRows
         guard !allNewRows.isEmpty else { return }
@@ -218,112 +211,59 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         }
 
         sensorDataProcessor.appendBatchToHistory(allNewRows)
-        deviceManager.appendBatchToUnifiedSensorStream(allNewRows)
     }
 
-    private func updateSensorValues(from readings: [SensorType: SensorReading]) {
-        // DIAGNOSTIC: Log what readings we're receiving
-        if !readings.isEmpty {
-            let types = readings.keys.map { "\($0)" }.sorted().joined(separator: ", ")
-            Logger.shared.info("[DeviceManagerAdapter] 📊 Received \(readings.count) reading types: [\(types)]")
-        } else {
-            Logger.shared.warning("[DeviceManagerAdapter] ⚠️ Received empty readings dictionary")
-        }
-        
-        // Update heart rate
+    /// Apply latest-per-type readings from one batch window (main actor only).
+    private func ingestLiveMetricsFromLatestReadings(_ readings: [SensorType: SensorReading]) {
         if let reading = readings[.heartRate] {
             heartRate = Int(reading.value)
-            Logger.shared.info("[DeviceManagerAdapter] ❤️ Heart Rate: \(heartRate) bpm")
-        } else {
-            Logger.shared.debug("[DeviceManagerAdapter] No heartRate reading in latest")
         }
-
-        // Update SpO2
         if let reading = readings[.spo2] {
             spO2 = Int(reading.value)
-            Logger.shared.info("[DeviceManagerAdapter] 🫁 SpO2: \(spO2)%")
-        } else {
-            Logger.shared.debug("[DeviceManagerAdapter] No spO2 reading in latest")
         }
-
-        // Update temperature
         if let reading = readings[.temperature] {
             temperature = reading.value
-            Logger.shared.info("[DeviceManagerAdapter] 🌡️ Temperature: \(String(format: "%.1f", temperature))°C")
         }
-
-        // ✅ FIXED: Battery ONLY comes from Oralable device
-        // ANR M40 does NOT have a battery characteristic - it doesn't report battery level
         if let reading = readings[.battery] {
             batteryLevel = reading.value
-            
-            // Battery readings ONLY come from Oralable hardware
-            Logger.shared.info("[DeviceManagerAdapter] 🔋 Oralable Battery: \(Int(batteryLevel))%")
-            
-            // Battery is copied into `SensorData` in the 100ms readingsBatchPublisher pipeline
         }
-
-        // Update EMG value (ANR M40)
         if let reading = readings[.emg] {
             emgValue = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] ⚡ EMG: \(Int(emgValue)) µV")
         }
-
-        // Also check for muscleActivity sensor type (alternative EMG source)
         if let reading = readings[.muscleActivity] {
             emgValue = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] ⚡ Muscle Activity (EMG): \(Int(emgValue)) µV")
         }
-
         if readings[.emg] != nil || readings[.muscleActivity] != nil, emgValue > 0 {
             emgSessionPeak = max(emgSessionPeak, emgValue)
             emgActivityPercent = min(100, (emgValue / emgSessionPeak) * 100)
             ANRMuscleClinicalDeviceAdapter.dashboardEmgActivityPercent = emgActivityPercent
         }
-
-        // Update PPG values
         if let reading = readings[.ppgRed] {
             ppgRedValue = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 🔴 PPG Red: \(Int(ppgRedValue))")
         }
-
         if let reading = readings[.ppgInfrared] {
             ppgIRValue = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 📡 PPG IR: \(Int(ppgIRValue))")
-
-            // Calculate heart rate from IR signal using HeartRateCalculator
             if ppgIRValue > 100 {
                 if let calculatedHR = heartRateCalculator.process(irValue: ppgIRValue) {
                     if calculatedHR > 30 && calculatedHR < 200 {
                         heartRate = calculatedHR
                         heartRateQuality = 0.8
-                        Logger.shared.info("[DeviceManagerAdapter] ❤️ Calculated HR: \(heartRate) bpm")
                     }
                 }
             }
         }
-
         if let reading = readings[.ppgGreen] {
             ppgGreenValue = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 🟢 PPG Green: \(Int(ppgGreenValue))")
         }
-
-        // Update accelerometer values
         if let reading = readings[.accelerometerX] {
             accelX = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 📊 Accel X: \(Int(accelX))")
         }
-
         if let reading = readings[.accelerometerY] {
             accelY = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 📊 Accel Y: \(Int(accelY))")
         }
-
         if let reading = readings[.accelerometerZ] {
             accelZ = reading.value
-            Logger.shared.debug("[DeviceManagerAdapter] 📊 Accel Z: \(Int(accelZ))")
         }
-
     }
 
     // MARK: - Heart Rate Calculation
@@ -442,6 +382,19 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         if let result = deviceStateDetector.analyzeDeviceState(sensorData: sensorDataBuffer) {
             self.deviceState = result
         }
+    }
+
+    /// Newest `SensorReading` per `SensorType` within a BLE batch (for live UI without `$latestReadings`).
+    nonisolated private static func latestBySensorType(from flat: [SensorReading]) -> [SensorType: SensorReading] {
+        var best: [SensorType: SensorReading] = [:]
+        for r in flat {
+            if let existing = best[r.sensorType] {
+                if r.timestamp >= existing.timestamp { best[r.sensorType] = r }
+            } else {
+                best[r.sensorType] = r
+            }
+        }
+        return best
     }
 
     /// Aligns PPG triplets to time-buckets (~0.1ms); carries last known accel sample per PPG row.

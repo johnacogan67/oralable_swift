@@ -62,26 +62,8 @@ struct TemporalisFitGuideView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack {
-                    Button(action: {
-                        camera.stop()
-                        onExit()
-                    }) {
-                        HStack {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("Close")
-                        }
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(10)
-                        .background(Color.black.opacity(0.6))
-                        .clipShape(Capsule())
-                    }
-                    .padding(.leading, 20)
-                    .padding(.top, 10)
-                    Spacer()
-                }
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 0) {
                 GeometryReader { _ in
                     ZStack {
                         if cameraAuthorized {
@@ -134,17 +116,37 @@ struct TemporalisFitGuideView: View {
                 .padding(.bottom, designSystem.spacing.lg)
 
                 Spacer(minLength: 0)
-            }
-            .background(designSystem.colors.backgroundSecondary)
-            .navigationTitle("Temporalis fit")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        camera.stop()
-                        onExit()
+                }
+                .background(designSystem.colors.backgroundSecondary)
+                .navigationTitle("Temporalis fit")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            camera.stop()
+                            onExit()
+                        }
                     }
                 }
+
+                Button(action: {
+                    camera.stop()
+                    onExit()
+                }) {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("Close")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(10)
+                    .background(Color.black.opacity(0.6))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 20)
+                .padding(.top, 10)
+                .zIndex(10_000)
             }
             .alert("Research override", isPresented: $showResearchOverridePrompt) {
                 Button("Cancel", role: .cancel) {}
