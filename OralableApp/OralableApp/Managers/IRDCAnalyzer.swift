@@ -172,7 +172,7 @@ public struct IRDCResult: Sendable {
     }
 
     /// Whether shift indicates muscle activity
-    /// Trigger on either absolute shift or relative drop (>12% of 5 s rolling mean).
+    /// Trigger on either absolute shift or relative drop (>10% of 5 s rolling mean).
     public var indicatesActivity: Bool {
         shift5s > AlgorithmSpec.irDCShiftThreshold ||
             relativeDropPercent5s > AlgorithmSpec.irDCRelativeDropThresholdPercent

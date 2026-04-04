@@ -84,7 +84,7 @@ public enum AlgorithmSpec {
     public static let irDCShiftThreshold: Double = 1000.0
 
     /// Relative IR-DC drop threshold for tonic-like occlusion (% of rolling mean).
-    public static let irDCRelativeDropThresholdPercent: Double = 12.0
+    public static let irDCRelativeDropThresholdPercent: Double = 10.0
 
     // MARK: - Validation Windows
 
