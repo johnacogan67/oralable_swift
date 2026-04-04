@@ -334,11 +334,15 @@ struct TemporalisFitGuideView: View {
 
     private var canStartCalibration: Bool {
         if canAdvanceToCalibration { return true }
+        if isTooHighPlacement, rev10PrimaryConnected { return true }
         if isResearchOverrideActive, deviceManagerAdapter.isConnected { return true }
         return false
     }
 
     private var startCalibrationButtonTitle: String {
+        if isTooHighPlacement && !canAdvanceToCalibration {
+            return "Next — start 10-minute calibration"
+        }
         if isResearchOverrideActive && !canAdvanceToCalibration {
             return "Start 10-minute calibration (research override)"
         }
@@ -349,8 +353,12 @@ struct TemporalisFitGuideView: View {
     private var shouldShowPlacementBypass: Bool {
         guard rev10PrimaryConnected else { return false }
         if placementState == .lightLeak { return true }
-        if placementState == .tooLow, estimatedVolts > TemporalisIRDCVoltageEstimator.placementGoodUpperVolts { return true }
+        if isTooHighPlacement { return true }
         return false
+    }
+
+    private var isTooHighPlacement: Bool {
+        placementState == .tooLow && estimatedVolts > TemporalisIRDCVoltageEstimator.placementGoodUpperVolts
     }
 
     private var placementBypassPanel: some View {

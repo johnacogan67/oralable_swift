@@ -165,10 +165,17 @@ public struct IRDCResult: Sendable {
     /// DC shift (positive = occlusion)
     public let shift5s: Double
 
+    /// Relative DC drop over rolling mean (%), robust to high baseline offsets.
+    public var relativeDropPercent5s: Double {
+        guard rollingMean5s > 1e-9 else { return 0 }
+        return (shift5s / rollingMean5s) * 100.0
+    }
+
     /// Whether shift indicates muscle activity
-    /// Threshold: > 1000 ADC units typically indicates occlusion
+    /// Trigger on either absolute shift or relative drop (>12% of 5 s rolling mean).
     public var indicatesActivity: Bool {
-        shift5s > 1000
+        shift5s > AlgorithmSpec.irDCShiftThreshold ||
+            relativeDropPercent5s > AlgorithmSpec.irDCRelativeDropThresholdPercent
     }
 
     public init(dcValue: Double, rollingMean5s: Double, shift5s: Double) {
