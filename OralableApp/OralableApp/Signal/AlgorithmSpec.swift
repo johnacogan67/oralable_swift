@@ -80,6 +80,12 @@ public enum AlgorithmSpec {
     /// Reference window for IR DC shift baseline (seconds)
     public static let irDCReferenceWindowSeconds: Double = 1.0
 
+    /// IR DC shift threshold for muscle activity detection (ADC units)
+    public static let irDCShiftThreshold: Double = 1000.0
+
+    /// Relative IR-DC drop threshold for tonic-like occlusion (% of rolling mean).
+    public static let irDCRelativeDropThresholdPercent: Double = 12.0
+
     // MARK: - Validation Windows
 
     /// Validation window for event positioning (seconds)
