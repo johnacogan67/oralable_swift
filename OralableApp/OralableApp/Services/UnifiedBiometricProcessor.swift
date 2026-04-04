@@ -416,6 +416,7 @@ actor UnifiedBiometricProcessor {
     ) -> BiometricResult {
         let tfiNow = computeTFIPercent()
         guard irBuffer.count >= config.hrWindowSize else {
+            mamInferenceManager.updateSpO2Estimate(nil)
             return BiometricResult(
                 heartRate: 0,
                 heartRateQuality: 0,
@@ -450,6 +451,7 @@ actor UnifiedBiometricProcessor {
             (spo2, spo2Quality) = calculateSpO2()
             spo2 = stabilizeSpO2Estimate(raw: spo2, quality: spo2Quality, motionLevel: motionLevel)
         }
+        mamInferenceManager.updateSpO2Estimate(spo2 > 0 ? spo2 : nil)
 
         let isWorn = perfusionIndex > config.minPerfusionIndex &&
             heartRate > 0 &&
