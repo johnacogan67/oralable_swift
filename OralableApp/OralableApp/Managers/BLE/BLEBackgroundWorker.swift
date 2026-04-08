@@ -173,6 +173,7 @@ final class BLEBackgroundWorker: ObservableObject {
     private var rssiPollingTask: Task<Void, Never>?
     private var healthCheckTask: Task<Void, Never>?
     private var lastDataReceived: [UUID: Date] = [:]
+    private var bleServiceEventCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
     private let eventSubject = PassthroughSubject<BLEBackgroundWorkerEvent, Never>()
 
@@ -287,6 +288,8 @@ final class BLEBackgroundWorker: ObservableObject {
         healthCheckTask = nil
 
         // Clear subscriptions
+        bleServiceEventCancellable?.cancel()
+        bleServiceEventCancellable = nil
         cancellables.removeAll()
 
         eventSubject.send(.workerStopped)
@@ -631,12 +634,13 @@ final class BLEBackgroundWorker: ObservableObject {
     private func setupEventSubscription() {
         guard let bleService = bleService else { return }
 
-        bleService.eventPublisher
+        // Ensure we never process BLE service events twice.
+        bleServiceEventCancellable?.cancel()
+        bleServiceEventCancellable = bleService.eventPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.handleBLEEvent(event)
             }
-            .store(in: &cancellables)
     }
 
     private func handleBLEEvent(_ event: BLEServiceEvent) {

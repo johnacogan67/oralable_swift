@@ -31,7 +31,9 @@ extension OralableDevice {
         if let lastTime = lastPacketTime {
             let interval = notificationTime.timeIntervalSince(lastTime)
             #if DEBUG
-            if interval > 0.25 {
+            // 20-sample BLE packets at 50 Hz naturally arrive around 0.40 s.
+            // Only flag intervals that are meaningfully late.
+            if interval > 0.8 {
                 Logger.shared.debug("[OralableDevice] ⚠️ Large packet interval: \(String(format: "%.3f", interval))s")
             }
             #endif
@@ -235,7 +237,11 @@ extension OralableDevice {
     func parseBatteryData(_ data: Data) {
         // Use OralableCore.BLEDataParser for parsing
         guard let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) else {
-            Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse battery packet (\(data.count) bytes)")
+            let now = Date()
+            if lastBatteryParseFailureLogAt == nil || now.timeIntervalSince(lastBatteryParseFailureLogAt!) > 30 {
+                Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse battery packet (\(data.count) bytes)")
+                lastBatteryParseFailureLogAt = now
+            }
             return
         }
 

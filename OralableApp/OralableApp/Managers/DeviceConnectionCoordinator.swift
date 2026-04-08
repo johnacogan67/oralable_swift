@@ -30,9 +30,6 @@ extension DeviceManager {
 
         isConnecting = false
 
-        // Notify background worker of successful connection (clears reconnection state)
-        backgroundWorker.handleConnectionSuccess(for: peripheral.identifier)
-
         // Update connection readiness to .connected
         updateDeviceReadiness(peripheral.identifier, to: .connected)
 
@@ -209,8 +206,6 @@ extension DeviceManager {
     }
 
     func handleDeviceDisconnected(peripheral: CBPeripheral, error: Error?) {
-        let wasUnexpectedDisconnection = error != nil
-
         if let error = error {
             Logger.shared.warning("[DeviceManager] Device disconnected with error: \(error.localizedDescription)")
             lastError = .connectionLost
@@ -237,12 +232,8 @@ extension DeviceManager {
             primaryDevice = connectedDevices.first
         }
 
-        // Delegate reconnection to background worker
-        backgroundWorker.handleDisconnection(
-            for: peripheral.identifier,
-            peripheral: peripheral,
-            wasUnexpected: wasUnexpectedDisconnection
-        )
+        // Reconnection handling is centralized in BLEBackgroundWorker's BLE event subscription.
+        // Avoid invoking worker handlers here to prevent duplicate reconnection scheduling.
     }
 
     /// Cancel all ongoing reconnection attempts

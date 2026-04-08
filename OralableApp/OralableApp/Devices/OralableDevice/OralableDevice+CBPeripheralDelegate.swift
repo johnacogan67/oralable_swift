@@ -249,23 +249,14 @@ extension OralableDevice: CBPeripheralDelegate {
 
         case sensorDataCharUUID:
             // PPG data (244 bytes typically: 4 + 20x12)
-            #if DEBUG
-            Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on PPG characteristic")
-            #endif
             parseSensorData(data)
 
         case accelerometerCharUUID:
             // Accelerometer data (154 bytes typically: 4 + 25x6)
-            #if DEBUG
-            Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on accelerometer characteristic")
-            #endif
             parseAccelerometerData(data)
 
         case commandCharUUID:
             // Temperature data (6 bytes typically: 4 + 2)
-            #if DEBUG
-            Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on temperature characteristic")
-            #endif
             parseTemperature(data)
 
         case batteryLevelCharUUID:

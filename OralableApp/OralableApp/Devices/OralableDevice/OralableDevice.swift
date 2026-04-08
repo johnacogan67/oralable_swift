@@ -137,6 +137,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var bytesReceived: Int = 0
     var lastPacketTime: Date?
     var ppgSampleCount: Int = 0
+    var lastBatteryParseFailureLogAt: Date?
 
     // MARK: - Sample Rate Verification
 

@@ -61,8 +61,6 @@ extension DeviceManager {
     }
 
     func handleSensorReadingsBatch(_ readings: [SensorReading], from device: BLEDeviceProtocol) {
-        Logger.shared.info("[DeviceManager] 📥 Received batch: \(readings.count) readings from \(device.deviceInfo.name)")
-
         // Keep background connection health in sync with real incoming payloads.
         if let peripheralId = device.peripheral?.identifier {
             backgroundWorker.recordDataReceived(from: peripheralId)
@@ -82,8 +80,6 @@ extension DeviceManager {
         for (type, reading) in latestByType {
             latestReadings[type] = reading
         }
-
-        Logger.shared.info("[DeviceManager] 📊 Updated latestReadings: \(latestByType.count) types - \(latestByType.keys.map { $0.rawValue }.joined(separator: ", "))")
 
         // Emit batch for efficient downstream processing
         readingsBatchSubject.send(readings)
