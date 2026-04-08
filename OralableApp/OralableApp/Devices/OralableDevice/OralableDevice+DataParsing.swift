@@ -17,6 +17,9 @@ import OralableCore
 // MARK: - Data Parsing
 
 extension OralableDevice {
+    private var temperatureDebugLogInterval: TimeInterval { 15.0 }
+    private var temperatureDebugChangeThresholdCelsius: Double { 0.5 }
+
 
     // MARK: - PPG Data Parsing
 
@@ -218,7 +221,9 @@ extension OralableDevice {
 
         let tempCelsius = result.temperatureCelsius
 
-        Logger.shared.debug("[OralableDevice] 🌡️ Temperature: \(String(format: "%.2f", tempCelsius))°C")
+        if shouldEmitTemperatureDebugLog(tempCelsius) {
+            Logger.shared.debug("[OralableDevice] 🌡️ Temperature: \(String(format: "%.2f", tempCelsius))°C")
+        }
 
         let reading = SensorReading(
             sensorType: .temperature,
@@ -229,6 +234,26 @@ extension OralableDevice {
 
         latestReadings[.temperature] = reading
         readingsBatchSubject.send([reading])
+    }
+
+    private func shouldEmitTemperatureDebugLog(_ temperatureCelsius: Double) -> Bool {
+        let now = Date()
+        defer {
+            lastTemperatureDebugLogAt = now
+            lastTemperatureDebugValue = temperatureCelsius
+        }
+
+        guard let lastLoggedAt = lastTemperatureDebugLogAt else { return true }
+        if now.timeIntervalSince(lastLoggedAt) >= temperatureDebugLogInterval {
+            return true
+        }
+
+        if let lastValue = lastTemperatureDebugValue,
+           abs(temperatureCelsius - lastValue) >= temperatureDebugChangeThresholdCelsius {
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Battery Data Parsing

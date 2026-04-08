@@ -221,6 +221,8 @@ actor UnifiedBiometricProcessor {
     private var fftSetup: FFTSetupD?
     /// The log2 of the FFT size currently allocated.
     private var fftLog2n: vDSP_Length = 0
+    private var lastHeartRateDiagnosticLogAt: Date?
+    private let heartRateDiagnosticLogCooldownSeconds: TimeInterval = 10.0
 
     // MARK: - Initialization
 
@@ -621,7 +623,9 @@ actor UnifiedBiometricProcessor {
                 if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
                     // FFT disagrees significantly with peak detection — prefer FFT
                     // as it is more robust to noise and irregular peak shapes
-                    Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    if shouldEmitHeartRateDiagnosticLog() {
+                        Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    }
                     return (fftBpm, peakQuality * 0.8, .fft)
                 }
                 return (peakBpm, peakQuality, .ir)
@@ -635,7 +639,9 @@ actor UnifiedBiometricProcessor {
                 // Cross-validate with FFT on green channel
                 let (fftBpm, _) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
                 if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
-                    Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    if shouldEmitHeartRateDiagnosticLog() {
+                        Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                    }
                     return (fftBpm, peakQuality * 0.8, .fft)
                 }
                 return (peakBpm, peakQuality, .green)
@@ -645,18 +651,35 @@ actor UnifiedBiometricProcessor {
         // FFT fallback: peak detection failed on both channels, try FFT on IR
         let (fftBpmIR, fftQualityIR) = calculateHeartRateFFT(from: irSignal, sampleRate: config.sampleRate)
         if fftBpmIR > 0 && fftQualityIR >= config.minHRQuality * 0.7 {
-            Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on IR — bpm=\(fftBpmIR) quality=\(String(format: "%.2f", fftQualityIR))")
+            if shouldEmitHeartRateDiagnosticLog() {
+                Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on IR — bpm=\(fftBpmIR) quality=\(String(format: "%.2f", fftQualityIR))")
+            }
             return (fftBpmIR, fftQualityIR, .fft)
         }
 
         // FFT fallback on Green channel
         let (fftBpmGreen, fftQualityGreen) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
         if fftBpmGreen > 0 && fftQualityGreen >= config.minHRQuality * 0.7 {
-            Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on Green — bpm=\(fftBpmGreen) quality=\(String(format: "%.2f", fftQualityGreen))")
+            if shouldEmitHeartRateDiagnosticLog() {
+                Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on Green — bpm=\(fftBpmGreen) quality=\(String(format: "%.2f", fftQualityGreen))")
+            }
             return (fftBpmGreen, fftQualityGreen, .fft)
         }
 
         return (0, 0, .unavailable)
+    }
+
+    private func shouldEmitHeartRateDiagnosticLog() -> Bool {
+        let now = Date()
+        guard let lastLogAt = lastHeartRateDiagnosticLogAt else {
+            lastHeartRateDiagnosticLogAt = now
+            return true
+        }
+        if now.timeIntervalSince(lastLogAt) >= heartRateDiagnosticLogCooldownSeconds {
+            lastHeartRateDiagnosticLogAt = now
+            return true
+        }
+        return false
     }
 
     private func calculateHeartRateFromSignal(_ signal: [Double]) -> (bpm: Int, quality: Double)? {

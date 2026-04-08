@@ -26,7 +26,9 @@ extension DeviceManager {
         discoveryCount += 1
 
         #if DEBUG
-        Logger.shared.debug("[DeviceManager] Discovered device #\(discoveryCount): \(name) | RSSI: \(rssi) dBm")
+        if discoveryCount == 1 || discoveryCount % 25 == 0 {
+            Logger.shared.debug("[DeviceManager] Discovered device #\(discoveryCount): \(name) | RSSI: \(rssi) dBm")
+        }
         #endif
 
         // Check if already in discoveredDevices list (UI)
@@ -39,22 +41,25 @@ extension DeviceManager {
 
         // Detect device type - STRICT FILTERING
         guard let deviceType = detectDeviceType(from: name, peripheral: peripheral, advertisementData: advertisementData) else {
-            #if DEBUG
-            let adKeys = advertisementData.keys.map { String(describing: $0) }.sorted()
-            let serviceUUIDs = ((advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? [])
-                .map { $0.uuidString.uppercased() }
-                .sorted()
-            let localName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "n/a"
-            let hasMfrData = advertisementData[CBAdvertisementDataManufacturerDataKey] != nil
-            let serviceDataKeys = ((advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data]) ?? [:])
-                .keys
-                .map { $0.uuidString.uppercased() }
-                .sorted()
-            Logger.shared.debug(
-                "[DeviceManager] Rejected discovery details | name=\(name) | localName=\(localName) | rssi=\(rssi) | services=\(serviceUUIDs) | serviceDataKeys=\(serviceDataKeys) | hasManufacturerData=\(hasMfrData) | adKeys=\(adKeys)"
-            )
-            #endif
-            Logger.shared.debug("[DeviceManager] ❌ Unknown device type '\(name)' - rejected")
+            let rejectionKey = "\(peripheral.identifier.uuidString)|\(name.lowercased())"
+            if rejectedDiscoveryLogSeenThisScan.insert(rejectionKey).inserted {
+                #if DEBUG
+                let adKeys = advertisementData.keys.map { String(describing: $0) }.sorted()
+                let serviceUUIDs = ((advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? [])
+                    .map { $0.uuidString.uppercased() }
+                    .sorted()
+                let localName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "n/a"
+                let hasMfrData = advertisementData[CBAdvertisementDataManufacturerDataKey] != nil
+                let serviceDataKeys = ((advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data]) ?? [:])
+                    .keys
+                    .map { $0.uuidString.uppercased() }
+                    .sorted()
+                Logger.shared.debug(
+                    "[DeviceManager] Rejected discovery details | name=\(name) | localName=\(localName) | rssi=\(rssi) | services=\(serviceUUIDs) | serviceDataKeys=\(serviceDataKeys) | hasManufacturerData=\(hasMfrData) | adKeys=\(adKeys)"
+                )
+                #endif
+                Logger.shared.debug("[DeviceManager] ❌ Unknown device type '\(name)' - rejected")
+            }
             return
         }
 
@@ -142,7 +147,6 @@ extension DeviceManager {
         }
 
         // Reject all other devices
-        Logger.shared.debug("[DeviceManager] ❌ Rejecting unknown device: \(name), services: \(Array(serviceStrings).sorted())")
         return nil
     }
 
@@ -169,6 +173,7 @@ extension DeviceManager {
 
         scanStartTime = Date()
         discoveryCount = 0
+        rejectedDiscoveryLogSeenThisScan.removeAll()
         discoveredDevices.removeAll()
         deviceReadiness.removeAll()
         isScanning = true

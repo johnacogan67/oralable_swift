@@ -138,6 +138,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var lastPacketTime: Date?
     var ppgSampleCount: Int = 0
     var lastBatteryParseFailureLogAt: Date?
+    var lastTemperatureDebugLogAt: Date?
+    var lastTemperatureDebugValue: Double?
 
     // MARK: - Sample Rate Verification
 

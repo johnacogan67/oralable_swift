@@ -182,6 +182,7 @@ class DeviceManager: ObservableObject {
     // Discovery tracking
     var discoveryCount: Int = 0
     var scanStartTime: Date?
+    var rejectedDiscoveryLogSeenThisScan: Set<String> = []
 
     // Device persistence for auto-reconnect
     let persistenceManager = DevicePersistenceManager.shared
