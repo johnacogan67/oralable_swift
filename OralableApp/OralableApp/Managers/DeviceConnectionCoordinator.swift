@@ -309,6 +309,10 @@ extension DeviceManager {
 
         // Cancel any existing reconnection attempts on manual connect
         backgroundWorker.cancelReconnection(for: peripheralId)
+        if isScanning {
+            Logger.shared.info("[DeviceManager] 🛑 Stopping scan before connect to reduce discovery pressure")
+            stopScanning()
+        }
 
         // Connect via BLE manager
         bleService?.connect(to: peripheral)

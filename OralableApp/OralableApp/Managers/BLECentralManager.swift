@@ -66,6 +66,9 @@ final class BLECentralManager: NSObject, BLEService {
 
     // Combine publisher for events
     private let eventSubject = PassthroughSubject<BLEServiceEvent, Never>()
+    private var discoveryLogState: [UUID: (count: Int, lastLoggedAt: Date)] = [:]
+    private let discoveryLogCooldownSeconds: TimeInterval = 10.0
+    private let discoveryLogEveryNEvents: Int = 25
 
     // MARK: - Init
 
@@ -109,6 +112,7 @@ final class BLECentralManager: NSObject, BLEService {
 
     func startScanning(services: [CBUUID]? = nil) {
         serviceFilter = services
+        discoveryLogState.removeAll()
 
         Task { @MainActor in
             let serviceNames = services?.map { $0.uuidString } ?? ["all"]
@@ -149,6 +153,7 @@ final class BLECentralManager: NSObject, BLEService {
             Logger.shared.info("Scanner Off")
         }
         central.stopScan()
+        discoveryLogState.removeAll()
     }
 
     // MARK: - BLEService Protocol - Connection Management
@@ -321,40 +326,52 @@ extension BLECentralManager: CBCentralManagerDelegate {
         rssi RSSI: NSNumber
     ) {
         let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "Unknown"
+        let now = Date()
+        let previous = discoveryLogState[peripheral.identifier] ?? (count: 0, lastLoggedAt: .distantPast)
+        let updatedCount = previous.count + 1
+        let shouldLogDiscovery = updatedCount == 1 ||
+            updatedCount % discoveryLogEveryNEvents == 0 ||
+            now.timeIntervalSince(previous.lastLoggedAt) >= discoveryLogCooldownSeconds
 
-        // Log device discovery
-        Task { @MainActor in
-            Logger.shared.debug("Device Scanned - UUID: \(peripheral.identifier.uuidString)")
+        if shouldLogDiscovery {
+            discoveryLogState[peripheral.identifier] = (count: updatedCount, lastLoggedAt: now)
 
-            // Detailed logging for discovered device
-            var details = "Name: \(name), RSSI: \(RSSI) dBm"
+            // Log device discovery
+            Task { @MainActor in
+                Logger.shared.debug("Device Scanned - UUID: \(peripheral.identifier.uuidString)")
 
-            // Service UUIDs - MOST IMPORTANT
-            if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
-                let uuidStrings = serviceUUIDs.map { $0.uuidString }
-                details += ", Services: [\(uuidStrings.joined(separator: ", "))]"
+                // Detailed logging for discovered device
+                var details = "Name: \(name), RSSI: \(RSSI) dBm"
 
-                // Highlight TGM Service
-                if serviceUUIDs.contains(where: { $0.uuidString.uppercased() == "3A0FF000-98C4-46B2-94AF-1AEE0FD4C48E" }) {
-                    Logger.shared.info("TGM Service detected on device: \(name)")
+                // Service UUIDs - MOST IMPORTANT
+                if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+                    let uuidStrings = serviceUUIDs.map { $0.uuidString }
+                    details += ", Services: [\(uuidStrings.joined(separator: ", "))]"
+
+                    // Highlight TGM Service
+                    if serviceUUIDs.contains(where: { $0.uuidString.uppercased() == "3A0FF000-98C4-46B2-94AF-1AEE0FD4C48E" }) {
+                        Logger.shared.info("TGM Service detected on device: \(name)")
+                    }
                 }
-            }
 
-            // Signal strength assessment
-            let signalQuality: String
-            if RSSI.intValue < -100 {
-                signalQuality = "Very Weak"
-                Logger.shared.warning("Signal very weak for \(name): \(RSSI) dBm")
-            } else if RSSI.intValue < -80 {
-                signalQuality = "Weak"
-            } else if RSSI.intValue < -60 {
-                signalQuality = "Good"
-            } else {
-                signalQuality = "Excellent"
-            }
-            details += ", Signal: \(signalQuality)"
+                // Signal strength assessment
+                let signalQuality: String
+                if RSSI.intValue < -100 {
+                    signalQuality = "Very Weak"
+                    Logger.shared.warning("Signal very weak for \(name): \(RSSI) dBm")
+                } else if RSSI.intValue < -80 {
+                    signalQuality = "Weak"
+                } else if RSSI.intValue < -60 {
+                    signalQuality = "Good"
+                } else {
+                    signalQuality = "Excellent"
+                }
+                details += ", Signal: \(signalQuality)"
 
-            Logger.shared.debug(details)
+                Logger.shared.debug(details)
+            }
+        } else {
+            discoveryLogState[peripheral.identifier] = (count: updatedCount, lastLoggedAt: previous.lastLoggedAt)
         }
 
         // Emit event via publisher (new)
