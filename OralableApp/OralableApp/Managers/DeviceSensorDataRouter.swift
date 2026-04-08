@@ -63,6 +63,11 @@ extension DeviceManager {
     func handleSensorReadingsBatch(_ readings: [SensorReading], from device: BLEDeviceProtocol) {
         Logger.shared.info("[DeviceManager] 📥 Received batch: \(readings.count) readings from \(device.deviceInfo.name)")
 
+        // Keep background connection health in sync with real incoming payloads.
+        if let peripheralId = device.peripheral?.identifier {
+            backgroundWorker.recordDataReceived(from: peripheralId)
+        }
+
         // Add to all readings
         allSensorReadings.append(contentsOf: readings)
 

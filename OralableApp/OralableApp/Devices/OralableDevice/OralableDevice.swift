@@ -238,6 +238,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral else {
             throw DeviceError.invalidPeripheral("Peripheral is nil")
         }
+        guard serviceDiscoveryContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ discoverServices called while a previous request is still pending")
+            throw DeviceError.deviceBusy
+        }
 
         Logger.shared.info("[OralableDevice] 🔍 Starting service discovery...")
 
@@ -253,6 +257,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let service = tgmService else {
             throw DeviceError.serviceNotFound("TGM service not found")
+        }
+        guard characteristicDiscoveryContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ discoverCharacteristics called while a previous request is still pending")
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔍 Discovering characteristics for TGM service...")
@@ -278,6 +286,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = firmwareVersionCharacteristic else {
             throw DeviceError.characteristicNotFound("Firmware version characteristic not found")
         }
+        guard firmwareReadContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ readFirmwareVersion called while a previous read is still pending")
+            throw DeviceError.deviceBusy
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             self.firmwareReadContinuation = continuation
@@ -289,6 +301,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let characteristic = sensorDataCharacteristic else {
             throw DeviceError.characteristicNotFound("Sensor data characteristic not found")
+        }
+        guard notificationEnableContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ enableNotifications called while a previous request is still pending")
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on sensor data characteristic...")
@@ -304,6 +320,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let characteristic = accelerometerCharacteristic else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer characteristic not found")
+            return
+        }
+        guard accelerometerNotificationContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
             return
         }
 
@@ -357,6 +377,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let commandChar = commandCharacteristic else {
             throw DeviceError.characteristicNotFound("Command characteristic not found")
         }
+        guard writeCompletionContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ configurePPGLEDs called while a write is already pending")
+            throw DeviceError.deviceBusy
+        }
 
         Logger.shared.info("[OralableDevice] 💡 Configuring PPG LED amplitudes...")
 
@@ -384,6 +408,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let characteristic = commandCharacteristic else {
             throw DeviceError.characteristicNotFound("Command characteristic not found")
+        }
+        guard writeCompletionContinuation == nil else {
+            Logger.shared.warning("[OralableDevice] ⚠️ sendCommand called while a write is already pending")
+            throw DeviceError.deviceBusy
         }
 
         let commandData = command.rawValue.data(using: .utf8) ?? Data()

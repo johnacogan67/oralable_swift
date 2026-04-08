@@ -299,7 +299,8 @@ class DeviceManager: ObservableObject {
     private func setupBLECallbacks() {
         Logger.shared.info("[DeviceManager] Setting up BLE callbacks...")
 
-        // Subscribe to BLEService event publisher (new reactive approach)
+        // Subscribe to BLEService event publisher (single source of truth).
+        // Using both publisher + legacy closures causes duplicate events.
         bleService?.eventPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
@@ -307,59 +308,12 @@ class DeviceManager: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Also set up legacy callbacks for backward compatibility with BLECentralManager
+        // Disable legacy callbacks to avoid duplicate discovery/connection flows.
         if let centralManager = bleManager {
-            centralManager.onDeviceDiscovered = { [weak self] peripheral, name, rssi, advertisementData in
-                Logger.shared.debug("[DeviceManager] onDeviceDiscovered callback received")
-                Logger.shared.debug("[DeviceManager] Peripheral: \(peripheral.identifier)")
-                Logger.shared.debug("[DeviceManager] Name: \(name)")
-                Logger.shared.debug("[DeviceManager] RSSI: \(rssi)")
-
-                Task { @MainActor [weak self] in
-                    Logger.shared.debug("[DeviceManager] Dispatching to main actor...")
-                    self?.handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: rssi, advertisementData: advertisementData)
-                }
-            }
-
-            centralManager.onDeviceConnected = { [weak self] peripheral in
-                Logger.shared.debug("[DeviceManager] onDeviceConnected callback received")
-                Logger.shared.debug("[DeviceManager] Peripheral: \(peripheral.identifier)")
-
-                Task { @MainActor [weak self] in
-                    Logger.shared.debug("[DeviceManager] Dispatching to main actor...")
-                    self?.handleDeviceConnected(peripheral: peripheral)
-                }
-            }
-
-            centralManager.onDeviceDisconnected = { [weak self] peripheral, error in
-                Logger.shared.debug("[DeviceManager] onDeviceDisconnected callback received")
-                Logger.shared.debug("[DeviceManager] Peripheral: \(peripheral.identifier)")
-                if let error = error {
-                    Logger.shared.error("[DeviceManager] Error: \(error.localizedDescription)")
-                }
-
-                Task { @MainActor [weak self] in
-                    Logger.shared.debug("[DeviceManager] Dispatching to main actor...")
-                    self?.handleDeviceDisconnected(peripheral: peripheral, error: error)
-                }
-            }
-
-            centralManager.onBluetoothStateChanged = { [weak self] state in
-                Logger.shared.debug("[DeviceManager] onBluetoothStateChanged callback received")
-                Logger.shared.debug("[DeviceManager] State: \(state.rawValue)")
-
-                Task { @MainActor [weak self] in
-                    guard let self = self else { return }
-
-                    // Update published state for UI
-                    self.bluetoothState = state
-
-                    if state != .poweredOn && self.isScanning {
-                        Logger.shared.warning("[DeviceManager] Bluetooth not powered on, stopping scan")
-                        self.isScanning = false
-                    }
-                }
-            }
+            centralManager.onDeviceDiscovered = nil
+            centralManager.onDeviceConnected = nil
+            centralManager.onDeviceDisconnected = nil
+            centralManager.onBluetoothStateChanged = nil
         }
 
         Logger.shared.info("[DeviceManager] BLE callbacks configured successfully")

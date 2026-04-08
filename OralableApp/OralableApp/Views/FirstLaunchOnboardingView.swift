@@ -77,6 +77,7 @@ struct FirstLaunchOnboardingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 syncProgressIndexFromState()
+                applyExistingCalibrationGateIfNeeded()
                 scheduleFitGuideAutoAdvanceIfNeeded()
             }
             .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, paired in
@@ -84,6 +85,9 @@ struct FirstLaunchOnboardingView: View {
                 if paired {
                     scheduleFitGuideAutoAdvanceIfNeeded()
                 }
+            }
+            .onChange(of: sessionHistoryStore.temporalisSleepCalibration?.calibrationId) { _, _ in
+                applyExistingCalibrationGateIfNeeded()
             }
         }
         .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
@@ -94,7 +98,9 @@ struct FirstLaunchOnboardingView: View {
             pairingJustCompletedSession = false
             if pendingAutoAdvanceToFit {
                 pendingAutoAdvanceToFit = false
-                scheduleFitGuideAutoAdvanceIfNeeded()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    scheduleFitGuideAutoAdvanceIfNeeded()
+                }
             }
         }) {
             DeviceDiscoveryView(
@@ -224,6 +230,13 @@ struct FirstLaunchOnboardingView: View {
         }
     }
 
+    private func applyExistingCalibrationGateIfNeeded() {
+        guard !firstLaunchManager.hasCompletedFirstFit else { return }
+        guard let _ = sessionHistoryStore.temporalisSleepCalibration else { return }
+        firstLaunchManager.markOralablePaired()
+        firstLaunchManager.markFirstFitCompleted()
+    }
+
     private var videoPlaceholderCard: some View {
         VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
             HStack(spacing: designSystem.spacing.sm) {
@@ -264,7 +277,7 @@ struct FirstLaunchOnboardingView: View {
                 .foregroundColor(designSystem.colors.textPrimary)
 
             VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
-                bullet("Temporalis fit + 10-minute IR-DC calibration is mandatory per REV10 headset before overnight capture.")
+                bullet("Temporalis fit + quick IR-DC calibration (about 90 seconds) is required once per REV10 headset before overnight capture.")
                 bullet("Automatic recording runs while connected; hourly memory flush writes CSV to Application Support for data safety.")
                 bullet("TFI (Temporalis Fatigue Index) and SASHB (hypoxic burden) roll into the clinical PDF and professional handshake export.")
                 bullet("Trial coordination uses the 6-character clinician sync code on the PDF header with Share → Professional.")

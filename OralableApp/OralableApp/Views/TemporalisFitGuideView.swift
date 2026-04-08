@@ -50,6 +50,7 @@ struct TemporalisFitGuideView: View {
     @State private var showSetupSuccess = false
     /// Set when `CalibrationWizardView` saves calibration; cleared when presenting `SetupSuccessView`.
     @State private var calibrationEndedSuccessfully = false
+    @State private var showCalibrationRetryHint = false
     @State private var lockedBaselineVoltage: Double = 0
     @State private var isResearchOverrideActive = false
     @State private var showResearchOverridePrompt = false
@@ -91,6 +92,9 @@ struct TemporalisFitGuideView: View {
 
                 VStack(spacing: designSystem.spacing.md) {
                     instructionPanel
+                    if showCalibrationRetryHint {
+                        calibrationRetryBanner
+                    }
                     placementRow
                     if placementState == .lightLeak {
                         lightLeakBanner
@@ -180,9 +184,12 @@ struct TemporalisFitGuideView: View {
                     camera.stop()
                     if calibrationEndedSuccessfully {
                         calibrationEndedSuccessfully = false
+                        showCalibrationRetryHint = false
                         showSetupSuccess = true
                     } else {
-                        onExit()
+                        // Keep user in fit guide so they can retry calibration immediately.
+                        showCalibrationRetryHint = true
+                        camera.start()
                     }
                 }
             )
@@ -257,6 +264,11 @@ struct TemporalisFitGuideView: View {
                 .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, designSystem.spacing.lg)
+            Text("On first setup, calibration is a quick 90-second lock.")
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, designSystem.spacing.lg)
         }
         .padding(.vertical, designSystem.spacing.md)
         .frame(maxWidth: .infinity)
@@ -292,6 +304,21 @@ struct TemporalisFitGuideView: View {
             Image(systemName: "sun.max.trianglebadge.exclamationmark")
                 .foregroundColor(designSystem.colors.warning)
             Text("Placement gate (audit only): IR-DC reads high versus our nominal dark-coupling band—often firmware ambient / coupling scaling, not necessarily a real leak. You can still proceed with the bypass below; raw ambient IR counts are logged in CSV (ambient_ir_raw).")
+                .font(designSystem.typography.caption)
+                .foregroundColor(designSystem.colors.textPrimary)
+        }
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(designSystem.colors.warning.opacity(0.15))
+        .cornerRadius(designSystem.cornerRadius.button)
+        .padding(.horizontal, designSystem.spacing.md)
+    }
+
+    private var calibrationRetryBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.clockwise.circle.fill")
+                .foregroundColor(designSystem.colors.warning)
+            Text("Calibration was not completed. You can adjust fit if needed, then tap start calibration again.")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textPrimary)
         }
@@ -341,15 +368,15 @@ struct TemporalisFitGuideView: View {
 
     private var startCalibrationButtonTitle: String {
         if isTooHighPlacement && !canAdvanceToCalibration {
-            return "Next — start 10-minute calibration"
+            return "Next — start 90-second calibration"
         }
         if isResearchOverrideActive && !canAdvanceToCalibration {
-            return "Start 10-minute calibration (research override)"
+            return "Start 90-second calibration (research override)"
         }
-        return "Signal locked — start 10-minute calibration"
+        return "Signal locked — start 90-second calibration"
     }
 
-    /// Elevated IR (above good window) or confirmed leak UI — user may bypass to 10-minute lock for research captures.
+    /// Elevated IR (above good window) or confirmed leak UI — user may bypass to quick calibration lock.
     private var shouldShowPlacementBypass: Bool {
         guard rev10PrimaryConnected else { return false }
         if placementState == .lightLeak { return true }
@@ -372,7 +399,7 @@ struct TemporalisFitGuideView: View {
             Button {
                 startCalibrationWizard()
             } label: {
-                Text("Proceed to 10-minute calibration anyway")
+                Text("Proceed to 90-second calibration anyway")
                     .font(designSystem.typography.labelMedium)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -389,6 +416,7 @@ struct TemporalisFitGuideView: View {
     }
 
     private func startCalibrationWizard() {
+        showCalibrationRetryHint = false
         manualOverrideForCurrentCalibration = isResearchOverrideActive
         if isResearchOverrideActive {
             firstLaunchManager.markOralablePaired()

@@ -38,7 +38,22 @@ extension DeviceManager {
         }
 
         // Detect device type - STRICT FILTERING
-        guard let deviceType = detectDeviceType(from: name, peripheral: peripheral) else {
+        guard let deviceType = detectDeviceType(from: name, peripheral: peripheral, advertisementData: advertisementData) else {
+            #if DEBUG
+            let adKeys = advertisementData.keys.map { String(describing: $0) }.sorted()
+            let serviceUUIDs = ((advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? [])
+                .map { $0.uuidString.uppercased() }
+                .sorted()
+            let localName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "n/a"
+            let hasMfrData = advertisementData[CBAdvertisementDataManufacturerDataKey] != nil
+            let serviceDataKeys = ((advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data]) ?? [:])
+                .keys
+                .map { $0.uuidString.uppercased() }
+                .sorted()
+            Logger.shared.debug(
+                "[DeviceManager] Rejected discovery details | name=\(name) | localName=\(localName) | rssi=\(rssi) | services=\(serviceUUIDs) | serviceDataKeys=\(serviceDataKeys) | hasManufacturerData=\(hasMfrData) | adKeys=\(adKeys)"
+            )
+            #endif
             Logger.shared.debug("[DeviceManager] ❌ Unknown device type '\(name)' - rejected")
             return
         }
@@ -99,8 +114,10 @@ extension DeviceManager {
     // MARK: - Device Type Detection
     // UPDATED: December 8, 2025 - Stricter filtering to only accept Oralable and ANR devices
 
-    func detectDeviceType(from name: String, peripheral: CBPeripheral) -> DeviceType? {
+    func detectDeviceType(from name: String, peripheral: CBPeripheral, advertisementData: [String: Any]) -> DeviceType? {
         let lowercaseName = name.lowercased()
+        let serviceUUIDs = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? []
+        let serviceStrings = Set(serviceUUIDs.map { $0.uuidString.uppercased() })
 
         // Check for Oralable device - STRICT matching
         if lowercaseName.contains("oralable") {
@@ -114,8 +131,18 @@ extension DeviceManager {
             return .anr
         }
 
+        // Fallback for firmware that advertises "Unknown" local name.
+        if serviceStrings.contains("FE9F") {
+            Logger.shared.info("[DeviceManager] ✅ Detected Oralable by service UUID FE9F: \(name)")
+            return .oralable
+        }
+        if serviceStrings.contains("FEAF") {
+            Logger.shared.info("[DeviceManager] ✅ Detected ANR by service UUID FEAF: \(name)")
+            return .anr
+        }
+
         // Reject all other devices
-        Logger.shared.debug("[DeviceManager] ❌ Rejecting unknown device: \(name)")
+        Logger.shared.debug("[DeviceManager] ❌ Rejecting unknown device: \(name), services: \(Array(serviceStrings).sorted())")
         return nil
     }
 

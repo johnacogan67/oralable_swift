@@ -12,6 +12,7 @@ struct SetupSuccessView: View {
     @EnvironmentObject var designSystem: DesignSystem
     /// Invoked when the user continues to the main dashboard / dismisses the fit flow.
     let onContinue: () -> Void
+    @State private var hasContinued = false
 
     private var colors: ColorSystem { designSystem.colors }
 
@@ -65,7 +66,7 @@ struct SetupSuccessView: View {
                 Spacer(minLength: 0)
 
                 Button {
-                    onContinue()
+                    continueIfNeeded()
                 } label: {
                     Text("Go to dashboard")
                         .font(designSystem.typography.labelMedium)
@@ -84,6 +85,12 @@ struct SetupSuccessView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(colors.primaryWhite, for: .navigationBar)
             .toolbarColorScheme(.light, for: .navigationBar)
+            .onAppear {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    continueIfNeeded()
+                }
+            }
         }
     }
 
@@ -94,5 +101,11 @@ struct SetupSuccessView: View {
             Image(systemName: icon)
                 .foregroundStyle(colors.primaryBlack)
         }
+    }
+
+    private func continueIfNeeded() {
+        guard !hasContinued else { return }
+        hasContinued = true
+        onContinue()
     }
 }

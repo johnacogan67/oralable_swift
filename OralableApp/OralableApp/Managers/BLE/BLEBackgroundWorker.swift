@@ -569,9 +569,15 @@ final class BLEBackgroundWorker: ObservableObject {
 
     /// Record that data was received from a peripheral
     func recordDataReceived(from peripheralId: UUID) {
+        let previousHealth = connectionHealth[peripheralId]
         lastDataReceived[peripheralId] = Date()
-        if connectionHealth[peripheralId] != .healthy {
+        if previousHealth != .healthy {
             connectionHealth[peripheralId] = .healthy
+            if let previousHealth {
+                Logger.shared.info("[BLEBackgroundWorker][Health] \(peripheralId) recovered to healthy (was \(previousHealth.rawValue))")
+            } else {
+                Logger.shared.debug("[BLEBackgroundWorker][Health] \(peripheralId) marked healthy on first data receipt")
+            }
         }
     }
 
@@ -614,6 +620,7 @@ final class BLEBackgroundWorker: ObservableObject {
                         peripheralId: peripheralId,
                         reason: "No data received for \(Int(elapsed)) seconds"
                     ))
+                    Logger.shared.warning("[BLEBackgroundWorker][Health] Warning for \(peripheralId): no data for \(Int(elapsed))s (warning threshold: \(Int(config.connectionStaleTimeout / 2))s, stale threshold: \(Int(config.connectionStaleTimeout))s)")
                 }
             }
         }

@@ -280,4 +280,15 @@ extension OralableDevice: CBPeripheralDelegate {
             Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on unknown characteristic: \(characteristic.uuid.uuidString)")
         }
     }
+
+    func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
+        if let error = error {
+            Logger.shared.warning("[OralableDevice] ⚠️ RSSI read failed: \(error.localizedDescription)")
+            return
+        }
+
+        let value = RSSI.intValue
+        deviceInfo.signalStrength = value
+        Logger.shared.debug("[OralableDevice] 📶 RSSI updated: \(value) dBm")
+    }
 }
