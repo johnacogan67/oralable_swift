@@ -99,7 +99,7 @@ struct FirstLaunchOnboardingView: View {
             if pendingAutoAdvanceToFit {
                 pendingAutoAdvanceToFit = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    scheduleFitGuideAutoAdvanceIfNeeded()
+                    showFitGuide = true
                 }
             }
         }) {
