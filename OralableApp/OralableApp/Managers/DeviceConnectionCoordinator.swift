@@ -61,10 +61,8 @@ extension DeviceManager {
         }
         backgroundWorker.startRSSIPolling(for: connectedPeripherals)
 
-        // Start Day 2 async discovery flow
-        Task {
-            await discoverServicesAndCharacteristics(peripheral: peripheral)
-        }
+        // Start Day 2 async discovery flow (single-flight per peripheral)
+        startDiscoveryFlowIfNeeded(for: peripheral)
     }
 
     // Day 2: Async service and characteristic discovery with notification enabling
@@ -83,6 +81,11 @@ extension DeviceManager {
             Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected before discovery could start")
             updateDeviceReadiness(peripheral.identifier, to: .disconnected)
             return
+        }
+
+        // Clear any prior pending continuations before starting a new flow (reconnect churn safety).
+        if let oralableDevice = device as? OralableDevice {
+            oralableDevice.cancelPendingContinuations()
         }
 
         do {
@@ -205,6 +208,25 @@ extension DeviceManager {
         }
     }
 
+    private func startDiscoveryFlowIfNeeded(for peripheral: CBPeripheral) {
+        let id = peripheral.identifier
+
+        // If a discovery task is already running, do not start another.
+        if let existing = discoveryFlowTasks[id], !existing.isCancelled {
+            Logger.shared.warning("[DeviceManager][BLETrace \(String(id.uuidString.prefix(8)))] ⚠️ Discovery already in progress - skipping duplicate start")
+            return
+        }
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.discoverServicesAndCharacteristics(peripheral: peripheral)
+            await MainActor.run {
+                self.discoveryFlowTasks[id] = nil
+            }
+        }
+        discoveryFlowTasks[id] = task
+    }
+
     func handleDeviceDisconnected(peripheral: CBPeripheral, error: Error?) {
         if let error = error {
             Logger.shared.warning("[DeviceManager] Device disconnected with error: \(error.localizedDescription)")
@@ -220,6 +242,13 @@ extension DeviceManager {
 
         // Update readiness state
         updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+
+        // Cancel any in-flight discovery flow task and clear pending continuations.
+        discoveryFlowTasks[peripheral.identifier]?.cancel()
+        discoveryFlowTasks[peripheral.identifier] = nil
+        if let device = devices[peripheral.identifier] as? OralableDevice {
+            device.cancelPendingContinuations()
+        }
 
         // Update device states
         if let index = discoveredDevices.firstIndex(where: { $0.peripheralIdentifier == peripheral.identifier }) {

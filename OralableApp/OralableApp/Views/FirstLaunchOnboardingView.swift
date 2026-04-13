@@ -101,6 +101,15 @@ struct FirstLaunchOnboardingView: View {
                 firstLaunchManager.enterTrialSetupMode()
             }
             pairingJustCompletedSession = false
+
+            // Manual pairing path: device may have reached `.ready` before `hasPairedOralablePrimary` flipped.
+            if firstLaunchManager.hasPairedOralablePrimary,
+               !firstLaunchManager.hasCompletedFirstFit,
+               !showFitGuide,
+               case .ready = deviceManager.primaryDeviceReadiness {
+                setupProgressIndex1IfNeeded()
+                showFitGuide = true
+            }
         }) {
             DeviceDiscoveryView(
                 onOralablePrimaryReady: {
