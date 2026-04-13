@@ -14,6 +14,7 @@ struct CalibrationWizardView: View {
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var sensorDataProcessor: SensorDataProcessor
+    @Environment(\.scenePhase) private var scenePhase
 
     let lockedBaselineVoltage: Double
     /// When true, calibration CSV rows include `is_manual_override=1` (research fit-gate bypass).
@@ -41,6 +42,7 @@ struct CalibrationWizardView: View {
     @State private var hasStarted = false
     @State private var timerActive = false
     @State private var lastPhaseIndex: Int = -1
+    @State private var calibrationStartAt: Date?
 
     private var progress: Double {
         guard totalSeconds > 0 else { return 0 }
@@ -125,14 +127,28 @@ struct CalibrationWizardView: View {
                     _ = sensorDataProcessor.endCalibrationOralableCapture()
                 }
             }
-            .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-                guard hasStarted, timerActive, !didComplete else { return }
-                if elapsed < totalSeconds {
-                    elapsed += 1
-                    emitPhaseHapticIfNeeded()
-                }
-                if elapsed >= totalSeconds {
-                    completeCalibration()
+            .task(id: timerActive) {
+                guard timerActive else { return }
+                guard hasStarted, !didComplete else { return }
+                guard let startAt = calibrationStartAt else { return }
+
+                while !Task.isCancelled, timerActive, hasStarted, !didComplete {
+                    // Pause updates while inactive/backgrounded; resume when active.
+                    if scenePhase != .active {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        continue
+                    }
+
+                    let newElapsed = min(totalSeconds, max(0, Int(Date().timeIntervalSince(startAt))))
+                    if newElapsed != elapsed {
+                        elapsed = newElapsed
+                        emitPhaseHapticIfNeeded()
+                    }
+                    if elapsed >= totalSeconds {
+                        completeCalibration()
+                        break
+                    }
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                 }
             }
         }
@@ -211,6 +227,7 @@ struct CalibrationWizardView: View {
         hasStarted = true
         timerActive = true
         lastPhaseIndex = -1
+        calibrationStartAt = Date()
         sensorDataProcessor.beginCalibrationOralableCapture()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
