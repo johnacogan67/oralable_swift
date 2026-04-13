@@ -260,17 +260,41 @@ extension OralableDevice {
 
     /// Parse TGM battery data using OralableCore.BLEDataParser
     func parseBatteryData(_ data: Data) {
-        // Use OralableCore.BLEDataParser for parsing
-        guard let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) else {
+        // Prefer OralableCore parsing (expects 4-byte millivolts, validated range).
+        var percentage: Int?
+
+        if let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) {
+            percentage = batteryData.percentage
+        } else if data.count >= 4 {
+            // Fallback: handle endianness / relaxed voltage validation.
+            // Firmware spec says battery is 4-byte millivolts; if strict validation fails, decode raw and choose plausible value.
+            let bytes = [UInt8](data.prefix(4))
+            let rawLE = UInt32(bytes[0]) | (UInt32(bytes[1]) << 8) | (UInt32(bytes[2]) << 16) | (UInt32(bytes[3]) << 24)
+            let rawBE = UInt32(bytes[3]) | (UInt32(bytes[2]) << 8) | (UInt32(bytes[1]) << 16) | (UInt32(bytes[0]) << 24)
+
+            let candidates = [Int(rawLE), Int(rawBE)]
+            if let mv = candidates.first(where: { $0 >= 2000 && $0 <= 5000 }) {
+                // Convert to percentage (simple linear mapping): 3.0V = 0%, 4.2V = 100%
+                percentage = Int(min(100, max(0, (mv - 3000) * 100 / 1200)))
+            } else {
+                let now = Date()
+                if lastBatteryParseFailureLogAt == nil || now.timeIntervalSince(lastBatteryParseFailureLogAt!) > 30 {
+                    let hex = bytes.map { String(format: "%02X", $0) }.joined(separator: " ")
+                    Logger.shared.warning("[OralableDevice] ⚠️ Battery packet decode failed (\(data.count) bytes) raw=[\(hex)] le=\(rawLE) be=\(rawBE)")
+                    lastBatteryParseFailureLogAt = now
+                }
+                return
+            }
+        } else {
             let now = Date()
             if lastBatteryParseFailureLogAt == nil || now.timeIntervalSince(lastBatteryParseFailureLogAt!) > 30 {
-                Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse battery packet (\(data.count) bytes)")
+                Logger.shared.warning("[OralableDevice] ⚠️ Battery packet too short (\(data.count) bytes)")
                 lastBatteryParseFailureLogAt = now
             }
             return
         }
 
-        let percentage = batteryData.percentage
+        guard let percentage else { return }
 
         Logger.shared.debug("[OralableDevice] 🔋 Battery: \(percentage)%")
 

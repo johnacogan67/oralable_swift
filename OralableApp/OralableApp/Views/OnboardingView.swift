@@ -92,6 +92,7 @@ struct OnboardingView: View {
             )
             .signInWithAppleButtonStyle(.black)
             .frame(height: 50)
+            .frame(maxWidth: 375)
             .cornerRadius(designSystem.cornerRadius.large)
             .padding(.horizontal, designSystem.spacing.lg)
             .padding(.bottom, designSystem.spacing.screenPadding)

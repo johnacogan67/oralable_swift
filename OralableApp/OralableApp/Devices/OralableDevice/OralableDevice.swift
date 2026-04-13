@@ -385,14 +385,29 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             throw DeviceError.deviceBusy
         }
 
+        // Some firmware builds expose 3A0FF003 as notify-only (temperature) and do not permit writes.
+        // Avoid spamming CoreBluetooth with a write that will always fail.
+        let canWriteWithResponse = commandChar.properties.contains(.write)
+        let canWriteWithoutResponse = commandChar.properties.contains(.writeWithoutResponse)
+        guard canWriteWithResponse || canWriteWithoutResponse else {
+            Logger.shared.debug("[OralableDevice] 💡 Skipping LED configuration (command characteristic not writable)")
+            return
+        }
+
         Logger.shared.info("[OralableDevice] 💡 Configuring PPG LED amplitudes...")
 
         // LED configuration command format depends on firmware
         let configCommand = Data([0x01, 0x00])
 
-        return try await withCheckedThrowingContinuation { continuation in
-            self.writeCompletionContinuation = continuation
-            peripheral.writeValue(configCommand, for: commandChar, type: .withResponse)
+        if canWriteWithResponse {
+            return try await withCheckedThrowingContinuation { continuation in
+                self.writeCompletionContinuation = continuation
+                peripheral.writeValue(configCommand, for: commandChar, type: .withResponse)
+            }
+        } else {
+            // Without-response writes may not trigger didWrite callbacks; treat as fire-and-forget.
+            peripheral.writeValue(configCommand, for: commandChar, type: .withoutResponse)
+            return
         }
     }
 

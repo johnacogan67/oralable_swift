@@ -379,7 +379,7 @@ extension DeviceManager {
         bleService?.disconnect(from: peripheral)
 
         // Stop data collection
-        try? await device.stopDataCollection()
+        await device.stopDataCollection()
     }
 
     func disconnectAll() {

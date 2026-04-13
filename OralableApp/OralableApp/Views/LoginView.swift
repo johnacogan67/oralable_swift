@@ -39,6 +39,7 @@ struct LoginView: View {
                 }
             }
             .frame(height: 45)
+            .frame(maxWidth: 375)
             .padding()
 
             Button("Continue as Guest") {

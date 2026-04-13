@@ -233,6 +233,7 @@ struct AuthenticationView: View {
             )
             .signInWithAppleButtonStyle(.black)
             .frame(height: 50)
+            .frame(maxWidth: 375)
             .cornerRadius(designSystem.cornerRadius.md)
         }
     }

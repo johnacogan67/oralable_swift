@@ -165,8 +165,8 @@ class DeviceManager: ObservableObject {
     // MARK: - Internal Properties (accessed by extensions in other files)
 
     /// Single-flight guard for the async discovery/notification pipeline per peripheral.
-    /// Prevents "discoverServices called while previous request pending" during reconnect churn.
-    private var discoveryFlowTasks: [UUID: Task<Void, Never>] = [:]
+    /// Note: accessed by connection coordinator extension in another file.
+    var discoveryFlowTasks: [UUID: Task<Void, Never>] = [:]
 
     var devices: [UUID: BLEDeviceProtocol] = [:]
     var cancellables = Set<AnyCancellable>()
