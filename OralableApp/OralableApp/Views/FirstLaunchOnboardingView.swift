@@ -20,7 +20,6 @@ struct FirstLaunchOnboardingView: View {
     /// 0 = pairing, 1 = fitting (mirror guide), 2 = calibrating
     @State private var setupProgressIndex = 0
     @State private var pairingJustCompletedSession = false
-    @State private var pendingAutoAdvanceToFit = false
 
     var body: some View {
         NavigationStack {
@@ -78,16 +77,22 @@ struct FirstLaunchOnboardingView: View {
             .onAppear {
                 syncProgressIndexFromState()
                 applyExistingCalibrationGateIfNeeded()
-                scheduleFitGuideAutoAdvanceIfNeeded()
             }
             .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, paired in
                 syncProgressIndexFromState()
-                if paired {
-                    scheduleFitGuideAutoAdvanceIfNeeded()
-                }
             }
             .onChange(of: sessionHistoryStore.temporalisSleepCalibration?.calibrationId) { _, _ in
                 applyExistingCalibrationGateIfNeeded()
+            }
+            .onChange(of: deviceManager.deviceReadiness) { _, _ in
+                guard firstLaunchManager.hasPairedOralablePrimary else { return }
+                guard !firstLaunchManager.hasCompletedFirstFit else { return }
+                guard !showFitGuide else { return }
+                guard !showDeviceDiscoverySheet else { return }
+                guard case .ready = deviceManager.primaryDeviceReadiness else { return }
+
+                setupProgressIndex1IfNeeded()
+                showFitGuide = true
             }
         }
         .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
@@ -96,20 +101,11 @@ struct FirstLaunchOnboardingView: View {
                 firstLaunchManager.enterTrialSetupMode()
             }
             pairingJustCompletedSession = false
-            if pendingAutoAdvanceToFit {
-                pendingAutoAdvanceToFit = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    setupProgressIndex1IfNeeded()
-                    showFitGuide = true
-                }
-            }
         }) {
             DeviceDiscoveryView(
                 onOralablePrimaryReady: {
                     pairingJustCompletedSession = true
                     firstLaunchManager.markOralablePaired()
-                    setupProgressIndex = 1
-                    pendingAutoAdvanceToFit = true
                     showDeviceDiscoverySheet = false
                 }
             )
@@ -211,23 +207,6 @@ struct FirstLaunchOnboardingView: View {
             }
         } else {
             setupProgressIndex = 0
-        }
-    }
-
-    private func scheduleFitGuideAutoAdvanceIfNeeded() {
-        guard firstLaunchManager.hasPairedOralablePrimary else { return }
-        guard !firstLaunchManager.hasCompletedFirstFit else { return }
-        guard !showFitGuide else { return }
-        guard !showDeviceDiscoverySheet else {
-            pendingAutoAdvanceToFit = true
-            return
-        }
-        setupProgressIndex1IfNeeded()
-        // Present after current update cycle to avoid presentation races during state transitions.
-        Task { @MainActor in
-            if !showFitGuide && firstLaunchManager.hasPairedOralablePrimary && !firstLaunchManager.hasCompletedFirstFit {
-                showFitGuide = true
-            }
         }
     }
 
