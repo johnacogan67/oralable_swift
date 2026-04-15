@@ -397,7 +397,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         return best
     }
 
-    /// Aligns PPG triplets to time-buckets (~0.1ms); carries last known accel sample per PPG row.
+    /// Aligns PPG triplets deterministically.
+    /// Prefer hardware `frameNumber` when present; fall back to tight time-buckets.
+    /// Carries last known accel sample per PPG row.
     nonisolated private static func biometricSampleArrays(from readings: [SensorReading]) -> (
         ir: [Double], red: [Double], green: [Double], ax: [Double], ay: [Double], az: [Double]
     ) {
@@ -438,7 +440,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key = Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                let key: Int64 = {
+                    if let frame = r.frameNumber { return Int64(frame) }
+                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                }()
                 if bucketKey != key {
                     flushBucket()
                     bucketKey = key
@@ -512,7 +517,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key = Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                let key: Int64 = {
+                    if let frame = r.frameNumber { return Int64(frame) }
+                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+                }()
                 if bucketKey != key {
                     flushBucket()
                     bucketKey = key

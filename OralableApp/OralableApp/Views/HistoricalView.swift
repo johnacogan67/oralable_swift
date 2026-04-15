@@ -97,12 +97,15 @@ struct HistoricalView: View {
     // Loading state
     @State var isLoading: Bool = false
 
+    // Prevent duplicate reload loops
+    @State var lastLoadKey: String?
+    @State private var didInitialAppear: Bool = false
+
     // Initial metric type passed from dashboard (optional)
     let initialMetricType: String?
 
     init(metricType: String? = nil) {
         self.initialMetricType = metricType
-        Logger.shared.info("[HistoricalView] Initialized with metricType: \(metricType ?? "none")")
     }
 
     // MARK: - Computed Properties
@@ -262,16 +265,13 @@ struct HistoricalView: View {
         .navigationBarTitleDisplayMode(.large)
         .background(designSystem.colors.backgroundPrimary)
         .onAppear {
+            // SwiftUI may recreate this view frequently; keep onAppear side-effects idempotent.
+            guard !didInitialAppear else { return }
+            didInitialAppear = true
             setInitialTab()
-            loadExportData()
         }
-        .onChange(of: selectedTab) { _, newTab in
-            // Validate tab is still available
-            if availableTabs.contains(newTab) {
-                loadExportData()
-            } else if let firstTab = availableTabs.first {
-                selectedTab = firstTab
-            }
+        .task(id: selectedTab) {
+            await loadExportDataIfNeeded()
         }
     }
 

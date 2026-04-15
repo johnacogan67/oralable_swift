@@ -164,8 +164,7 @@ struct ShareView: View {
     private var exportFooterText: Text {
         switch exportType {
         case .events:
-            let dashboardVM = dependencies.makeDashboardViewModel()
-            let eventCount = dashboardVM.currentEventSession?.eventCount ?? 0
+            let eventCount = dependencies.dashboardViewModel.currentEventSession?.eventCount ?? 0
             return Text("Export \(eventCount) detected events (fast, small file)")
         case .continuous:
             let recordCount = sensorDataProcessor.sensorDataHistory.count
@@ -400,46 +399,72 @@ struct ShareView: View {
 
     /// Generate CSV file from cached events (fast export)
     private func generateEventCSVFile() async -> URL? {
-        let dashboardVM = dependencies.makeDashboardViewModel()
+        let dashboardVM = dependencies.dashboardViewModel
 
-        guard let session = dashboardVM.currentEventSession,
-              !session.events.isEmpty else {
-            await MainActor.run {
-                errorMessage = "No events to export. Start a recording to detect events."
-                showError = true
+        // Prefer automatic recording session events (StateTransitionEvent) if available.
+        if let autoSession = deviceManager.automaticRecordingSession {
+            let events = autoSession.getTodayEvents()
+            if !events.isEmpty {
+                Logger.shared.info("[ShareView] 📊 Starting state-event CSV export with \(events.count) events")
+
+                let csvContent = StateEventCSVExporter.exportToCSV(events: events)
+                let fileManager = FileManager.default
+                let cacheDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+                let exportDirectory = cacheDirectory.appendingPathComponent("Exports", isDirectory: true)
+                if !fileManager.fileExists(atPath: exportDirectory.path) {
+                    try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
+                }
+
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+                let timestamp = dateFormatter.string(from: Date())
+                let filename = "oralable_events_state_\(timestamp).csv"
+                let fileURL = exportDirectory.appendingPathComponent(filename)
+
+                do {
+                    if fileManager.fileExists(atPath: fileURL.path) {
+                        try fileManager.removeItem(at: fileURL)
+                    }
+                    try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+                    Logger.shared.info("[ShareView] ✅ State-event CSV export complete: \(fileURL.lastPathComponent)")
+                    return fileURL
+                } catch {
+                    Logger.shared.error("[ShareView] ❌ Failed to write state-event CSV: \(error)")
+                }
             }
-            return nil
         }
 
-        let events = session.events
-        Logger.shared.info("[ShareView] 📊 Starting event CSV export with \(events.count) events")
+        // Fallback to legacy event session export.
+        if let session = dashboardVM.currentEventSession, !session.events.isEmpty {
+            let events = session.events
+            Logger.shared.info("[ShareView] 📊 Starting legacy event CSV export with \(events.count) events")
 
-        // Build export options based on feature flags
-        let options = EventCSVExporter.ExportOptions(
-            includeTemperature: featureFlags.showTemperatureCard,
-            includeHR: featureFlags.showHeartRateCard,
-            includeSpO2: featureFlags.showSpO2Card,
-            includeSleep: false
-        )
+            let options = EventCSVExporter.ExportOptions(
+                includeTemperature: featureFlags.showTemperatureCard,
+                includeHR: featureFlags.showHeartRateCard,
+                includeSpO2: featureFlags.showSpO2Card,
+                includeSleep: false
+            )
 
-        // Export to file
-        if let url = CSVExportManager.shared.exportEvents(events, options: options) {
-            Logger.shared.info("[ShareView] ✅ Event CSV export complete: \(url.lastPathComponent)")
-            return url
-        } else {
-            await MainActor.run {
-                errorMessage = "Failed to export events"
-                showError = true
+            if let url = CSVExportManager.shared.exportEvents(events, options: options) {
+                Logger.shared.info("[ShareView] ✅ Legacy event CSV export complete: \(url.lastPathComponent)")
+                return url
             }
-            return nil
         }
+
+        await MainActor.run {
+            errorMessage = "No events to export yet. Try clenching/grinding for a few seconds after calibration."
+            showError = true
+        }
+        return nil
     }
 
     /// Optimized CSV generation using array join instead of string concatenation
     /// This is O(n) instead of O(n²) for string operations
     /// Only exports columns for metrics that have visible dashboard cards
     private func generateCSVFileOptimized() async -> URL? {
-        let sensorData = sensorDataProcessor.sensorDataHistory
+        // Snapshot history on the main actor to avoid racing the UI/Combine thread.
+        let sensorData = await MainActor.run { sensorDataProcessor.sensorDataHistory }
         let totalCount = sensorData.count
 
         guard totalCount > 0 else {
@@ -459,10 +484,6 @@ struct ShareView: View {
         let includeHeartRate = featureFlags.showHeartRateCard
         let includeBattery = featureFlags.showBatteryCard
 
-        // Pre-allocate array capacity for performance
-        var lines: [String] = []
-        lines.reserveCapacity(totalCount + 1)
-
         // Build header based on enabled features
         var headerParts = ["Timestamp", "Device_Type", "EMG", "PPG_IR", "Raw_Ambient_IR", "PPG_Red", "PPG_Green"]
         if includeMovement {
@@ -477,87 +498,8 @@ struct ShareView: View {
         if includeHeartRate {
             headerParts.append("Heart_Rate")
         }
-        lines.append(headerParts.joined(separator: ","))
 
         let dateFormatter = ISO8601DateFormatter()
-
-        // Process in batches for UI updates
-        let batchSize = 1000
-        var processedCount = 0
-
-        for data in sensorData {
-            let timestamp = dateFormatter.string(from: data.timestamp)
-
-            // Device type determines which columns get data
-            let deviceTypeName: String
-            let emgValue: Int32
-            let ppgIRValue: Int32
-
-            switch data.deviceType {
-            case .anr:
-                deviceTypeName = "ANR M40"
-                emgValue = data.ppg.ir
-                ppgIRValue = 0
-            case .oralable:
-                deviceTypeName = "Oralable"
-                emgValue = 0
-                ppgIRValue = data.ppg.ir
-            case .demo:
-                deviceTypeName = "Demo"
-                emgValue = 0
-                ppgIRValue = data.ppg.ir
-            }
-
-            // Build line with only enabled columns
-            var rowParts: [String] = [
-                timestamp,
-                deviceTypeName,
-                String(emgValue),
-                String(ppgIRValue),
-                String(ppgIRValue),
-                String(data.ppg.red),
-                String(data.ppg.green)
-            ]
-
-            if includeMovement {
-                rowParts.append(contentsOf: [
-                    String(data.accelerometer.x),
-                    String(data.accelerometer.y),
-                    String(data.accelerometer.z)
-                ])
-            }
-            if includeTemperature {
-                rowParts.append(String(data.temperature.celsius))
-            }
-            if includeBattery {
-                rowParts.append(String(data.battery.percentage))
-            }
-            if includeHeartRate {
-                let heartRate = data.heartRate?.bpm ?? 0
-                rowParts.append(String(heartRate))
-            }
-
-            lines.append(rowParts.joined(separator: ","))
-
-            processedCount += 1
-
-            // Update progress every batch
-            if processedCount % batchSize == 0 {
-                let progress = Double(processedCount) / Double(totalCount) * 100
-                await MainActor.run {
-                    shareProgress = "Processing \(processedCount)/\(totalCount) (\(Int(progress))%)"
-                }
-                // Yield to allow UI updates
-                await Task.yield()
-            }
-        }
-
-        await MainActor.run {
-            shareProgress = "Writing file..."
-        }
-
-        // Join all lines at once (O(n) operation)
-        let csvString = lines.joined(separator: "\n")
 
         // Get user identifier (first 8 chars of Apple ID for brevity)
         // User ID is persisted in UserDefaults by AuthenticationManager
@@ -577,7 +519,84 @@ struct ShareView: View {
         let fileURL = documentsURL.appendingPathComponent(fileName)
 
         do {
-            try csvString.write(to: fileURL, atomically: true, encoding: .utf8)
+            await MainActor.run { shareProgress = "Writing file..." }
+
+            // Stream to disk to reduce peak memory and avoid blocking the main thread.
+            FileManager.default.createFile(atPath: fileURL.path, contents: nil, attributes: nil)
+            let handle = try FileHandle(forWritingTo: fileURL)
+            defer { try? handle.close() }
+
+            if let headerData = (headerParts.joined(separator: ",") + "\n").data(using: .utf8) {
+                handle.write(headerData)
+            }
+
+            let progressEvery = 5000
+            var processedCount = 0
+
+            for data in sensorData {
+                let timestamp = dateFormatter.string(from: data.timestamp)
+
+                // Device type determines which columns get data
+                let deviceTypeName: String
+                let emgValue: Int32
+                let ppgIRValue: Int32
+
+                switch data.deviceType {
+                case .anr:
+                    deviceTypeName = "ANR M40"
+                    emgValue = data.ppg.ir
+                    ppgIRValue = 0
+                case .oralable:
+                    deviceTypeName = "Oralable"
+                    emgValue = 0
+                    ppgIRValue = data.ppg.ir
+                case .demo:
+                    deviceTypeName = "Demo"
+                    emgValue = 0
+                    ppgIRValue = data.ppg.ir
+                }
+
+                var rowParts: [String] = [
+                    timestamp,
+                    deviceTypeName,
+                    String(emgValue),
+                    String(ppgIRValue),
+                    String(ppgIRValue),
+                    String(data.ppg.red),
+                    String(data.ppg.green)
+                ]
+
+                if includeMovement {
+                    rowParts.append(contentsOf: [
+                        String(data.accelerometer.x),
+                        String(data.accelerometer.y),
+                        String(data.accelerometer.z)
+                    ])
+                }
+                if includeTemperature {
+                    rowParts.append(String(data.temperature.celsius))
+                }
+                if includeBattery {
+                    rowParts.append(String(data.battery.percentage))
+                }
+                if includeHeartRate {
+                    let heartRate = data.heartRate?.bpm ?? 0
+                    rowParts.append(String(heartRate))
+                }
+
+                if let rowData = (rowParts.joined(separator: ",") + "\n").data(using: .utf8) {
+                    handle.write(rowData)
+                }
+
+                processedCount += 1
+                if processedCount % progressEvery == 0 {
+                    let progress = Double(processedCount) / Double(totalCount) * 100
+                    await MainActor.run {
+                        shareProgress = "Processing \(processedCount)/\(totalCount) (\(Int(progress))%)"
+                    }
+                    await Task.yield()
+                }
+            }
 
             let elapsed = Date().timeIntervalSince(startTime)
             let columnCount = headerParts.count

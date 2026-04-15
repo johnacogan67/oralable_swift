@@ -65,6 +65,10 @@ class DashboardViewModel: ObservableObject {
     @Published var signalQuality: Int = 0
     @Published var sessionDuration: String = "00:00"
 
+    // BLE Link Quality (RSSI-based)
+    @Published var bleRSSI: Int? = nil
+    @Published var bleLinkWarning: String? = nil
+
     // MAM States (Movement, Adhesion, Monitoring)
     @Published var isCharging: Bool = false
     @Published var isMoving: Bool = false
@@ -367,6 +371,23 @@ class DashboardViewModel: ObservableObject {
                     self.connectedDeviceType = nil
                 }
 
+                // Update RSSI + warning (prefer Oralable if present)
+                let oralableRSSI = devices.first(where: { $0.type == .oralable })?.signalStrength
+                let anyRSSI = devices.first?.signalStrength
+                let newRSSI = oralableRSSI ?? anyRSSI
+                self.bleRSSI = newRSSI
+
+                // Hysteresis to avoid warning flicker
+                if let rssi = newRSSI {
+                    if rssi <= -85 {
+                        self.bleLinkWarning = "Weak Bluetooth signal (\(rssi) dBm). Move phone closer to Oralable to avoid disconnects and missed events."
+                    } else if rssi >= -80 {
+                        self.bleLinkWarning = nil
+                    }
+                } else {
+                    self.bleLinkWarning = nil
+                }
+
                 Logger.shared.debug("[DashboardViewModel] connectedDevices changed: \(devices.count) devices, isConnected: \(self.isConnected)")
                 if wasConnected && !self.isConnected {
                     self.resetMetrics()
@@ -530,6 +551,10 @@ class DashboardViewModel: ObservableObject {
                 for reading in readings {
                     switch reading.sensorType {
                     case .ppgInfrared:
+                        // Update PI buffer first so the PI calculation includes the current sample.
+                        // This helps `Positioned` become eligible earlier (especially right after connect).
+                        self.irBufferForPI.append(reading.value)
+
                         // Route IR data to automatic recording session
                         session.processSensorData(
                             irValue: Int(reading.value),
@@ -541,11 +566,11 @@ class DashboardViewModel: ObservableObject {
                             accelX: Int(self.accelXRaw),
                             accelY: Int(self.accelYRaw),
                             accelZ: Int(self.accelZRaw),
-                            batteryMV: self.batteryLevel > 0 ? Int(self.batteryLevel * 10) : nil
+                            // `batteryLevel` is currently a percentage (0–100), not millivolts.
+                            // Passing an arbitrary scaled value here pollutes event logs/exports.
+                            batteryMV: nil,
+                            temporalisState: self.deviceManagerAdapter.latestTemporalisProbabilities?.dominantState
                         )
-
-                        // Update PI buffer for calculation (CircularBuffer auto-overwrites oldest)
-                        self.irBufferForPI.append(reading.value)
 
                     default:
                         break

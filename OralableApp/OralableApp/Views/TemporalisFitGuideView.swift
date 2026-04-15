@@ -160,6 +160,43 @@ struct TemporalisFitGuideView: View {
             } message: {
                 Text("Enter Research Override? This will bypass voltage safety gates.")
             }
+            .navigationDestination(isPresented: $showCalibrationWizard) {
+                CalibrationWizardView(
+                    lockedBaselineVoltage: lockedBaselineVoltage,
+                    isManualPlacementOverride: manualOverrideForCurrentCalibration,
+                    onSuccessfulCalibration: {
+                        calibrationEndedSuccessfully = true
+                    },
+                    onFinished: {
+                        showCalibrationWizard = false
+                        if calibrationEndedSuccessfully {
+                            calibrationEndedSuccessfully = false
+                            showCalibrationRetryHint = false
+                            showSetupSuccess = true
+                        } else {
+                            // Keep user in fit guide so they can retry calibration immediately.
+                            showCalibrationRetryHint = true
+                            camera.start()
+                        }
+                    }
+                )
+                .environmentObject(designSystem)
+                .environmentObject(sessionHistoryStore)
+                .environmentObject(deviceManager)
+                .environmentObject(sensorDataProcessor)
+                .onAppear {
+                    // Avoid running camera session under calibration UI.
+                    camera.stop()
+                }
+            }
+            .navigationDestination(isPresented: $showSetupSuccess) {
+                SetupSuccessView {
+                    showSetupSuccess = false
+                    onCalibrationSucceeded?()
+                    onExit()
+                }
+                .environmentObject(designSystem)
+            }
         }
         .onAppear {
             requestCameraIfNeeded()
@@ -171,40 +208,6 @@ struct TemporalisFitGuideView: View {
         }
         .onReceive(deviceManagerAdapter.$ppgIRValue) { ir in
             syncPlacement(from: ir)
-        }
-        .fullScreenCover(isPresented: $showCalibrationWizard) {
-            CalibrationWizardView(
-                lockedBaselineVoltage: lockedBaselineVoltage,
-                isManualPlacementOverride: manualOverrideForCurrentCalibration,
-                onSuccessfulCalibration: {
-                    calibrationEndedSuccessfully = true
-                },
-                onFinished: {
-                    showCalibrationWizard = false
-                    camera.stop()
-                    if calibrationEndedSuccessfully {
-                        calibrationEndedSuccessfully = false
-                        showCalibrationRetryHint = false
-                        showSetupSuccess = true
-                    } else {
-                        // Keep user in fit guide so they can retry calibration immediately.
-                        showCalibrationRetryHint = true
-                        camera.start()
-                    }
-                }
-            )
-            .environmentObject(designSystem)
-            .environmentObject(sessionHistoryStore)
-            .environmentObject(deviceManager)
-            .environmentObject(sensorDataProcessor)
-        }
-        .fullScreenCover(isPresented: $showSetupSuccess) {
-            SetupSuccessView {
-                showSetupSuccess = false
-                onCalibrationSucceeded?()
-                onExit()
-            }
-            .environmentObject(designSystem)
         }
     }
 
@@ -360,20 +363,23 @@ struct TemporalisFitGuideView: View {
     }
 
     private var canStartCalibration: Bool {
-        if canAdvanceToCalibration { return true }
-        if isTooHighPlacement, rev10PrimaryConnected { return true }
+        // Calibration should be available whenever the primary REV10 is connected.
+        // Placement/voltage is a UX guide, but firmware scaling can vary (e.g. low-range raw counts),
+        // and we shouldn't block onboarding on a heuristic fit gate.
+        if rev10PrimaryConnected { return true }
+        // Research override can proceed even if we can't positively identify the primary slot.
         if isResearchOverrideActive, deviceManagerAdapter.isConnected { return true }
         return false
     }
 
     private var startCalibrationButtonTitle: String {
-        if isTooHighPlacement && !canAdvanceToCalibration {
-            return "Next — start 90-second calibration"
-        }
         if isResearchOverrideActive && !canAdvanceToCalibration {
             return "Start 90-second calibration (research override)"
         }
-        return "Signal locked — start 90-second calibration"
+        if canAdvanceToCalibration {
+            return "Signal locked — start 90-second calibration"
+        }
+        return "Next — start 90-second calibration"
     }
 
     /// Elevated IR (above good window) or confirmed leak UI — user may bypass to quick calibration lock.

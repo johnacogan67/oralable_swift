@@ -16,6 +16,15 @@ class SessionDataLoader {
     // MARK: - Singleton
     static let shared = SessionDataLoader()
     private init() {}
+
+    // MARK: - In-memory cache
+    private struct CacheKey: Hashable {
+        let path: String
+        let fileStamp: TimeInterval
+        let metric: String
+    }
+    private var exportCache: [CacheKey: [HistoricalDataPoint]] = [:]
+    private let exportCacheLock = NSLock()
     
     // MARK: - Constants
     
@@ -40,14 +49,11 @@ class SessionDataLoader {
     func loadFromMostRecentExport(metricType: String) -> [HistoricalDataPoint] {
         // Select file type based on metric
         let isEventMetric = metricType.lowercased().contains("event")
-        Logger.shared.info("[SessionDataLoader] Loading for metric: \(metricType) (isEventMetric: \(isEventMetric))")
 
         guard let exportFile = getMostRecentExportFile(forEvents: isEventMetric) else {
-            Logger.shared.info("[SessionDataLoader] No export files found for metric: \(metricType)")
             return []
         }
 
-        Logger.shared.info("[SessionDataLoader] Loading from export: \(exportFile.url.lastPathComponent) for metric: \(metricType)")
         return loadFromExportFile(at: exportFile.url, metricType: metricType)
     }
     
@@ -57,10 +63,21 @@ class SessionDataLoader {
     ///   - metricType: Filter by metric type
     /// - Returns: Array of HistoricalDataPoint objects
     func loadFromExportFile(at url: URL, metricType: String) -> [HistoricalDataPoint] {
+        let stamp = (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate?.timeIntervalSince1970) ?? 0
+        let key = CacheKey(path: url.path, fileStamp: stamp, metric: metricType)
+        exportCacheLock.lock()
+        if let cached = exportCache[key] {
+            exportCacheLock.unlock()
+            return cached
+        }
+        exportCacheLock.unlock()
+
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             let readings = parseShareViewExport(content: content, metricType: metricType)
-            Logger.shared.info("[SessionDataLoader] ✅ Loaded \(readings.count) data points for \(metricType)")
+            exportCacheLock.lock()
+            exportCache[key] = readings
+            exportCacheLock.unlock()
             return readings
         } catch {
             Logger.shared.error("[SessionDataLoader] ❌ Failed to load export file: \(error)")
@@ -76,14 +93,27 @@ class SessionDataLoader {
 
         // Select file prefix based on type
         let filePrefix = forEvents ? "oralable_events_" : "oralable_data_"
-        Logger.shared.info("[SessionDataLoader] Looking for \(forEvents ? "events" : "data") file with prefix: \(filePrefix)")
 
         do {
-            let files = try FileManager.default.contentsOfDirectory(
+            var files: [URL] = []
+            files.append(contentsOf: try FileManager.default.contentsOfDirectory(
                 at: documentsPath,
                 includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
                 options: .skipsHiddenFiles
-            )
+            ))
+
+            // Also look in the automatic recorder’s events folder:
+            // Documents/OralableEvents/oralable_events_YYYY-MM-DD.csv
+            if forEvents {
+                let eventsDir = documentsPath.appendingPathComponent("OralableEvents", isDirectory: true)
+                if FileManager.default.fileExists(atPath: eventsDir.path) {
+                    files.append(contentsOf: try FileManager.default.contentsOfDirectory(
+                        at: eventsDir,
+                        includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
+                        options: .skipsHiddenFiles
+                    ))
+                }
+            }
 
             // Find CSV files that match the export pattern
             let csvFiles = files.filter { url in
@@ -101,14 +131,11 @@ class SessionDataLoader {
             }
 
             if fileInfos.isEmpty {
-                Logger.shared.warning("[SessionDataLoader] No files found with prefix: \(filePrefix)")
+                // no-op (silent)
             }
 
             // Return most recent
             let mostRecent = fileInfos.sorted { $0.creationDate > $1.creationDate }.first
-            if let file = mostRecent {
-                Logger.shared.info("[SessionDataLoader] Selected file: \(file.url.lastPathComponent)")
-            }
             return mostRecent
 
         } catch {

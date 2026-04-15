@@ -47,8 +47,9 @@ final class AppDependencies: ObservableObject {
     let appleHealthManager: AppleHealthManager
     let memoryFlushStatus: MemoryFlushStatus
 
-    // Cached view models to preserve state across views
-    private var _cachedDashboardViewModel: DashboardViewModel?
+    /// Single, long-lived dashboard view model.
+    /// Own it here (not per-view) so monitoring/subscriptions don't churn with navigation.
+    let dashboardViewModel: DashboardViewModel
 
     private var clinicalMetricsCancellables = Set<AnyCancellable>()
 
@@ -82,6 +83,12 @@ final class AppDependencies: ObservableObject {
         self.designSystem = designSystem
         self.appleHealthManager = appleHealthManager
         self.memoryFlushStatus = MemoryFlushStatus.shared
+        self.dashboardViewModel = DashboardViewModel(
+            deviceManagerAdapter: self.deviceManagerAdapter,
+            deviceManager: self.deviceManager,
+            appStateManager: self.appStateManager
+        )
+        self.dashboardViewModel.startMonitoring()
 
         Publishers.CombineLatest3(
             deviceManager.$primaryDevice,
@@ -109,28 +116,15 @@ final class AppDependencies: ObservableObject {
 
     // MARK: - Factory Methods
 
-    /// Returns cached DashboardViewModel to preserve recorded events across views
+    /// Returns the single DashboardViewModel instance.
     func makeDashboardViewModel() -> DashboardViewModel {
-        if let cached = _cachedDashboardViewModel {
-            Logger.shared.debug("[AppDependencies] Returning cached DashboardViewModel")
-            return cached
-        }
-
-        Logger.shared.info("[AppDependencies] Creating new DashboardViewModel")
-        let vm = DashboardViewModel(
-            deviceManagerAdapter: deviceManagerAdapter,
-            deviceManager: deviceManager,
-            appStateManager: appStateManager
-        )
-        _cachedDashboardViewModel = vm
-        return vm
+        dashboardViewModel
     }
 
     /// Reset cached DashboardViewModel (call on logout or when fresh state needed)
     func resetDashboardViewModel() {
         Logger.shared.info("[AppDependencies] Resetting cached DashboardViewModel")
-        _cachedDashboardViewModel?.stopMonitoring()
-        _cachedDashboardViewModel = nil
+        dashboardViewModel.stopMonitoring()
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
@@ -146,6 +140,7 @@ struct DependenciesModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environmentObject(dependencies)
+            .environmentObject(dependencies.dashboardViewModel)
             .environmentObject(dependencies.authenticationManager)
             .environmentObject(dependencies.recordingSessionManager)
             .environmentObject(dependencies.historicalDataManager)

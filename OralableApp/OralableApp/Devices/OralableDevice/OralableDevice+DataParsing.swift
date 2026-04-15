@@ -213,6 +213,8 @@ extension OralableDevice {
 
     /// Parse temperature data using OralableCore.BLEDataParser
     func parseTemperature(_ data: Data) {
+        let notificationTime = Date()
+
         // Use OralableCore.BLEDataParser for parsing
         guard let result = OralableCore.BLEDataParser.parseTemperaturePacket(data) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse temperature packet (\(data.count) bytes)")
@@ -228,8 +230,9 @@ extension OralableDevice {
         let reading = SensorReading(
             sensorType: .temperature,
             value: tempCelsius,
-            timestamp: Date(),
-            deviceId: peripheral?.identifier.uuidString
+            timestamp: notificationTime,
+            deviceId: peripheral?.identifier.uuidString,
+            frameNumber: result.frameCounter
         )
 
         latestReadings[.temperature] = reading
@@ -269,14 +272,31 @@ extension OralableDevice {
             // Fallback: handle endianness / relaxed voltage validation.
             // Firmware spec says battery is 4-byte millivolts; if strict validation fails, decode raw and choose plausible value.
             let bytes = [UInt8](data.prefix(4))
+            if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
+                // Some firmwares occasionally emit an all-zero placeholder; ignore silently.
+                return
+            }
+
+            // Observed in logs: 4-byte payloads like [0B 00 00 00] and [16 00 00 00].
+            // Treat these as a padded battery percentage when the upper 3 bytes are zero.
+            if bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
+                let pct = Int(bytes[0])
+                if (0...100).contains(pct) {
+                    percentage = pct
+                    // This is a valid interpretation; don't continue into millivolt heuristics.
+                } else {
+                    return
+                }
+            }
+
             let rawLE = UInt32(bytes[0]) | (UInt32(bytes[1]) << 8) | (UInt32(bytes[2]) << 16) | (UInt32(bytes[3]) << 24)
             let rawBE = UInt32(bytes[3]) | (UInt32(bytes[2]) << 8) | (UInt32(bytes[1]) << 16) | (UInt32(bytes[0]) << 24)
 
             let candidates = [Int(rawLE), Int(rawBE)]
-            if let mv = candidates.first(where: { $0 >= 2000 && $0 <= 5000 }) {
+            if percentage == nil, let mv = candidates.first(where: { $0 >= 2000 && $0 <= 5000 }) {
                 // Convert to percentage (simple linear mapping): 3.0V = 0%, 4.2V = 100%
                 percentage = Int(min(100, max(0, (mv - 3000) * 100 / 1200)))
-            } else {
+            } else if percentage == nil {
                 let now = Date()
                 if lastBatteryParseFailureLogAt == nil || now.timeIntervalSince(lastBatteryParseFailureLogAt!) > 30 {
                     let hex = bytes.map { String(format: "%02X", $0) }.joined(separator: " ")

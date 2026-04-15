@@ -69,30 +69,15 @@ struct MainTabView: View {
 
 /// Container that switches between standard and simplified dashboard
 private struct DashboardContainer: View {
-    @EnvironmentObject var dependencies: AppDependencies
+    @EnvironmentObject var dashboardViewModel: DashboardViewModel
     let useSimplified: Bool
-
-    @State private var viewModel: DashboardViewModel?
 
     var body: some View {
         Group {
-            if let viewModel = viewModel {
-                if useSimplified {
-                    SimplifiedDashboardView(viewModel: viewModel)
-                } else {
-                    HomeView()
-                }
+            if useSimplified {
+                SimplifiedDashboardView(viewModel: dashboardViewModel)
             } else {
-                ProgressView("Loading...")
-                    .task {
-                        if viewModel == nil {
-                            let vm = dependencies.makeDashboardViewModel()
-                            await MainActor.run {
-                                self.viewModel = vm
-                                vm.startMonitoring()
-                            }
-                        }
-                    }
+                HomeView()
             }
         }
     }

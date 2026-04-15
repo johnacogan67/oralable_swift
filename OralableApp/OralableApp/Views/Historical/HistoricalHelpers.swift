@@ -51,50 +51,35 @@ extension HistoricalView {
 
     // MARK: - Data Loading
 
-    func loadExportData() {
+    @MainActor
+    func loadExportDataIfNeeded() async {
+        let export = SessionDataLoader.shared.getMostRecentExportFile()
+        let key = "\(export?.url.path ?? "none")|\(export?.creationDate.timeIntervalSince1970 ?? 0)|\(selectedTab.metricType)"
+
+        // Avoid re-loading the same file/metric repeatedly during SwiftUI re-renders.
+        if lastLoadKey == key {
+            loadedExportFile = export
+            return
+        }
+        lastLoadKey = key
+        loadedExportFile = export
+
+        guard export != nil else {
+            dataPoints = []
+            return
+        }
+
         isLoading = true
-        dataPoints = []
+        let metric = selectedTab.metricType
 
-        // DEBUG: List files
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        Logger.shared.info("[HistoricalView] Documents path: \(documentsPath.path)")
+        let points: [HistoricalDataPoint] = await Task.detached(priority: .userInitiated) {
+            SessionDataLoader.shared.loadFromMostRecentExport(metricType: metric)
+        }.value
 
-        do {
-            let files = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
-            Logger.shared.info("[HistoricalView] Found \(files.count) files in Documents")
-
-            let csvFiles = files.filter {
-                $0.pathExtension == "csv" && $0.lastPathComponent.hasPrefix("oralable_data_")
-            }
-            Logger.shared.info("[HistoricalView] Matching CSV files: \(csvFiles.count)")
-        } catch {
-            Logger.shared.error("[HistoricalView] Failed to list documents: \(error)")
+        dataPoints = points
+        if let firstPoint = points.first {
+            selectedDate = firstPoint.timestamp
         }
-
-        // Get export file
-        loadedExportFile = SessionDataLoader.shared.getMostRecentExportFile()
-        Logger.shared.info("[HistoricalView] Export file found: \(loadedExportFile?.url.lastPathComponent ?? "NONE")")
-
-        if let _ = loadedExportFile {
-            Logger.shared.info("[HistoricalView] Calling loadFromMostRecentExport for metric: \(selectedTab.metricType)")
-            let points = SessionDataLoader.shared.loadFromMostRecentExport(metricType: selectedTab.metricType)
-            Logger.shared.info("[HistoricalView] Loaded \(points.count) data points")
-
-            dataPoints = points
-
-            // Set selected date to the date of the data
-            if let firstPoint = points.first {
-                selectedDate = firstPoint.timestamp
-            }
-
-            // Update selected tab if current selection has no data
-            if !availableTabs.contains(selectedTab), let firstTab = availableTabs.first {
-                selectedTab = firstTab
-            }
-        } else {
-            Logger.shared.warning("[HistoricalView] No export files found")
-        }
-
         isLoading = false
     }
 

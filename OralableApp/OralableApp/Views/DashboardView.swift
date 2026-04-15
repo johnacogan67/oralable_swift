@@ -45,6 +45,7 @@ struct DashboardView: View {
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var appStateManager: AppStateManager
+    @EnvironmentObject var dashboardViewModel: DashboardViewModel
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     /// When true, Temporalis TFI + HOI chart are omitted (shown in the Health summary strip instead).
@@ -53,31 +54,12 @@ struct DashboardView: View {
     /// When true, inserts Apple Health–style summary cards (TFI, SASHB) at the top of this scroll.
     var showAppleHealthSummary: Bool = false
 
-    @State private var viewModel: DashboardViewModel?
     @State private var showingProfile = false
     @State private var showingDeviceDiscovery = false
     @State private var dismissedErrorDescription: String?
 
     var body: some View {
-        Group {
-            if let viewModel = viewModel {
-                dashboardContent(viewModel: viewModel)
-            } else {
-                ProgressView("Loading...")
-                    .task {
-                        if viewModel == nil {
-                            let vm = dependencies.makeDashboardViewModel()
-                            await MainActor.run {
-                                self.viewModel = vm
-                                vm.startMonitoring()
-                            }
-                        }
-                    }
-            }
-        }
-        .onDisappear {
-            viewModel?.stopMonitoring()
-        }
+        dashboardContent(viewModel: dashboardViewModel)
         .onChange(of: deviceManager.lastError?.errorDescription) { newErrorDescription in
             // Reset dismissed state when a new different error arrives
             if newErrorDescription != dismissedErrorDescription {
@@ -137,6 +119,22 @@ struct DashboardView: View {
                         .padding(.horizontal, designSystem.spacing.buttonPadding)
                         .padding(.vertical, designSystem.spacing.sm)
                         .background(designSystem.colors.warning.opacity(0.1))
+                        .cornerRadius(designSystem.cornerRadius.button)
+                    }
+
+                    // BLE Link Quality Banner (RSSI-based)
+                    if let warning = viewModel.bleLinkWarning {
+                        HStack(alignment: .top, spacing: designSystem.spacing.sm) {
+                            Image(systemName: "wifi.exclamationmark")
+                                .foregroundColor(designSystem.colors.warning)
+                            Text(warning)
+                                .font(designSystem.typography.caption)
+                                .foregroundColor(designSystem.colors.textPrimary)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, designSystem.spacing.buttonPadding)
+                        .padding(.vertical, designSystem.spacing.sm)
+                        .background(designSystem.colors.warning.opacity(0.12))
                         .cornerRadius(designSystem.cornerRadius.button)
                     }
 

@@ -102,11 +102,12 @@ struct FirstLaunchOnboardingView: View {
             }
             pairingJustCompletedSession = false
 
-            // Manual pairing path: device may have reached `.ready` before `hasPairedOralablePrimary` flipped.
+            // Check if we should advance to the fit guide now that the sheet is safely dismissed
             if firstLaunchManager.hasPairedOralablePrimary,
                !firstLaunchManager.hasCompletedFirstFit,
                !showFitGuide,
                case .ready = deviceManager.primaryDeviceReadiness {
+
                 setupProgressIndex1IfNeeded()
                 showFitGuide = true
             }

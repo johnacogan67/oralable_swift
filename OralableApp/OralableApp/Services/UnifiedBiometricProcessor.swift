@@ -389,16 +389,24 @@ actor UnifiedBiometricProcessor {
     ) -> (motionLevel: Double, activity: ActivityType) {
         let (motionLevel, accelMagnitude, isMoving) = calculateMotion(x: accelX, y: accelY, z: accelZ)
 
+        // Motion compensation can legitimately produce negative-valued signals (it's effectively a residual).
+        // That is fine for AC/bandpassed features, but NOT for DC / baseline tracking.
+        // Keep raw channels for DC / occlusion and only use compensated channels where helpful.
         let compensatedIR = motionCompensator.filter(signal: ir, noiseReference: motionLevel)
         let compensatedRed = motionCompensator.filter(signal: red, noiseReference: motionLevel)
         let compensatedGreen = motionCompensator.filter(signal: green, noiseReference: motionLevel)
 
-        let activity = activityClassifier.classify(ir: compensatedIR, accMagnitude: motionLevel + 1.0)
+        // Activity classification should be driven by a stable, monotonic optical magnitude.
+        // Use the raw IR signal (not the compensated residual) to avoid negative swings impacting thresholds.
+        let activity = activityClassifier.classify(ir: ir, accMagnitude: motionLevel + 1.0)
 
         updateBuffers(
-            ir: compensatedIR,
-            red: compensatedRed,
-            green: compensatedGreen,
+            irRaw: ir,
+            redRaw: red,
+            greenRaw: green,
+            irForHR: compensatedIR,
+            redForHR: compensatedRed,
+            greenForHR: compensatedGreen,
             motion: motionLevel,
             accelMagnitude: accelMagnitude,
             accelX: accelX,
@@ -566,20 +574,35 @@ actor UnifiedBiometricProcessor {
 
     // MARK: - Private: Buffer Management
 
-    private func updateBuffers(ir: Double, red: Double, green: Double, motion: Double, accelMagnitude: Double, accelX: Double, accelY: Double, accelZ: Double) {
-        let irBP = irFilter.processSample(ir)
-        let greenBP = greenFilter.processSample(green)
-        _ = redFilter.processSample(red)
+    private func updateBuffers(
+        irRaw: Double,
+        redRaw: Double,
+        greenRaw: Double,
+        irForHR: Double,
+        redForHR: Double,
+        greenForHR: Double,
+        motion: Double,
+        accelMagnitude: Double,
+        accelX: Double,
+        accelY: Double,
+        accelZ: Double
+    ) {
+        let irBP = irFilter.processSample(irForHR)
+        let greenBP = greenFilter.processSample(greenForHR)
+        _ = redFilter.processSample(redForHR)
 
-        let irDCFiltered = irdcProcessor.processSample(ir).dcValue
+        // DC / occlusion tracking MUST use the raw IR channel (non-negative, physical units).
+        // Feeding motion-compensated residuals here causes negative "IR_DC" and breaks normalization/gating.
+        let irDCFiltered = irdcProcessor.processSample(irRaw).dcValue
 
         irBuffer.append(irBP)
-        redBuffer.append(red)
+        // Keep raw (non-negative) channels for SpO2 / DC-based metrics.
+        redBuffer.append(redRaw)
         greenBuffer.append(greenBP)
         accelMagnitudeBuffer.append(motion)
 
-        let greenAC = greenTemporalisBandpass.processSample(green)
-        let redAC = redTemporalisBandpass.processSample(red)
+        let greenAC = greenTemporalisBandpass.processSample(greenRaw)
+        let redAC = redTemporalisBandpass.processSample(redRaw)
         lastIRDCForTFI = irDCFiltered
         lastGreenACForTFI = greenAC
         let scale = 16384.0
