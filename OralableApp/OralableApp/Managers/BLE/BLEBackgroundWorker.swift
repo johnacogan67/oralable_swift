@@ -183,6 +183,11 @@ final class BLEBackgroundWorker: ObservableObject {
     /// Timeout tasks for connection attempts (to cancel on success)
     private var connectionTimeoutTasks: [UUID: Task<Void, Never>] = [:]
 
+    #if DEBUG
+    /// Throttle noisy link-quality debug lines (per peripheral).
+    private var linkQualityLastDebugLogAt: [UUID: Date] = [:]
+    #endif
+
     // MARK: - Async Streams
 
     /// Async stream for reconnection events
@@ -575,6 +580,25 @@ final class BLEBackgroundWorker: ObservableObject {
     func updateRSSI(for peripheralId: UUID, rssi: Int) {
         rssiValues[peripheralId] = rssi
         eventSubject.send(.rssiUpdated(peripheralId: peripheralId, rssi: rssi))
+
+        #if DEBUG
+        let now = Date()
+        let lastLog = linkQualityLastDebugLogAt[peripheralId] ?? .distantPast
+        guard now.timeIntervalSince(lastLog) >= 30 else { return }
+        linkQualityLastDebugLogAt[peripheralId] = now
+
+        let shortId = String(peripheralId.uuidString.prefix(8))
+        let health = connectionHealth[peripheralId]?.rawValue ?? "n/a"
+        let dataAgeMs: String
+        if let last = lastDataReceived[peripheralId] {
+            dataAgeMs = String(format: "%.0f", now.timeIntervalSince(last) * 1000)
+        } else {
+            dataAgeMs = "n/a"
+        }
+        Logger.shared.debug(
+            "[BLELinkQuality] id=\(shortId)… rssi=\(rssi) dBm notifyAgeMs=\(dataAgeMs) health=\(health)"
+        )
+        #endif
     }
 
     // MARK: - Connection Health Monitoring

@@ -281,5 +281,6 @@ extension OralableDevice: CBPeripheralDelegate {
         let value = RSSI.intValue
         deviceInfo.signalStrength = value
         Logger.shared.debug("[OralableDevice] 📶 RSSI updated: \(value) dBm")
+        linkMetricsHandler?(peripheral.identifier, value)
     }
 }

@@ -141,6 +141,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var lastTemperatureDebugLogAt: Date?
     var lastTemperatureDebugValue: Double?
 
+    /// Called after each successful `readRSSI` (e.g. for link-quality summaries in `BLEBackgroundWorker`).
+    var linkMetricsHandler: ((UUID, Int) -> Void)?
+
     // MARK: - Sample Rate Verification
 
     var sampleRateStats = SampleRateStats()

@@ -113,14 +113,26 @@ extension DeviceManager {
 
             switch deviceType {
             case .oralable:
-                device = OralableDevice(peripheral: peripheral)
+                let oralable = OralableDevice(peripheral: peripheral)
+                oralable.linkMetricsHandler = { [weak self] peripheralId, rssi in
+                    Task { @MainActor in
+                        self?.backgroundWorker.updateRSSI(for: peripheralId, rssi: rssi)
+                    }
+                }
+                device = oralable
             case .anr:
                 device = ANRMuscleSenseDevice(peripheral: peripheral, name: name)
             case .demo:
                 #if DEBUG
                 device = MockBLEDevice(type: .demo)
                 #else
-                device = OralableDevice(peripheral: peripheral)
+                let oralableDemo = OralableDevice(peripheral: peripheral)
+                oralableDemo.linkMetricsHandler = { [weak self] peripheralId, rssi in
+                    Task { @MainActor in
+                        self?.backgroundWorker.updateRSSI(for: peripheralId, rssi: rssi)
+                    }
+                }
+                device = oralableDemo
                 #endif
             }
 
