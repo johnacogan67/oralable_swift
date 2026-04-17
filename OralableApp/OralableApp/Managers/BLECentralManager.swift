@@ -243,7 +243,12 @@ final class BLECentralManager: NSObject, BLEService {
             case .peripheralDisconnected:
                 return .unexpectedDisconnection(peripheralId: peripheralId, reason: cbError.localizedDescription)
             case .connectionTimeout:
-                return .connectionTimeout(peripheralId: peripheralId, timeoutSeconds: 30)
+                // CoreBluetooth does not expose the supervision/ATT timeout in seconds; avoid inventing "30".
+                if isConnection {
+                    return .connectionFailed(peripheralId: peripheralId, reason: cbError.localizedDescription)
+                } else {
+                    return .unexpectedDisconnection(peripheralId: peripheralId, reason: cbError.localizedDescription)
+                }
             case .notConnected:
                 return .peripheralNotConnected(peripheralId: peripheralId)
             case .invalidHandle:
@@ -427,12 +432,13 @@ extension BLECentralManager: CBCentralManagerDelegate {
         connectedPeripherals.remove(peripheral.identifier)
 
         if let error = error {
-            // Unexpected disconnection - convert to BLEError
+            // Unexpected disconnection - convert for logging only. Do not also emit `.error`:
+            // `deviceDisconnected` carries the underlying `Error`, and a second `.error` duplicates
+            // DeviceManager / BLEBackgroundWorker handling (and previously mis-mapped timeouts).
             let bleError = convertToBLEError(error, for: peripheral, isConnection: false)
             Task { @MainActor in
                 self.logBLEError(bleError, context: "didDisconnect")
             }
-            eventSubject.send(.error(bleError))
         } else {
             // Intentional disconnection
             Task { @MainActor in

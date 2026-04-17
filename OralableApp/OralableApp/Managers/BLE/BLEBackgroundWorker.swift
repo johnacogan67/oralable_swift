@@ -410,6 +410,9 @@ final class BLEBackgroundWorker: ObservableObject {
             // Attempt connection with timeout
             self.bleService?.connect(to: peripheral)
 
+            // Replace any prior watchdog for this peripheral (defensive — avoids orphaned timers).
+            self.connectionTimeoutTasks[peripheralId]?.cancel()
+
             // Start timeout task
             let timeoutTask = Task {
                 do {
@@ -519,12 +522,18 @@ final class BLEBackgroundWorker: ObservableObject {
     }
 
     /// Handle disconnection (may trigger reconnection)
-    func handleDisconnection(for peripheralId: UUID, peripheral: CBPeripheral, wasUnexpected: Bool) {
+    func handleDisconnection(for peripheralId: UUID, peripheral: CBPeripheral, wasUnexpected: Bool, error: Error? = nil) {
         connectionHealth[peripheralId] = .disconnected
         lastDataReceived.removeValue(forKey: peripheralId)
 
         if wasUnexpected && config.autoReconnectEnabled {
-            scheduleReconnection(for: peripheralId, peripheral: peripheral, immediate: true)
+            // Supervision / link-loss timeouts recover better with a short radio backoff than instant reconnect storms.
+            let isLinkSupervisionTimeout = (error as? CBError)?.code == .connectionTimeout
+            scheduleReconnection(
+                for: peripheralId,
+                peripheral: peripheral,
+                immediate: !isLinkSupervisionTimeout
+            )
         } else {
             reconnectionStates[peripheralId]?.reset()
             activeReconnections.remove(peripheralId)
@@ -650,7 +659,12 @@ final class BLEBackgroundWorker: ObservableObject {
 
         case .deviceDisconnected(let peripheral, let error):
             let wasUnexpected = error != nil
-            handleDisconnection(for: peripheral.identifier, peripheral: peripheral, wasUnexpected: wasUnexpected)
+            handleDisconnection(
+                for: peripheral.identifier,
+                peripheral: peripheral,
+                wasUnexpected: wasUnexpected,
+                error: error
+            )
 
         case .characteristicUpdated(let peripheral, _, _):
             recordDataReceived(from: peripheral.identifier)
