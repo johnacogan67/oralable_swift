@@ -438,6 +438,16 @@ extension BLECentralManager: CBCentralManagerDelegate {
             let bleError = convertToBLEError(error, for: peripheral, isConnection: false)
             Task { @MainActor in
                 self.logBLEError(bleError, context: "didDisconnect")
+                if let cb = error as? CBError {
+                    Logger.shared.info(
+                        "[BLECentralManager] [didDisconnect] CBError rawValue=\(cb.code.rawValue) case=\(cb.code)"
+                    )
+                } else {
+                    let ns = error as NSError
+                    Logger.shared.info(
+                        "[BLECentralManager] [didDisconnect] NSError domain=\(ns.domain) code=\(ns.code)"
+                    )
+                }
             }
         } else {
             // Intentional disconnection

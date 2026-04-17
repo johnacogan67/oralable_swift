@@ -156,7 +156,14 @@ private struct ActivityView: UIViewControllerRepresentable {
         let name = "oralable_clinical_handshake_\(item.code).json"
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         try? item.data.write(to: tmp, options: .atomic)
-        return UIActivityViewController(activityItems: [tmp], applicationActivities: nil)
+        let (prepared, tempURLs) = ShareActivityItems.preparingForShare([tmp])
+        let vc = UIActivityViewController(activityItems: prepared, applicationActivities: nil)
+        vc.completionWithItemsHandler = { _, _, _, _ in
+            for url in tempURLs {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        return vc
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

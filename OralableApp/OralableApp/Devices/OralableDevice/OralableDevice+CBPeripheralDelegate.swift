@@ -113,6 +113,21 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareVersionCharacteristic = characteristic
                 Logger.shared.info("[OralableDevice] ✅ Firmware version characteristic found (3A0FF006)")
 
+            case firmwareLogCharUUID:
+                firmwareLogCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] 🪵 Firmware log characteristic found (3A0FF00A) - enabling notify")
+                peripheral.setNotifyValue(true, for: characteristic)
+
+            case firmwareConfigCharUUID:
+                firmwareConfigCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ⚙️ Firmware config characteristic found (3A0FF00B)")
+
+            case firmwareConfigStateCharUUID:
+                firmwareConfigStateCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ⚙️ Firmware config state characteristic found (3A0FF00C) - enabling notify + read")
+                peripheral.setNotifyValue(true, for: characteristic)
+                peripheral.readValue(for: characteristic)
+
             default:
                 Logger.shared.debug("[OralableDevice] Other characteristic: \(characteristic.uuid.uuidString)")
             }
@@ -266,6 +281,15 @@ extension OralableDevice: CBPeripheralDelegate {
         case tgmBatteryCharUUID:
             // TGM Battery (4 bytes, millivolts)
             parseBatteryData(data)
+
+        case firmwareLogCharUUID:
+            let line = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .newlines) ?? "<non-utf8 \(data.count)b>"
+            Logger.shared.info("[FW][\(peripheral.identifier.uuidString.prefix(8))] \(line)")
+
+        case firmwareConfigStateCharUUID:
+            let bytes = [UInt8](data)
+            Logger.shared.info("[FWCFG][\(peripheral.identifier.uuidString.prefix(8))] state bytes=\(bytes)")
 
         default:
             Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on unknown characteristic: \(characteristic.uuid.uuidString)")

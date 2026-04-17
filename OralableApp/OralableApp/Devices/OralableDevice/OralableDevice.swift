@@ -47,6 +47,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     let commandCharUUID = CBUUID(string: "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")          // Temperature/Command
     let tgmBatteryCharUUID = CBUUID(string: "3A0FF004-98C4-46B2-94AF-1AEE0FD4C48E")       // Battery (millivolts)
     let firmwareVersionCharUUID = CBUUID(string: "3A0FF006-98C4-46B2-94AF-1AEE0FD4C48E")  // Firmware string (read)
+    let firmwareLogCharUUID = CBUUID(string: "3A0FF00A-98C4-46B2-94AF-1AEE0FD4C48E")      // Firmware logs (notify)
+    let firmwareConfigCharUUID = CBUUID(string: "3A0FF00B-98C4-46B2-94AF-1AEE0FD4C48E")   // Firmware config (write)
+    let firmwareConfigStateCharUUID = CBUUID(string: "3A0FF00C-98C4-46B2-94AF-1AEE0FD4C48E") // Firmware config state (read/notify)
 
     // Standard Battery Service
     let batteryServiceUUID = CBUUID(string: "180F")
@@ -92,6 +95,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var commandCharacteristic: CBCharacteristic?
     var tgmBatteryCharacteristic: CBCharacteristic?
     var firmwareVersionCharacteristic: CBCharacteristic?
+    var firmwareLogCharacteristic: CBCharacteristic?
+    var firmwareConfigCharacteristic: CBCharacteristic?
+    var firmwareConfigStateCharacteristic: CBCharacteristic?
     var batteryLevelCharacteristic: CBCharacteristic?
 
     // MARK: - Connection State Machine (Fix 3)
@@ -279,11 +285,66 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
                     accelerometerCharUUID,
                     commandCharUUID,
                     tgmBatteryCharUUID,
-                    firmwareVersionCharUUID
+                    firmwareVersionCharUUID,
+                    firmwareLogCharUUID,
+                    firmwareConfigCharUUID,
+                    firmwareConfigStateCharUUID
                 ],
                 for: service
             )
         }
+    }
+
+    // MARK: - Firmware configuration
+
+    enum FirmwareConfigOpcode: UInt8 {
+        case setLedPA = 0x01
+        case setStatsPeriodSeconds = 0x02
+        case requestConnParamUpdate = 0x03
+        case setBatteryIntervalSeconds = 0x04
+        case setTempIntervalSeconds = 0x05
+        case setStreamEnableMask = 0x06
+    }
+
+    enum FirmwareLedID: UInt8 {
+        case green = 0
+        case ir = 1
+        case red = 2
+    }
+
+    /// Best-effort config write. Firmware applies immediately at runtime.
+    func writeFirmwareConfig(_ data: Data) throws {
+        guard let peripheral, let characteristic = firmwareConfigCharacteristic else {
+            throw DeviceError.characteristicNotFound("Firmware config characteristic not found")
+        }
+        let canWriteWithResponse = characteristic.properties.contains(.write)
+        let type: CBCharacteristicWriteType = canWriteWithResponse ? .withResponse : .withoutResponse
+        peripheral.writeValue(data, for: characteristic, type: type)
+    }
+
+    func setFirmwareLedPA(_ led: FirmwareLedID, pa: UInt8) throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setLedPA.rawValue, led.rawValue, pa]))
+    }
+
+    func setFirmwareStreamStatsPeriodSeconds(_ seconds: UInt8) throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setStatsPeriodSeconds.rawValue, seconds]))
+    }
+
+    func requestFirmwareConnParamUpdate() throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.requestConnParamUpdate.rawValue]))
+    }
+
+    func setFirmwareBatteryIntervalSeconds(_ seconds: UInt8) throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setBatteryIntervalSeconds.rawValue, seconds]))
+    }
+
+    func setFirmwareTempIntervalSeconds(_ seconds: UInt8) throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setTempIntervalSeconds.rawValue, seconds]))
+    }
+
+    /// bit0=PPG, bit1=ACC
+    func setFirmwareStreamEnableMask(_ mask: UInt8) throws {
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setStreamEnableMask.rawValue, mask]))
     }
 
     /// Reads `3A0FF006` firmware string (must run after characteristic discovery).

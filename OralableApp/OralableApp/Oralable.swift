@@ -37,9 +37,14 @@ struct OralableApp: App {
         )
         let designSystem = DesignSystem()
 
-        // Configure automatic recording session to sync to CloudKit on disconnect
+        // Configure automatic recording session to sync to CloudKit on disconnect.
+        // Run at utility priority after a short delay, then wait until the central is not
+        // mid reconnect/GATT handshake — otherwise JSON compression + CloudKit overlaps
+        // the same window as discoverServices/notifications (see device logs: sync_ck + BLETrace).
         deviceManager.automaticRecordingSession?.onSyncRequested = {
-            Task {
+            Task(priority: .utility) {
+                try? await Task.sleep(for: .seconds(2))
+                await waitUntilBleIdleForCloudKitSync(deviceManager: deviceManager)
                 await sharedDataManager.uploadCurrentDataForSharing()
             }
         }
@@ -99,9 +104,10 @@ struct OralableApp: App {
             // Note: Automatic recording continues in background
             // Events are auto-saved every 3 minutes and on disconnect
             // Sync data when app goes to background
-            Task {
+            Task(priority: .utility) {
                 // Save any pending events
                 deviceManager.automaticRecordingSession?.savePendingEvents()
+                await waitUntilBleIdleForCloudKitSync(deviceManager: deviceManager)
                 await sharedDataManager.uploadCurrentDataForSharing()
             }
 
@@ -115,4 +121,50 @@ struct OralableApp: App {
             break
         }
     }
+}
+
+// MARK: - CloudKit vs BLE (disconnect sync)
+
+/// After a disconnect, iOS often reconnects within a few seconds. Defer heavy sync until
+/// `primaryDeviceReadiness` is stable (disconnected / failed, or fully ready), not connecting
+/// or discovering services/characteristics.
+private func waitUntilBleIdleForCloudKitSync(
+    deviceManager: DeviceManager,
+    pollInterval: Duration = .milliseconds(200),
+    maxWaitSeconds: TimeInterval = 25,
+    reconnectGraceSeconds: TimeInterval = 4
+) async {
+    let start = Date()
+    let deadline = start.addingTimeInterval(maxWaitSeconds)
+    Logger.shared.info(
+        "[OralableApp] waitUntilBleIdleForCloudKitSync: start grace=\(reconnectGraceSeconds)s max=\(maxWaitSeconds)s"
+    )
+    while Date() < deadline {
+        let readiness = await MainActor.run { deviceManager.primaryDeviceReadiness }
+        switch readiness {
+        case .disconnected, .failed:
+            // Right after an unexpected disconnect, the background worker usually kicks off a reconnect
+            // within ~1-3s. If we sync immediately while "disconnected", we'll overlap the imminent
+            // GATT discovery window (seen in logs: sync_ck starting ~2s after disconnect).
+            if Date().timeIntervalSince(start) < reconnectGraceSeconds {
+                try? await Task.sleep(for: pollInterval)
+                continue
+            }
+            Logger.shared.info(
+                "[OralableApp] waitUntilBleIdleForCloudKitSync: proceeding while \(readiness) after \(String(format: "%.1f", Date().timeIntervalSince(start)))s"
+            )
+            return
+        case .ready:
+            Logger.shared.info(
+                "[OralableApp] waitUntilBleIdleForCloudKitSync: BLE ready after \(String(format: "%.1f", Date().timeIntervalSince(start)))s"
+            )
+            return
+        case .connecting, .connected, .discoveringServices, .servicesDiscovered,
+             .discoveringCharacteristics, .characteristicsDiscovered, .enablingNotifications:
+            try? await Task.sleep(for: pollInterval)
+        }
+    }
+    Logger.shared.info(
+        "[OralableApp] waitUntilBleIdleForCloudKitSync: timed out after \(maxWaitSeconds)s, syncing anyway"
+    )
 }

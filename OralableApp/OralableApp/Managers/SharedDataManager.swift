@@ -132,6 +132,7 @@ class SharedDataManager: ObservableObject {
     private let publicDatabase: CKDatabase
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
+    private var lastSyncRequestDate: Date?
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -304,28 +305,33 @@ class SharedDataManager: ObservableObject {
             return
         }
 
+        let opId = String(UUID().uuidString.prefix(8))
+        let wallStart = CFAbsoluteTimeGetCurrent()
+
         await MainActor.run { self.isSyncing = true }
 
-        // CloudKit verification logging
-        Logger.shared.info("[SharedDataManager] 📤 Syncing \(sensorData.count) sensor readings to CloudKit")
-        Logger.shared.info("[SharedDataManager] 📤 Patient ID: \(patientID)")
-        Logger.shared.info("[SharedDataManager] 📤 Database scope: \(publicDatabase.databaseScope == .public ? "PUBLIC" : "PRIVATE")")
-        Logger.shared.info("[SharedDataManager] 📤 Container: \(container.containerIdentifier ?? "unknown")")
-        
         // Group data by day for manageable record sizes
         let calendar = Calendar.current
+        let tGroupStart = CFAbsoluteTimeGetCurrent()
         let groupedByDay = Dictionary(grouping: sensorData) { data in
             calendar.startOfDay(for: data.timestamp)
         }
-        
+        let groupMs = Int((CFAbsoluteTimeGetCurrent() - tGroupStart) * 1000)
+
+        Logger.shared.info(
+            "[SharedDataManager] 📤 sync_ck id=\(opId) readings=\(sensorData.count) days=\(groupedByDay.count) group_ms=\(groupMs) scope=\(publicDatabase.databaseScope == .public ? "public" : "private") container=\(container.containerIdentifier ?? "?") patient=\(patientID)"
+        )
+
         var successCount = 0
         var errorCount = 0
-        
+        var maxDayMs = 0
+
         for (dayStart, dayData) in groupedByDay {
+            let dayT = CFAbsoluteTimeGetCurrent()
             do {
                 // Check if we already have a record for this day
                 let existingRecord = try await findExistingRecord(for: patientID, date: dayStart)
-                
+
                 if let existing = existingRecord {
                     // Update existing record
                     try await updateDayRecord(existing, with: dayData, patientID: patientID)
@@ -338,14 +344,22 @@ class SharedDataManager: ObservableObject {
                 Logger.shared.error("[SharedDataManager] Failed to sync day \(dayStart): \(error)")
                 errorCount += 1
             }
+            let dayMs = Int((CFAbsoluteTimeGetCurrent() - dayT) * 1000)
+            if dayMs > maxDayMs { maxDayMs = dayMs }
+            if dayMs > 500 {
+                Logger.shared.info("[SharedDataManager] ⏱️ sync_ck id=\(opId) slow_day_ms=\(dayMs) samples=\(dayData.count) day=\(dayStart)")
+            }
         }
-        
+
         await MainActor.run {
             self.isSyncing = false
             self.lastSyncDate = Date()
         }
-        
-        Logger.shared.info("[SharedDataManager] ✅ Sync complete - \(successCount) days uploaded, \(errorCount) errors")
+
+        let totalMs = Int((CFAbsoluteTimeGetCurrent() - wallStart) * 1000)
+        Logger.shared.info(
+            "[SharedDataManager] ✅ sync_ck id=\(opId) total_ms=\(totalMs) max_day_ms=\(maxDayMs) ok_days=\(successCount) err_days=\(errorCount)"
+        )
     }
     
     /// Find existing HealthDataRecord for a specific day
@@ -459,6 +473,19 @@ class SharedDataManager: ObservableObject {
     
     /// Call this when the Share screen appears or when user wants to sync
     func uploadCurrentDataForSharing() async {
+        // Coalesce rapid-fire requests (e.g. disconnect loops + backgrounding).
+        // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
+        let now = Date()
+        lastSyncRequestDate = now
+        if isSyncing {
+            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
+            return
+        }
+        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
+            Logger.shared.info("[SharedDataManager] Skipping upload: last sync \(String(format: \"%.1f\", now.timeIntervalSince(last)))s ago")
+            return
+        }
+
         do {
             try await syncSensorDataToCloudKit()
         } catch {

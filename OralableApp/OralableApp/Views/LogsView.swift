@@ -365,18 +365,6 @@ class LogsManager: ObservableObject {
     }
 }
 
-// MARK: - Share Sheet (keep this since it's used)
-
-struct LogsShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
 // MARK: - Preview
 
 struct LogsView_Previews: PreviewProvider {
