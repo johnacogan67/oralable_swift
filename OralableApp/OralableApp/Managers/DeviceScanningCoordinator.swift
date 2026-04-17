@@ -20,6 +20,31 @@ import OralableCore
 
 extension DeviceManager {
 
+    // MARK: - Advertised service UUID helpers
+
+    /// TGM primary service UUID (matches `OralableDevice.tgmServiceUUID`).
+    private static let oralableTgmServiceUUIDString = "3A0FF000-98C4-46B2-94AF-1AEE0FD4C48E"
+
+    private static func advertisedServiceUUIDStrings(from advertisementData: [String: Any]) -> Set<String> {
+        var out: Set<String> = []
+
+        if let uuids = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+            out.formUnion(uuids.map { $0.uuidString.uppercased() })
+        }
+
+        // Some stacks put additional UUIDs here when the main list overflows.
+        if let overflow = advertisementData[CBAdvertisementDataOverflowServiceUUIDsKey] as? [CBUUID] {
+            out.formUnion(overflow.map { $0.uuidString.uppercased() })
+        }
+
+        // Service-data keys are UUIDs too; include them as weak hints (still bounded).
+        if let serviceData = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data] {
+            out.formUnion(serviceData.keys.map { $0.uuidString.uppercased() })
+        }
+
+        return out
+    }
+
     // MARK: - Device Discovery Handlers
 
     func handleDeviceDiscovered(peripheral: CBPeripheral, name: String, rssi: Int, advertisementData: [String: Any] = [:]) {
@@ -121,8 +146,7 @@ extension DeviceManager {
 
     func detectDeviceType(from name: String, peripheral: CBPeripheral, advertisementData: [String: Any]) -> DeviceType? {
         let lowercaseName = name.lowercased()
-        let serviceUUIDs = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? []
-        let serviceStrings = Set(serviceUUIDs.map { $0.uuidString.uppercased() })
+        let serviceStrings = Self.advertisedServiceUUIDStrings(from: advertisementData)
 
         // Check for Oralable device - STRICT matching
         if lowercaseName.contains("oralable") {
@@ -136,9 +160,11 @@ extension DeviceManager {
             return .anr
         }
 
-        // Fallback for firmware that advertises "Unknown" local name.
-        if serviceStrings.contains("FE9F") {
-            Logger.shared.info("[DeviceManager] ✅ Detected Oralable by service UUID FE9F: \(name)")
+        // Fallback for firmware that advertises a generic name (often "Unknown"):
+        // `FE9F` is NOT unique to Oralable (many Nordic-based peripherals use it),
+        // so we only accept Oralable if the TGM service UUID is present in the advertisement.
+        if serviceStrings.contains(Self.oralableTgmServiceUUIDString) {
+            Logger.shared.info("[DeviceManager] ✅ Detected Oralable by TGM service UUID: \(name)")
             return .oralable
         }
         if serviceStrings.contains("FEAF") {
