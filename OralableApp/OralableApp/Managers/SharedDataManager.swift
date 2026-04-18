@@ -482,7 +482,9 @@ class SharedDataManager: ObservableObject {
             return
         }
         if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info("[SharedDataManager] Skipping upload: last sync \(String(format: \"%.1f\", now.timeIntervalSince(last)))s ago")
+            Logger.shared.info(
+                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
+            )
             return
         }
 
