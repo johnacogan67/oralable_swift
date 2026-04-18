@@ -102,7 +102,8 @@ struct FirstLaunchOnboardingView: View {
             }
             pairingJustCompletedSession = false
 
-            // Check if we should advance to the fit guide now that the sheet is safely dismissed
+            // Manual pairing: BLE can reach `.ready` before `hasPairedOralablePrimary` flips, so
+            // `.onChange(deviceReadiness)` aborts; onDismiss runs after flags and sheet state align.
             if firstLaunchManager.hasPairedOralablePrimary,
                !firstLaunchManager.hasCompletedFirstFit,
                !showFitGuide,
