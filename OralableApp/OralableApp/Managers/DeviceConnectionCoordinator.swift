@@ -121,27 +121,37 @@ extension DeviceManager {
             }
             updateDeviceReadiness(peripheral.identifier, to: .characteristicsDiscovered)
 
-            // Firmware safety gate (REV10): read version before enabling notifications / streaming.
+            // Firmware safety gate (REV10): block only when the device reports a known-outdated
+            // version. Older field devices may not expose 3A0FF006 yet, so absence/read failure
+            // must not prevent the existing notification path from starting.
             if let oralableDevice = device as? OralableDevice {
                 let firmwareReadStart = Date()
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() start")
-                let version = try await withTimeout(seconds: 5) {
-                    try await oralableDevice.readFirmwareVersion()
-                }
-                Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() done in \(Int(Date().timeIntervalSince(firmwareReadStart) * 1000))ms -> \(version)")
-                applyDiscoveredFirmwareVersion(peripheralId: peripheral.identifier, version: version)
-                if FirmwareGate.isOralableVersionOutdated(version) {
-                    lastError = .firmwareUpdateRequired(
-                        requiredMinimum: FirmwareGate.minimumOralableSemanticVersion,
-                        reported: version
+                do {
+                    let version = try await withTimeout(seconds: 5) {
+                        try await oralableDevice.readFirmwareVersion()
+                    }
+                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() done in \(Int(Date().timeIntervalSince(firmwareReadStart) * 1000))ms -> \(version)")
+                    applyDiscoveredFirmwareVersion(peripheralId: peripheral.identifier, version: version)
+                    if FirmwareGate.isOralableVersionOutdated(version) {
+                        lastError = .firmwareUpdateRequired(
+                            requiredMinimum: FirmwareGate.minimumOralableSemanticVersion,
+                            reported: version
+                        )
+                        oralableFirmwareBlockedPeripheralIds.insert(peripheral.identifier)
+                        isConnecting = false
+                        updateDeviceReadiness(peripheral.identifier, to: .failed("Firmware update required"))
+                        bleService?.disconnect(from: peripheral)
+                        return
+                    }
+                    oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
+                } catch {
+                    oralableDevice.cancelPendingContinuations()
+                    Logger.shared.warning(
+                        "[DeviceManager][BLETrace \(traceId)] ⚠️ Firmware version unavailable; continuing connection without firmware gate: \(error.localizedDescription)"
                     )
-                    oralableFirmwareBlockedPeripheralIds.insert(peripheral.identifier)
-                    isConnecting = false
-                    updateDeviceReadiness(peripheral.identifier, to: .failed("Firmware update required"))
-                    bleService?.disconnect(from: peripheral)
-                    return
+                    oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
                 }
-                oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
             }
 
             // Step 3: Enable notifications on main characteristic (10-second timeout)
