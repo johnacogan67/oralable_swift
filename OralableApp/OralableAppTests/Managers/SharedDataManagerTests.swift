@@ -663,6 +663,74 @@ final class SharedDataModelTests: XCTestCase {
         XCTAssertTrue(sessionData.sensorReadings.isEmpty)
     }
 
+    func testBruxismSessionDataInitializationFromSerializedReadings() {
+        // Given
+        let original = BruxismSessionData(sensorData: createMockSensorData(count: 3))
+
+        // When
+        let restored = BruxismSessionData(sensorReadings: original.sensorReadings)
+
+        // Then
+        XCTAssertEqual(restored.recordingCount, 3)
+        XCTAssertEqual(restored.sensorReadings.count, 3)
+        XCTAssertEqual(restored.startDate, original.startDate)
+        XCTAssertEqual(restored.endDate, original.endDate)
+    }
+
+    func testCloudSyncMergePreservesExistingReadingsAndDeduplicatesOverlap() {
+        // Given
+        let existingData = createMockSensorData(count: 3)
+        let existing = BruxismSessionData(sensorData: existingData).sensorReadings
+        let duplicate = existing[1]
+        let laterSensorData = createMockSensorData(count: 1)
+        let laterReading = SerializableSensorData(from: SensorData(
+            timestamp: existingData.last!.timestamp.addingTimeInterval(5),
+            ppg: laterSensorData[0].ppg,
+            accelerometer: laterSensorData[0].accelerometer,
+            temperature: laterSensorData[0].temperature,
+            battery: laterSensorData[0].battery,
+            heartRate: laterSensorData[0].heartRate,
+            spo2: laterSensorData[0].spo2,
+            deviceType: laterSensorData[0].deviceType
+        ))
+        let newerDuplicate = SerializableSensorData(
+            timestamp: duplicate.timestamp,
+            deviceType: duplicate.deviceType,
+            ppgRed: duplicate.ppgRed + 1,
+            ppgIR: duplicate.ppgIR,
+            ppgGreen: duplicate.ppgGreen,
+            emg: duplicate.emg,
+            accelX: duplicate.accelX,
+            accelY: duplicate.accelY,
+            accelZ: duplicate.accelZ,
+            accelMagnitude: duplicate.accelMagnitude,
+            temperatureCelsius: duplicate.temperatureCelsius,
+            batteryPercentage: duplicate.batteryPercentage,
+            heartRateBPM: duplicate.heartRateBPM,
+            heartRateQuality: duplicate.heartRateQuality,
+            spo2Percentage: duplicate.spo2Percentage,
+            spo2Quality: duplicate.spo2Quality
+        )
+
+        // When
+        let merged = SharedDataManager.mergedSensorReadingsForCloudSync(
+            existing: existing,
+            new: [laterReading, newerDuplicate]
+        )
+
+        // Then
+        XCTAssertEqual(merged.count, 4)
+        XCTAssertEqual(merged.map(\.timestamp), merged.map(\.timestamp).sorted())
+        XCTAssertTrue(merged.contains { $0.timestamp == existing[0].timestamp })
+        XCTAssertTrue(merged.contains { $0.timestamp == existing[2].timestamp })
+        XCTAssertTrue(merged.contains { $0.timestamp == laterReading.timestamp })
+        XCTAssertEqual(
+            merged.first { $0.timestamp == duplicate.timestamp && $0.deviceType == duplicate.deviceType }?.ppgRed,
+            newerDuplicate.ppgRed,
+            "Latest in-memory sample should replace the matching previously uploaded sample"
+        )
+    }
+
     func testBruxismSessionDataCodable() throws {
         // Given
         let sensorData = createMockSensorData(count: 3)
