@@ -114,6 +114,7 @@ private struct ReconnectionState {
     let peripheralId: UUID
     var attemptCount: Int = 0
     var lastAttemptTime: Date?
+    var peripheral: CBPeripheral?
     var task: Task<Void, Never>?
     var isActive: Bool = false
 
@@ -125,6 +126,7 @@ private struct ReconnectionState {
     mutating func reset() {
         attemptCount = 0
         lastAttemptTime = nil
+        peripheral = nil
         task?.cancel()
         task = nil
         isActive = false
@@ -334,6 +336,7 @@ final class BLEBackgroundWorker: ObservableObject {
 
         // Initialize or get existing state
         var state = reconnectionStates[peripheralId] ?? ReconnectionState(peripheralId: peripheralId)
+        state.peripheral = peripheral
 
         // Check max attempts
         guard state.attemptCount < config.maxReconnectionAttempts else {
@@ -778,12 +781,17 @@ final class BLEBackgroundWorker: ObservableObject {
             Logger.shared.warning("[BLEBackgroundWorker] Bluetooth powered off - pausing reconnections")
 
             // Move active reconnections to pending
-            for (peripheralId, state) in reconnectionStates where state.isActive {
-                state.task?.cancel()
-                if let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
+            for peripheralId in activeReconnections {
+                let deferredPeripheral = reconnectionStates[peripheralId]?.peripheral
+                    ?? bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first
+                reconnectionStates[peripheralId]?.task?.cancel()
+                reconnectionStates[peripheralId]?.task = nil
+                reconnectionStates[peripheralId]?.isActive = false
+                if let peripheral = deferredPeripheral {
                     pendingReconnectionPeripherals[peripheralId] = peripheral
                 }
             }
+            activeReconnections.removeAll()
 
             // Cancel timeout tasks
             for (_, task) in connectionTimeoutTasks {
