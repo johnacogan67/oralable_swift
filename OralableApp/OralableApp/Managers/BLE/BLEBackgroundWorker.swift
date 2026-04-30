@@ -778,12 +778,15 @@ final class BLEBackgroundWorker: ObservableObject {
             Logger.shared.warning("[BLEBackgroundWorker] Bluetooth powered off - pausing reconnections")
 
             // Move active reconnections to pending
-            for (peripheralId, state) in reconnectionStates where state.isActive {
-                state.task?.cancel()
+            for peripheralId in activeReconnections {
+                reconnectionStates[peripheralId]?.task?.cancel()
+                reconnectionStates[peripheralId]?.task = nil
+                reconnectionStates[peripheralId]?.isActive = false
                 if let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
                     pendingReconnectionPeripherals[peripheralId] = peripheral
                 }
             }
+            activeReconnections.removeAll()
 
             // Cancel timeout tasks
             for (_, task) in connectionTimeoutTasks {
