@@ -396,8 +396,20 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+
+        let incomingReadings = sensorData.map { SerializableSensorData(from: $0) }
+        if let existingSession = decodeStoredSessionData(from: record) {
+            let mergedReadings = Self.mergeSensorReadings(
+                existing: existingSession.sensorReadings,
+                incoming: incomingReadings
+            )
+            try await populateRecord(record, with: mergedReadings, patientID: patientID, date: date)
+            Logger.shared.info(
+                "[SharedDataManager] Merged CloudKit day record: existing=\(existingSession.sensorReadings.count) incoming=\(incomingReadings.count) merged=\(mergedReadings.count)"
+            )
+        } else {
+            try await populateRecord(record, with: incomingReadings, patientID: patientID, date: date)
+        }
         
         try await publicDatabase.save(record)
         Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
@@ -405,14 +417,24 @@ class SharedDataManager: ObservableObject {
     
     /// Populate a record with sensor data
     private func populateRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String, date: Date) async throws {
+        try await populateRecord(
+            record,
+            with: sensorData.map { SerializableSensorData(from: $0) },
+            patientID: patientID,
+            date: date
+        )
+    }
+
+    /// Populate a record with serializable sensor data.
+    private func populateRecord(_ record: CKRecord, with sensorReadings: [SerializableSensorData], patientID: String, date: Date) async throws {
         // Calculate metrics
         var bruxismEvents = 0
         var peakIntensity = 0.0
         let bruxismThreshold = 2.0
         var isInEvent = false
         
-        for data in sensorData {
-            let magnitude = data.accelerometer.magnitude
+        for data in sensorReadings {
+            let magnitude = data.accelMagnitude
             if magnitude > bruxismThreshold {
                 if !isInEvent {
                     bruxismEvents += 1
@@ -426,12 +448,12 @@ class SharedDataManager: ObservableObject {
             }
         }
         
-        let averageIntensity = sensorData.isEmpty ? 0.0 :
-            sensorData.reduce(0.0) { $0 + $1.accelerometer.magnitude } / Double(sensorData.count)
+        let averageIntensity = sensorReadings.isEmpty ? 0.0 :
+            sensorReadings.reduce(0.0) { $0 + $1.accelMagnitude } / Double(sensorReadings.count)
         
         // Calculate session duration from first to last reading
         let duration: TimeInterval
-        if let first = sensorData.first?.timestamp, let last = sensorData.last?.timestamp {
+        if let first = sensorReadings.first?.timestamp, let last = sensorReadings.last?.timestamp {
             duration = last.timeIntervalSince(first)
         } else {
             duration = 0
@@ -446,19 +468,19 @@ class SharedDataManager: ObservableObject {
         record["peakIntensity"] = peakIntensity as CKRecordValue
         
         // Heart rate data
-        let heartRateData = sensorData.compactMap { $0.heartRate?.bpm }
+        let heartRateData = sensorReadings.compactMap { $0.heartRateBPM }
         if !heartRateData.isEmpty, let hrData = try? JSONEncoder().encode(heartRateData) {
             record["heartRateData"] = hrData as CKRecordValue
         }
         
         // SpO2 data
-        let spo2Data = sensorData.compactMap { $0.spo2?.percentage }
+        let spo2Data = sensorReadings.compactMap { $0.spo2Percentage }
         if !spo2Data.isEmpty, let spo2JSON = try? JSONEncoder().encode(spo2Data) {
             record["oxygenSaturation"] = spo2JSON as CKRecordValue
         }
         
         // Compress and store full sensor data for time-series charts
-        let bruxismSessionData = BruxismSessionData(sensorData: sensorData)
+        let bruxismSessionData = BruxismSessionData(sensorReadings: sensorReadings)
         if let jsonData = try? JSONEncoder().encode(bruxismSessionData) {
             let uncompressedSize = jsonData.count
             if let compressed = jsonData.compressed() {
@@ -468,6 +490,73 @@ class SharedDataManager: ObservableObject {
                 let ratio = Double(uncompressedSize) / Double(compressed.count)
                 Logger.shared.info("[SharedDataManager] Compressed \(uncompressedSize) -> \(compressed.count) bytes (ratio: \(String(format: "%.1f", ratio))x)")
             }
+        }
+    }
+
+    private func decodeStoredSessionData(from record: CKRecord) -> BruxismSessionData? {
+        guard let compressed = record["sensorDataCompressed"] as? Data,
+              let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let decompressed = compressed.decompressed(expectedSize: uncompressedSize) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+    }
+
+    static func mergeSensorReadings(
+        existing: [SerializableSensorData],
+        incoming: [SerializableSensorData]
+    ) -> [SerializableSensorData] {
+        var mergedByKey: [SensorReadingMergeKey: SerializableSensorData] = [:]
+
+        for reading in existing {
+            mergedByKey[SensorReadingMergeKey(reading)] = reading
+        }
+
+        for reading in incoming {
+            mergedByKey[SensorReadingMergeKey(reading)] = reading
+        }
+
+        return mergedByKey.values.sorted {
+            if $0.timestamp == $1.timestamp {
+                return $0.deviceType < $1.deviceType
+            }
+            return $0.timestamp < $1.timestamp
+        }
+    }
+
+    private struct SensorReadingMergeKey: Hashable {
+        let timestamp: Date
+        let deviceType: String
+        let ppgRed: Int32
+        let ppgIR: Int32
+        let ppgGreen: Int32
+        let emg: Double?
+        let accelX: Int16
+        let accelY: Int16
+        let accelZ: Int16
+        let temperatureCelsius: Double
+        let batteryPercentage: Int
+        let heartRateBPM: Double?
+        let heartRateQuality: Double?
+        let spo2Percentage: Double?
+        let spo2Quality: Double?
+
+        init(_ reading: SerializableSensorData) {
+            self.timestamp = reading.timestamp
+            self.deviceType = reading.deviceType
+            self.ppgRed = reading.ppgRed
+            self.ppgIR = reading.ppgIR
+            self.ppgGreen = reading.ppgGreen
+            self.emg = reading.emg
+            self.accelX = reading.accelX
+            self.accelY = reading.accelY
+            self.accelZ = reading.accelZ
+            self.temperatureCelsius = reading.temperatureCelsius
+            self.batteryPercentage = reading.batteryPercentage
+            self.heartRateBPM = reading.heartRateBPM
+            self.heartRateQuality = reading.heartRateQuality
+            self.spo2Percentage = reading.spo2Percentage
+            self.spo2Quality = reading.spo2Quality
         }
     }
     
@@ -764,10 +853,14 @@ struct BruxismSessionData: Codable {
     let endDate: Date
 
     init(sensorData: [SensorData]) {
-        self.sensorReadings = sensorData.map { SerializableSensorData(from: $0) }
-        self.recordingCount = sensorData.count
-        self.startDate = sensorData.first?.timestamp ?? Date()
-        self.endDate = sensorData.last?.timestamp ?? Date()
+        self.init(sensorReadings: sensorData.map { SerializableSensorData(from: $0) })
+    }
+
+    init(sensorReadings: [SerializableSensorData]) {
+        self.sensorReadings = sensorReadings
+        self.recordingCount = sensorReadings.count
+        self.startDate = sensorReadings.first?.timestamp ?? Date()
+        self.endDate = sensorReadings.last?.timestamp ?? Date()
     }
 }
 
