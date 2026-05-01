@@ -495,11 +495,25 @@ class SharedDataManager: ObservableObject {
 
     private func decodeStoredSessionData(from record: CKRecord) -> BruxismSessionData? {
         guard let compressed = record["sensorDataCompressed"] as? Data,
-              let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let uncompressedSize = storedUncompressedSize(from: record),
               let decompressed = compressed.decompressed(expectedSize: uncompressedSize) else {
             return nil
         }
         return try? JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+    }
+
+    private func storedUncompressedSize(from record: CKRecord) -> Int? {
+        let value = record["sensorDataUncompressedSize"]
+        if let size = value as? Int {
+            return size
+        }
+        if let size = value as? Int64 {
+            return Int(exactly: size)
+        }
+        if let size = value as? NSNumber {
+            return size.intValue
+        }
+        return nil
     }
 
     static func mergeSensorReadings(
