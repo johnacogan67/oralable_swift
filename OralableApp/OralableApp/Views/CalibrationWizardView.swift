@@ -9,6 +9,29 @@ import SwiftUI
 import OralableCore
 import UIKit
 
+struct CalibrationActiveElapsedClock {
+    private(set) var activeElapsed: TimeInterval = 0
+    private var lastActiveTickAt: Date?
+
+    mutating func reset(startingAt start: Date) {
+        activeElapsed = 0
+        lastActiveTickAt = start
+    }
+
+    mutating func elapsedSeconds(now: Date, isActive: Bool) -> Int {
+        guard isActive else {
+            lastActiveTickAt = nil
+            return Int(activeElapsed)
+        }
+
+        if let lastActiveTickAt {
+            activeElapsed += max(0, now.timeIntervalSince(lastActiveTickAt))
+        }
+        lastActiveTickAt = now
+        return Int(activeElapsed)
+    }
+}
+
 struct CalibrationWizardView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
@@ -42,7 +65,7 @@ struct CalibrationWizardView: View {
     @State private var hasStarted = false
     @State private var timerActive = false
     @State private var lastPhaseIndex: Int = -1
-    @State private var calibrationStartAt: Date?
+    @State private var activeElapsedClock = CalibrationActiveElapsedClock()
 
     private var progress: Double {
         guard totalSeconds > 0 else { return 0 }
@@ -130,16 +153,12 @@ struct CalibrationWizardView: View {
             .task(id: timerActive) {
                 guard timerActive else { return }
                 guard hasStarted, !didComplete else { return }
-                guard let startAt = calibrationStartAt else { return }
 
                 while !Task.isCancelled, timerActive, hasStarted, !didComplete {
-                    // Pause updates while inactive/backgrounded; resume when active.
-                    if scenePhase != .active {
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                        continue
-                    }
-
-                    let newElapsed = min(totalSeconds, max(0, Int(Date().timeIntervalSince(startAt))))
+                    let newElapsed = min(
+                        totalSeconds,
+                        activeElapsedClock.elapsedSeconds(now: Date(), isActive: scenePhase == .active)
+                    )
                     if newElapsed != elapsed {
                         elapsed = newElapsed
                         emitPhaseHapticIfNeeded()
@@ -227,7 +246,7 @@ struct CalibrationWizardView: View {
         hasStarted = true
         timerActive = true
         lastPhaseIndex = -1
-        calibrationStartAt = Date()
+        activeElapsedClock.reset(startingAt: Date())
         sensorDataProcessor.beginCalibrationOralableCapture()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
