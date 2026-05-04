@@ -32,6 +32,11 @@ struct CalibrationActiveElapsedClock {
     }
 }
 
+private struct CalibrationTimerTaskID: Hashable {
+    let timerActive: Bool
+    let scenePhase: ScenePhase
+}
+
 struct CalibrationWizardView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
@@ -150,7 +155,7 @@ struct CalibrationWizardView: View {
                     _ = sensorDataProcessor.endCalibrationOralableCapture()
                 }
             }
-            .task(id: timerActive) {
+            .task(id: CalibrationTimerTaskID(timerActive: timerActive, scenePhase: scenePhase)) {
                 guard timerActive else { return }
                 guard hasStarted, !didComplete else { return }
 
