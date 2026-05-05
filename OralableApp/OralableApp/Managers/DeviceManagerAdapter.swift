@@ -400,7 +400,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     /// Aligns PPG triplets deterministically.
     /// Prefer hardware `frameNumber` when present; fall back to tight time-buckets.
     /// Carries last known accel sample per PPG row.
-    nonisolated private static func biometricSampleArrays(from readings: [SensorReading]) -> (
+    nonisolated static func biometricSampleArrays(from readings: [SensorReading]) -> (
         ir: [Double], red: [Double], green: [Double], ax: [Double], ay: [Double], az: [Double]
     ) {
         let sorted = readings.sorted { $0.timestamp < $1.timestamp }
@@ -447,6 +447,11 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 if bucketKey != key {
                     flushBucket()
                     bucketKey = key
+                } else if bucket[r.sensorType] != nil {
+                    // Some firmware packets expose one packet counter for many samples.
+                    // Do not let later samples overwrite earlier complete triplets.
+                    flushBucket()
+                    bucketKey = key
                 }
                 bucket[r.sensorType] = r.value
             default:
@@ -459,7 +464,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     }
 
     /// One `SensorData` row per aligned PPG triplet in the batch (same bucketing as biometrics).
-    nonisolated private static func oralableSensorDataRows(
+    nonisolated static func oralableSensorDataRows(
         from readings: [SensorReading],
         heartRate: Int,
         heartRateQuality: Double,
@@ -522,6 +527,11 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                     return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
                 }()
                 if bucketKey != key {
+                    flushBucket()
+                    bucketKey = key
+                } else if bucket[r.sensorType] != nil {
+                    // Packet-level frame counters repeat within one BLE notification.
+                    // Flush before replacing a sensor value so all PPG samples persist.
                     flushBucket()
                     bucketKey = key
                 }
