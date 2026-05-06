@@ -34,6 +34,68 @@ final class AuthenticationManager: ObservableObject {
     @Published var userFamilyName: String? = nil
     @Published var userEmail: String? = nil
     @Published var authenticationError: String? = nil
+
+    private static let userDefaultsKeysToClear: Set<String> = [
+        // Authentication keys
+        "isAuthenticated",
+        "userID",
+        "userFullName",
+        "userGivenName",
+        "userFamilyName",
+        "userEmail",
+        "appleUserID",
+
+        // App state and onboarding keys
+        "hasLaunchedBefore",
+        "hasCompletedOnboarding",
+        "hasAcceptedPrivacyPolicy",
+        "hasAcceptedTerms",
+        "sessionCount",
+        "totalSleepHours",
+
+        // Device and subscription keys
+        "rememberedOralableDevices",
+        "subscriptionTier",
+
+        // Settings keys
+        "notificationsEnabled",
+        "dataRetentionDays",
+        "autoConnectEnabled",
+        "showDebugInfo",
+        "connectionAlerts",
+        "batteryAlerts",
+        "lowBatteryThreshold",
+        "useMetricUnits",
+        "show24HourTime",
+        "chartRefreshRate",
+        "shareAnalytics",
+        "localStorageOnly",
+
+        // Feature flags
+        "feature.dashboard.showEMG",
+        "feature.dashboard.showMovement",
+        "feature.dashboard.showTemperature",
+        "feature.dashboard.showHeartRate",
+        "feature.dashboard.showSpO2",
+        "feature.dashboard.showBattery",
+        "feature.dashboard.showAdvancedAnalytics",
+        "feature.dashboard.showAdvancedMetrics",
+        "feature.settings.showSubscription",
+        "feature.settings.showDetectionSettings",
+        "feature.showMultiParticipant",
+        "feature.showDataExport",
+        "feature.showANRComparison",
+        "feature.share.showProfessional",
+        "feature.share.showResearcher",
+        "feature.share.showCloudKitShare",
+        "feature.demo.enabled",
+        "feature.pilot.showStudy"
+    ]
+
+    private static let userDefaultsKeyPrefixesToClear = [
+        "oralable.",
+        "OralableClinical."
+    ]
     
     var displayName: String {
         if let fullName = userFullName, !fullName.isEmpty {
@@ -108,6 +170,8 @@ final class AuthenticationManager: ObservableObject {
         userGivenName = "Guest"
         userFamilyName = nil
         isAuthenticated = true
+        authenticationError = nil
+        persistAuthenticationState()
     }
 
     // MARK: - Persistence
@@ -200,35 +264,22 @@ final class AuthenticationManager: ObservableObject {
     private func clearAllUserDefaults() {
         let defaults = UserDefaults.standard
 
-        // Authentication keys
-        defaults.removeObject(forKey: "isAuthenticated")
-        defaults.removeObject(forKey: "userID")
-        defaults.removeObject(forKey: "userFullName")
-        defaults.removeObject(forKey: "userGivenName")
-        defaults.removeObject(forKey: "userFamilyName")
-        defaults.removeObject(forKey: "userEmail")
-        defaults.removeObject(forKey: "appleUserID")
-
-        // App state keys
-        defaults.removeObject(forKey: "hasLaunchedBefore")
-        defaults.removeObject(forKey: "hasCompletedOnboarding")
-        defaults.removeObject(forKey: "sessionCount")
-        defaults.removeObject(forKey: "totalSleepHours")
-
-        // Feature flags (reset to defaults)
-        defaults.removeObject(forKey: "feature.dashboard.showMovement")
-        defaults.removeObject(forKey: "feature.dashboard.showTemperature")
-        defaults.removeObject(forKey: "feature.dashboard.showHeartRate")
-        defaults.removeObject(forKey: "feature.dashboard.showAdvancedAnalytics")
-        defaults.removeObject(forKey: "feature.settings.showSubscription")
-        defaults.removeObject(forKey: "feature.showMultiParticipant")
-        defaults.removeObject(forKey: "feature.showDataExport")
-        defaults.removeObject(forKey: "feature.showANRComparison")
+        for key in defaults.dictionaryRepresentation().keys where shouldClearUserDefaultsKey(key) {
+            defaults.removeObject(forKey: key)
+        }
 
         // Sync to disk
         defaults.synchronize()
 
         Logger.shared.info("🗑️ UserDefaults cleared")
+    }
+
+    private func shouldClearUserDefaultsKey(_ key: String) -> Bool {
+        if Self.userDefaultsKeysToClear.contains(key) {
+            return true
+        }
+
+        return Self.userDefaultsKeyPrefixesToClear.contains { key.hasPrefix($0) }
     }
 
     private func clearKeychainData() {
