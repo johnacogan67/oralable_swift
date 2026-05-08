@@ -42,7 +42,8 @@ struct CalibrationWizardView: View {
     @State private var hasStarted = false
     @State private var timerActive = false
     @State private var lastPhaseIndex: Int = -1
-    @State private var calibrationStartAt: Date?
+    @State private var activeElapsedSeconds: TimeInterval = 0
+    @State private var lastActiveTickAt: Date?
 
     private var progress: Double {
         guard totalSeconds > 0 else { return 0 }
@@ -120,26 +121,35 @@ struct CalibrationWizardView: View {
                 hasStarted = false
                 timerActive = false
                 lastPhaseIndex = -1
+                activeElapsedSeconds = 0
+                lastActiveTickAt = nil
             }
             .onDisappear {
                 timerActive = false
+                lastActiveTickAt = nil
                 if hasStarted, !didComplete {
                     _ = sensorDataProcessor.endCalibrationOralableCapture()
                 }
             }
-            .task(id: timerActive) {
+            .task(id: "\(timerActive)-\(String(describing: scenePhase))") {
                 guard timerActive else { return }
                 guard hasStarted, !didComplete else { return }
-                guard let startAt = calibrationStartAt else { return }
 
                 while !Task.isCancelled, timerActive, hasStarted, !didComplete {
-                    // Pause updates while inactive/backgrounded; resume when active.
+                    // Count only foreground-active time; background wall-clock time must not satisfy the protocol.
                     if scenePhase != .active {
+                        lastActiveTickAt = nil
                         try? await Task.sleep(nanoseconds: 250_000_000)
                         continue
                     }
 
-                    let newElapsed = min(totalSeconds, max(0, Int(Date().timeIntervalSince(startAt))))
+                    let now = Date()
+                    if let lastActiveTickAt {
+                        activeElapsedSeconds += max(0, now.timeIntervalSince(lastActiveTickAt))
+                    }
+                    lastActiveTickAt = now
+
+                    let newElapsed = min(totalSeconds, max(0, Int(activeElapsedSeconds)))
                     if newElapsed != elapsed {
                         elapsed = newElapsed
                         emitPhaseHapticIfNeeded()
@@ -227,7 +237,8 @@ struct CalibrationWizardView: View {
         hasStarted = true
         timerActive = true
         lastPhaseIndex = -1
-        calibrationStartAt = Date()
+        activeElapsedSeconds = 0
+        lastActiveTickAt = nil
         sensorDataProcessor.beginCalibrationOralableCapture()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
