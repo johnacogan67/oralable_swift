@@ -130,6 +130,41 @@ final class RegressionTests: XCTestCase {
         worker.stop()
     }
 
+    func testBLEBackgroundWorkerResumesPausedReconnectionAfterBluetoothPowerCycle() async {
+        // Given
+        let mockBLEService = MockBLEService(bluetoothState: .poweredOn)
+        let config = BLEBackgroundWorkerConfig(
+            maxReconnectionAttempts: 5,
+            baseReconnectionDelay: 0.05,
+            maxReconnectionDelay: 0.1,
+            jitterFactor: 0.0,
+            connectionTimeout: 0.5,
+            pauseOnBluetoothOff: true
+        )
+        let worker = BLEBackgroundWorker(bleService: mockBLEService, config: config)
+        worker.configure(bleService: mockBLEService)
+
+        let deviceId = UUID()
+        mockBLEService.addDiscoverableDevice(id: deviceId, name: "Test Device")
+        let peripheral = mockBLEService.discoveredPeripherals[deviceId]!
+
+        // When a delayed reconnect is paused while Bluetooth is off
+        worker.start()
+        worker.scheduleReconnection(for: deviceId, peripheral: peripheral, immediate: false)
+        mockBLEService.simulateBluetoothStateChange(.poweredOff)
+
+        // Then the paused reconnect is no longer marked active and can be resumed
+        XCTAssertFalse(worker.activeReconnections.contains(deviceId), "Paused reconnection should not remain active")
+
+        mockBLEService.simulateBluetoothStateChange(.poweredOn)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(mockBLEService.methodCallCounts["connect"] ?? 0, 1, "Reconnection should resume when Bluetooth powers on")
+
+        // Cleanup
+        worker.stop()
+    }
+
     // MARK: - BLEError Handling Consistency Tests
 
     func testBLEErrorConnectionFailedHasCorrectFormat() {
