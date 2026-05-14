@@ -132,7 +132,8 @@ class SharedDataManager: ObservableObject {
     private let publicDatabase: CKDatabase
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
-    private var lastSyncRequestDate: Date?
+    private var queuedSyncRequestDate: Date?
+    private var syncDrainTask: Task<Void, Never>?
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -473,21 +474,40 @@ class SharedDataManager: ObservableObject {
     
     /// Call this when the Share screen appears or when user wants to sync
     func uploadCurrentDataForSharing() async {
-        // Coalesce rapid-fire requests (e.g. disconnect loops + backgrounding).
-        // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
-        let now = Date()
-        lastSyncRequestDate = now
-        if isSyncing {
-            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
-            return
-        }
-        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info(
-                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
-            )
+        queuedSyncRequestDate = Date()
+
+        // Coalesce rapid-fire triggers into one trailing upload instead of dropping the
+        // latest disconnect/background request while an earlier CloudKit save is in flight.
+        if syncDrainTask != nil {
+            Logger.shared.info("[SharedDataManager] Queued upload: sync already running")
             return
         }
 
+        let task = Task { @MainActor [weak self] in
+            await self?.drainQueuedSyncRequests()
+        }
+        syncDrainTask = task
+        await task.value
+    }
+
+    private func drainQueuedSyncRequests() async {
+        defer { syncDrainTask = nil }
+
+        while queuedSyncRequestDate != nil {
+            queuedSyncRequestDate = nil
+
+            if isSyncing {
+                Logger.shared.info("[SharedDataManager] Waiting for active sync before queued upload")
+            }
+            while isSyncing {
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+
+            await performCurrentDataUpload()
+        }
+    }
+
+    private func performCurrentDataUpload() async {
         do {
             try await syncSensorDataToCloudKit()
         } catch {
