@@ -1672,3 +1672,82 @@ final class RecordingSessionCompatibilityTests: XCTestCase {
         }
     }
 }
+
+@MainActor
+final class LocalUserSessionResetTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        clearLocalUserSessionDefaults()
+    }
+
+    override func tearDown() {
+        clearLocalUserSessionDefaults()
+        super.tearDown()
+    }
+
+    func testFirstLaunchResetClearsPublishedAndPersistedSetupState() {
+        let manager = FirstLaunchManager()
+
+        manager.markOralablePaired()
+        manager.markFirstFitCompleted()
+        manager.enterTrialSetupMode()
+
+        XCTAssertTrue(manager.hasPairedOralablePrimary)
+        XCTAssertTrue(manager.hasCompletedFirstFit)
+        XCTAssertTrue(manager.isTrialSetupMode)
+
+        manager.reset()
+
+        XCTAssertFalse(manager.hasPairedOralablePrimary)
+        XCTAssertFalse(manager.hasCompletedFirstFit)
+        XCTAssertFalse(manager.isTrialSetupMode)
+
+        let reloaded = FirstLaunchManager()
+        XCTAssertFalse(reloaded.hasPairedOralablePrimary)
+        XCTAssertFalse(reloaded.hasCompletedFirstFit)
+        XCTAssertFalse(reloaded.isTrialSetupMode)
+    }
+
+    func testAuthenticationSignOutClearsSetupAndCalibrationDefaults() {
+        let firstLaunchManager = FirstLaunchManager()
+        firstLaunchManager.markOralablePaired()
+        firstLaunchManager.markFirstFitCompleted()
+
+        let sessionHistoryStore = SessionHistoryStore()
+        sessionHistoryStore.recordTemporalisSleepCalibration(
+            calibrationId: UUID(),
+            baselineVoltage: 1.23,
+            peripheralId: UUID(),
+            rawCalibrationCSVFileName: "temporalis_cal_test.csv"
+        )
+        XCTAssertNotNil(SessionHistoryStore().temporalisSleepCalibration)
+
+        let authManager = AuthenticationManager()
+        authManager.userID = "test-user"
+        authManager.userEmail = "person@example.com"
+        authManager.userFullName = "Test User"
+        authManager.isAuthenticated = true
+
+        authManager.signOut()
+
+        XCTAssertFalse(authManager.isAuthenticated)
+        XCTAssertNil(authManager.userID)
+        XCTAssertNil(authManager.userEmail)
+        XCTAssertNil(authManager.userFullName)
+        XCTAssertFalse(FirstLaunchManager().hasPairedOralablePrimary)
+        XCTAssertFalse(FirstLaunchManager().hasCompletedFirstFit)
+        XCTAssertNil(SessionHistoryStore().temporalisSleepCalibration)
+    }
+
+    private func clearLocalUserSessionDefaults() {
+        FirstLaunchManager.clearPersistedState()
+        SessionHistoryStore.clearPersistedTemporalisSleepCalibration()
+        UserDefaults.standard.removeObject(forKey: "isAuthenticated")
+        UserDefaults.standard.removeObject(forKey: "userID")
+        UserDefaults.standard.removeObject(forKey: "userFullName")
+        UserDefaults.standard.removeObject(forKey: "userGivenName")
+        UserDefaults.standard.removeObject(forKey: "userFamilyName")
+        UserDefaults.standard.removeObject(forKey: "userEmail")
+        UserDefaults.standard.removeObject(forKey: "hasLaunchedBefore")
+    }
+}

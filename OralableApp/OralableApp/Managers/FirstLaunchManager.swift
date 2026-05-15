@@ -47,6 +47,20 @@ final class FirstLaunchManager: ObservableObject {
         isTrialSetupMode = false
     }
 
+    func reset() {
+        Self.clearPersistedState()
+        hasCompletedFirstFit = false
+        hasPairedOralablePrimary = false
+        isTrialSetupMode = false
+        Logger.shared.info("[FirstLaunchManager] First-launch setup state reset")
+    }
+
+    static func clearPersistedState(in defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: fitKey)
+        defaults.removeObject(forKey: pairedKey)
+        defaults.removeObject(forKey: trialKey)
+    }
+
     /// Call from `SetupSuccessView` after calibration succeeds (not directly from the wizard).
     /// Clears trial / provisional onboarding so `LaunchCoordinator` can show `MainTabView`.
     func markFirstFitCompleted() {

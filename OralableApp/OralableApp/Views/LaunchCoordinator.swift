@@ -85,5 +85,15 @@ struct LaunchCoordinator: View {
             // Attempt to auto-reconnect to remembered devices on app launch
             deviceManager.attemptAutoReconnect()
         }
+        .onChange(of: authenticationManager.isAuthenticated) { _, isAuthenticated in
+            if !isAuthenticated {
+                resetLocalUserSessionState()
+            }
+        }
+    }
+
+    private func resetLocalUserSessionState() {
+        firstLaunchManager.reset()
+        sessionHistoryStore.resetLocalUserState(deleteRawCalibrationFiles: true)
     }
 }
