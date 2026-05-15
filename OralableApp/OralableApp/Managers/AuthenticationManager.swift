@@ -82,7 +82,7 @@ final class AuthenticationManager: ObservableObject {
         authenticationError = nil
         persistAuthenticationState()
 
-        Logger.shared.info("🔐 Signed in as \(userFullName ?? "User")")
+        Logger.shared.info("🔐 Signed in with Apple ID")
     }
 
     func testAppleIDAuth() {
@@ -94,10 +94,12 @@ final class AuthenticationManager: ObservableObject {
     }
 
     func signOut() {
+        clearLocalFitAndCalibrationState(deleteRawCalibrationFiles: true)
         userID = nil
         userFullName = nil
         userGivenName = nil
         userFamilyName = nil
+        userEmail = nil
         isAuthenticated = false
         persistAuthenticationState()
     }
@@ -214,6 +216,11 @@ final class AuthenticationManager: ObservableObject {
         defaults.removeObject(forKey: "hasCompletedOnboarding")
         defaults.removeObject(forKey: "sessionCount")
         defaults.removeObject(forKey: "totalSleepHours")
+        FirstLaunchManager.clearPersistedState(in: defaults)
+        SessionHistoryStore.clearPersistedTemporalisSleepCalibration(
+            in: defaults,
+            deleteRawCalibrationFiles: true
+        )
 
         // Feature flags (reset to defaults)
         defaults.removeObject(forKey: "feature.dashboard.showMovement")
@@ -229,6 +236,13 @@ final class AuthenticationManager: ObservableObject {
         defaults.synchronize()
 
         Logger.shared.info("🗑️ UserDefaults cleared")
+    }
+
+    private func clearLocalFitAndCalibrationState(deleteRawCalibrationFiles: Bool) {
+        FirstLaunchManager.clearPersistedState()
+        SessionHistoryStore.clearPersistedTemporalisSleepCalibration(
+            deleteRawCalibrationFiles: deleteRawCalibrationFiles
+        )
     }
 
     private func clearKeychainData() {
