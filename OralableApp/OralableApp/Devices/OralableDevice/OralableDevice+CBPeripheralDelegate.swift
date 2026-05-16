@@ -66,6 +66,10 @@ extension OralableDevice: CBPeripheralDelegate {
 
         guard let characteristics = service.characteristics else {
             Logger.shared.warning("[OralableDevice] ⚠️ No characteristics found for service \(service.uuid.uuidString)")
+            if service.uuid == tgmServiceUUID {
+                characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("No characteristics found for service \(service.uuid.uuidString)"))
+                characteristicDiscoveryContinuation = nil
+            }
             return
         }
 
