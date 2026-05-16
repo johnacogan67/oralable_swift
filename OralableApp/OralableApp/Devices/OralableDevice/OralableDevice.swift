@@ -199,21 +199,21 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         sampleRateStats.reset()
     }
 
-    /// Cancel any pending async continuations to prevent hangs on disconnect
-    func cancelPendingContinuations() {
-        serviceDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+    /// Cancel any pending async continuations to prevent hangs on disconnect/timeout.
+    func cancelPendingContinuations(throwing error: Error = DeviceError.connectionFailed("Device disconnected")) {
+        serviceDiscoveryContinuation?.resume(throwing: error)
         serviceDiscoveryContinuation = nil
-        characteristicDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        characteristicDiscoveryContinuation?.resume(throwing: error)
         characteristicDiscoveryContinuation = nil
-        notificationEnableContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        notificationEnableContinuation?.resume(throwing: error)
         notificationEnableContinuation = nil
         connectionReadyContinuation?.resume()
         connectionReadyContinuation = nil
-        accelerometerNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        accelerometerNotificationContinuation?.resume(throwing: error)
         accelerometerNotificationContinuation = nil
-        writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        writeCompletionContinuation?.resume(throwing: error)
         writeCompletionContinuation = nil
-        firmwareReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareReadContinuation?.resume(throwing: error)
         firmwareReadContinuation = nil
     }
 

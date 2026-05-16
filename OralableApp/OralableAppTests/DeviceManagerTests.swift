@@ -243,6 +243,29 @@ final class DeviceManagerTests: XCTestCase {
         XCTAssertTrue(operationExecuted)
     }
 
+    func testWithTimeoutRunsTimeoutCleanupForSuspendedOperation() async {
+        var suspendedContinuation: CheckedContinuation<Void, Error>?
+        var didRunCleanup = false
+
+        do {
+            try await sut.withTimeout(seconds: 0.2, onTimeout: {
+                await MainActor.run {
+                    didRunCleanup = true
+                    suspendedContinuation?.resume(throwing: DeviceError.timeout)
+                }
+            }) {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    suspendedContinuation = continuation
+                }
+            }
+            XCTFail("Expected timeout to throw")
+        } catch DeviceError.timeout {
+            XCTAssertTrue(didRunCleanup)
+        } catch {
+            XCTFail("Expected DeviceError.timeout, got \(error)")
+        }
+    }
+
     // MARK: - Integration Tests
 
     func testFullScanConnectDisconnectFlow() async {
