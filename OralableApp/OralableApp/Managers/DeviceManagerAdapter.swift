@@ -397,10 +397,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         return best
     }
 
-    /// Aligns PPG triplets deterministically.
-    /// Prefer hardware `frameNumber` when present; fall back to tight time-buckets.
-    /// Carries last known accel sample per PPG row.
-    nonisolated private static func biometricSampleArrays(from readings: [SensorReading]) -> (
+    /// Aligns PPG triplets to tight per-sample time-buckets; carries last known accel sample per PPG row.
+    nonisolated static func biometricSampleArrays(from readings: [SensorReading]) -> (
         ir: [Double], red: [Double], green: [Double], ax: [Double], ay: [Double], az: [Double]
     ) {
         let sorted = readings.sorted { $0.timestamp < $1.timestamp }
@@ -440,10 +438,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key: Int64 = {
-                    if let frame = r.frameNumber { return Int64(frame) }
-                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
-                }()
+                let key = ppgSampleBucketKey(for: r)
                 if bucketKey != key {
                     flushBucket()
                     bucketKey = key
@@ -459,7 +454,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     }
 
     /// One `SensorData` row per aligned PPG triplet in the batch (same bucketing as biometrics).
-    nonisolated private static func oralableSensorDataRows(
+    nonisolated static func oralableSensorDataRows(
         from readings: [SensorReading],
         heartRate: Int,
         heartRateQuality: Double,
@@ -517,10 +512,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key: Int64 = {
-                    if let frame = r.frameNumber { return Int64(frame) }
-                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
-                }()
+                let key = ppgSampleBucketKey(for: r)
                 if bucketKey != key {
                     flushBucket()
                     bucketKey = key
@@ -533,6 +525,11 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         }
         flushBucket()
         return out
+    }
+
+    /// Packet frame numbers identify BLE packets, not individual samples within a multi-sample packet.
+    nonisolated static func ppgSampleBucketKey(for reading: SensorReading) -> Int64 {
+        Int64((reading.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
     }
 
     nonisolated private static func anrSensorDataRows(from readings: [SensorReading]) -> [SensorData] {
