@@ -15,4 +15,15 @@ enum ApplicationSupportPaths {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
+
+    static func clearMemoryFlushDirectory() {
+        let directory = memoryFlushDirectory
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+        for file in files {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
 }

@@ -404,6 +404,29 @@ extension DeviceManager {
         cancelAllReconnections()
     }
 
+    func resetForUserSession() {
+        Logger.shared.info("[DeviceManager] Resetting device state for user session")
+        stopScanning()
+        disconnectAll()
+        discoveryFlowTasks.values.forEach { $0.cancel() }
+        discoveryFlowTasks.removeAll()
+        cancelAllReconnections()
+        persistenceManager.forgetAllDevices()
+
+        discoveredDevices.removeAll()
+        connectedDevices.removeAll()
+        primaryDevice = nil
+        deviceReadiness.removeAll()
+        isConnecting = false
+        lastError = nil
+        oralableFirmwareBlockedPeripheralIds.removeAll()
+        clearReadings()
+
+        Task {
+            _ = await self.unifiedSensorDataBuffer.removeAllCopying()
+        }
+    }
+
     /// Disconnect demo device and reset its state (called when demo mode is disabled)
     func disconnectDemoDevice() {
         if DemoDataProvider.shared.isConnected {

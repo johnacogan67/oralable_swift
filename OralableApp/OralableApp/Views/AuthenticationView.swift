@@ -20,6 +20,8 @@ import AuthenticationServices
 
 struct AuthenticationView: View {
     @EnvironmentObject var designSystem: DesignSystem
+    @EnvironmentObject var dependencies: AppDependencies
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
     @Environment(\.dismiss) private var dismiss
 
     // Use the SHARED AuthenticationManager passed from parent
@@ -99,6 +101,7 @@ struct AuthenticationView: View {
         .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
+                dependencies.resetUserSessionState(firstLaunchManager: firstLaunchManager)
                 viewModel.signOut()
             }
         } message: {

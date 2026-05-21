@@ -98,8 +98,10 @@ final class AuthenticationManager: ObservableObject {
         userFullName = nil
         userGivenName = nil
         userFamilyName = nil
+        userEmail = nil
         isAuthenticated = false
         persistAuthenticationState()
+        clearUserScopedDefaults()
     }
 
     func continueAsGuest() {
@@ -214,6 +216,7 @@ final class AuthenticationManager: ObservableObject {
         defaults.removeObject(forKey: "hasCompletedOnboarding")
         defaults.removeObject(forKey: "sessionCount")
         defaults.removeObject(forKey: "totalSleepHours")
+        clearUserScopedDefaults()
 
         // Feature flags (reset to defaults)
         defaults.removeObject(forKey: "feature.dashboard.showMovement")
@@ -229,6 +232,12 @@ final class AuthenticationManager: ObservableObject {
         defaults.synchronize()
 
         Logger.shared.info("🗑️ UserDefaults cleared")
+    }
+
+    private func clearUserScopedDefaults() {
+        FirstLaunchManager.clearPersistedState()
+        SessionHistoryStore.clearPersistedTemporalisSleepCalibration(deleteRawFile: true)
+        DevicePersistenceManager.shared.forgetAllDevices()
     }
 
     private func clearKeychainData() {

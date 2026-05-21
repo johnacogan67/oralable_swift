@@ -411,6 +411,23 @@ class RecordingSessionManager: ObservableObject {
         Logger.shared.info("🗑️ [RecordingSessionManager] Deleted session: \(session.id)")
     }
 
+    /// Remove all local recording metadata and CSV files for the current signed-in user.
+    func clearAllLocalSessions() {
+        let sessionsToDelete = sessions + (currentSession.map { [$0] } ?? [])
+        let filePaths: Set<URL> = Set(sessionsToDelete.compactMap(\.dataFilePath))
+
+        for filePath in filePaths {
+            try? fileManager.removeItem(at: filePath)
+        }
+
+        sessionDataBuffer.removeAll()
+        currentSession = nil
+        sessions.removeAll()
+        try? fileManager.removeItem(at: sessionsFileURL)
+
+        Logger.shared.info("🗑️ [RecordingSessionManager] Cleared all local sessions")
+    }
+
     // MARK: - Persistence
 
     private var sessionsFileURL: URL {

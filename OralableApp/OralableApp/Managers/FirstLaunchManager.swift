@@ -14,6 +14,7 @@ final class FirstLaunchManager: ObservableObject {
     private static let fitKey = "oralable.hasCompletedFirstFit"
     private static let pairedKey = "oralable.hasPairedOralablePrimary"
     private static let trialKey = "oralable.onboardingTrialSetupMode"
+    private static let persistedKeys = [fitKey, pairedKey, trialKey]
 
     @Published private(set) var hasCompletedFirstFit: Bool
     @Published private(set) var hasPairedOralablePrimary: Bool
@@ -54,5 +55,20 @@ final class FirstLaunchManager: ObservableObject {
         hasCompletedFirstFit = true
         exitTrialSetupMode()
         Logger.shared.info("[FirstLaunchManager] First Temporalis fit gate completed (setup finalized, MainTab eligible)")
+    }
+
+    static func clearPersistedState() {
+        let defaults = UserDefaults.standard
+        for key in persistedKeys {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    func reset() {
+        Self.clearPersistedState()
+        hasCompletedFirstFit = false
+        hasPairedOralablePrimary = false
+        isTrialSetupMode = false
+        Logger.shared.info("[FirstLaunchManager] Setup gate state reset")
     }
 }

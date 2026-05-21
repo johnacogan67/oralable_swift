@@ -80,6 +80,13 @@ class SensorDataProcessor: ObservableObject {
         sensorDataHistory.removeAll()
     }
 
+    /// Clear all per-user buffers, including any in-progress calibration capture.
+    func resetForUserSession() {
+        clearHistory()
+        calibrationCaptureOralable.removeAll()
+        isCalibrationWindowActive = false
+    }
+
     /// Populate history with external data (e.g. mock data)
     func populateHistory(with data: [SensorData]) {
         sensorDataHistory.append(contentsOf: data)

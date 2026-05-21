@@ -329,6 +329,20 @@ class DashboardViewModel: ObservableObject {
         }
     }
 
+    func resetForUserSession() {
+        resetMetrics()
+        isConnected = false
+        deviceName = ""
+        connectedDeviceType = nil
+        batteryLevel = 0
+        bleRSSI = nil
+        bleLinkWarning = nil
+        sessionDuration = "00:00"
+        currentHRResult = nil
+        wornStatus = .initializing
+        irBufferForPI.removeAll()
+    }
+
     func startScanning() {
         Task {
             await deviceManager.startScanning()
