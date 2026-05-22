@@ -11,14 +11,14 @@ import XCTest
 @MainActor
 final class LocalUserSessionResetTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         clearLocalUserSessionDefaults()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         clearLocalUserSessionDefaults()
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testAuthenticationSignOutClearsSetupCalibrationAndRememberedDevices() {
