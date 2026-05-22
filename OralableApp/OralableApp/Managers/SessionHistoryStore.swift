@@ -96,7 +96,7 @@ final class SessionHistoryStore: ObservableObject {
 
     @Published private(set) var temporalisSleepCalibration: TemporalisSleepCalibrationRecord?
 
-    private let sleepCalDefaultsKey = "oralable.temporalis_sleep_calibration"
+    private static let sleepCalDefaultsKey = "oralable.temporalis_sleep_calibration"
 
     init() {
         loadSleepCalibration()
@@ -124,6 +124,23 @@ final class SessionHistoryStore: ObservableObject {
         persistSleepCalibration()
     }
 
+    func resetLocalUserState(deleteRawCalibrationFiles: Bool = false) {
+        clearTemporalisSleepCalibration()
+        if deleteRawCalibrationFiles {
+            Self.deleteResearchCalibrationFiles()
+        }
+    }
+
+    static func clearPersistedTemporalisSleepCalibration(
+        in defaults: UserDefaults = .standard,
+        deleteRawCalibrationFiles: Bool = false
+    ) {
+        defaults.removeObject(forKey: sleepCalDefaultsKey)
+        if deleteRawCalibrationFiles {
+            deleteResearchCalibrationFiles()
+        }
+    }
+
     /// Call when BLE primary changes: drop stored calibration if a different peripheral is now primary.
     func applyPrimaryDeviceForSleepGate(primaryPeripheralId: UUID?) {
         guard let cal = temporalisSleepCalibration, let pid = primaryPeripheralId else { return }
@@ -143,7 +160,7 @@ final class SessionHistoryStore: ObservableObject {
     }
 
     private func loadSleepCalibration() {
-        guard let data = UserDefaults.standard.data(forKey: sleepCalDefaultsKey),
+        guard let data = UserDefaults.standard.data(forKey: Self.sleepCalDefaultsKey),
               let decoded = try? JSONDecoder().decode(TemporalisSleepCalibrationRecord.self, from: data) else {
             return
         }
@@ -153,10 +170,18 @@ final class SessionHistoryStore: ObservableObject {
     private func persistSleepCalibration() {
         if let record = temporalisSleepCalibration,
            let data = try? JSONEncoder().encode(record) {
-            UserDefaults.standard.set(data, forKey: sleepCalDefaultsKey)
+            UserDefaults.standard.set(data, forKey: Self.sleepCalDefaultsKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: sleepCalDefaultsKey)
+            UserDefaults.standard.removeObject(forKey: Self.sleepCalDefaultsKey)
         }
+    }
+
+    private static func deleteResearchCalibrationFiles() {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+        let dir = base.appendingPathComponent(researchCalibrationFolder, isDirectory: true)
+        try? FileManager.default.removeItem(at: dir)
     }
 
     func attach(recordingManager: RecordingSessionManager, deviceManager: DeviceManager) {
