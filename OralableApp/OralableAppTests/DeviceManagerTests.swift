@@ -243,6 +243,37 @@ final class DeviceManagerTests: XCTestCase {
         XCTAssertTrue(operationExecuted)
     }
 
+    func testWithTimeoutRunsTimeoutHandlerForContinuationBackedOperation() async {
+        let stateQueue = DispatchQueue(label: "com.oralable.tests.with-timeout-state")
+        var pendingContinuation: CheckedContinuation<Void, Error>?
+        var timeoutHandlerCalled = false
+
+        do {
+            try await sut.withTimeout(seconds: 0.1, onTimeout: {
+                let continuation = stateQueue.sync {
+                    timeoutHandlerCalled = true
+                    let continuation = pendingContinuation
+                    pendingContinuation = nil
+                    return continuation
+                }
+
+                continuation?.resume(throwing: DeviceError.timeout)
+            }) {
+                try await withCheckedThrowingContinuation { continuation in
+                    stateQueue.sync {
+                        pendingContinuation = continuation
+                    }
+                }
+            }
+
+            XCTFail("Expected the operation to time out")
+        } catch {
+            XCTAssertTrue(timeoutHandlerCalled)
+            let continuationWasCleared = stateQueue.sync { pendingContinuation == nil }
+            XCTAssertTrue(continuationWasCleared)
+        }
+    }
+
     // MARK: - Integration Tests
 
     func testFullScanConnectDisconnectFlow() async {

@@ -93,7 +93,9 @@ extension DeviceManager {
             let step1Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringServices)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: {
+                (device as? OralableDevice)?.cancelPendingContinuations(error: DeviceError.timeout)
+            }) {
                 try await device.discoverServices()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() done in \(Int(Date().timeIntervalSince(step1Start) * 1000))ms")
@@ -109,7 +111,9 @@ extension DeviceManager {
             let step2Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringCharacteristics)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: {
+                (device as? OralableDevice)?.cancelPendingContinuations(error: DeviceError.timeout)
+            }) {
                 try await device.discoverCharacteristics()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() done in \(Int(Date().timeIntervalSince(step2Start) * 1000))ms")
@@ -125,7 +129,9 @@ extension DeviceManager {
             if let oralableDevice = device as? OralableDevice {
                 let firmwareReadStart = Date()
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() start")
-                let version = try await withTimeout(seconds: 5) {
+                let version = try await withTimeout(seconds: 5, onTimeout: {
+                    oralableDevice.cancelPendingContinuations(error: DeviceError.timeout)
+                }) {
                     try await oralableDevice.readFirmwareVersion()
                 }
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() done in \(Int(Date().timeIntervalSince(firmwareReadStart) * 1000))ms -> \(version)")
@@ -148,7 +154,9 @@ extension DeviceManager {
             let step4Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 enableNotifications() start")
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: {
+                (device as? OralableDevice)?.cancelPendingContinuations(error: DeviceError.timeout)
+            }) {
                 try await device.enableNotifications()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 enableNotifications() done in \(Int(Date().timeIntervalSince(step4Start) * 1000))ms")
@@ -164,7 +172,9 @@ extension DeviceManager {
                 do {
                     let accelNotifyStart = Date()
                     Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5/5 enableAccelerometerNotifications() start")
-                    try await withTimeout(seconds: 10) {
+                    try await withTimeout(seconds: 10, onTimeout: {
+                        oralableDevice.cancelPendingContinuations(error: DeviceError.timeout)
+                    }) {
                         await oralableDevice.enableAccelerometerNotifications()
                     }
                     Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5/5 enableAccelerometerNotifications() done in \(Int(Date().timeIntervalSince(accelNotifyStart) * 1000))ms")
@@ -420,7 +430,11 @@ extension DeviceManager {
     // MARK: - Timeout Helper
 
     // Day 2: Timeout helper for async operations (safe unwrap fix)
-    func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+    func withTimeout<T>(
+        seconds: TimeInterval,
+        onTimeout: (() -> Void)? = nil,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
         return try await withThrowingTaskGroup(of: T.self) { group in
             // Add the actual operation
             group.addTask {
@@ -430,6 +444,7 @@ extension DeviceManager {
             // Add a timeout task
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                onTimeout?()
                 throw DeviceError.timeout
             }
 
