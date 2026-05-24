@@ -133,6 +133,10 @@ class SharedDataManager: ObservableObject {
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
     private var lastSyncRequestDate: Date?
+    private var hasPendingSyncRequest = false
+    private var pendingSyncShouldForce = false
+    private var deferredSyncTask: Task<Void, Never>?
+    private let syncThrottleInterval: TimeInterval = 20
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -396,23 +400,36 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+
+        let existingReadings = decodeCompressedSensorReadings(from: record)
+        let mergedReadings = BruxismSessionData.mergedReadings(
+            existing: existingReadings,
+            newSensorData: sensorData
+        )
+
+        try await populateRecord(record, with: mergedReadings, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
-        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+        Logger.shared.info(
+            "[SharedDataManager] ✅ Updated day record for \(date) merged_existing=\(existingReadings.count) new=\(sensorData.count) total=\(mergedReadings.count)"
+        )
     }
     
     /// Populate a record with sensor data
     private func populateRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String, date: Date) async throws {
+        let readings = sensorData.map { SerializableSensorData(from: $0) }
+        try await populateRecord(record, with: readings, patientID: patientID, date: date)
+    }
+
+    private func populateRecord(_ record: CKRecord, with readings: [SerializableSensorData], patientID: String, date: Date) async throws {
         // Calculate metrics
         var bruxismEvents = 0
         var peakIntensity = 0.0
         let bruxismThreshold = 2.0
         var isInEvent = false
         
-        for data in sensorData {
-            let magnitude = data.accelerometer.magnitude
+        for reading in readings {
+            let magnitude = reading.accelMagnitude
             if magnitude > bruxismThreshold {
                 if !isInEvent {
                     bruxismEvents += 1
@@ -426,12 +443,12 @@ class SharedDataManager: ObservableObject {
             }
         }
         
-        let averageIntensity = sensorData.isEmpty ? 0.0 :
-            sensorData.reduce(0.0) { $0 + $1.accelerometer.magnitude } / Double(sensorData.count)
+        let averageIntensity = readings.isEmpty ? 0.0 :
+            readings.reduce(0.0) { $0 + $1.accelMagnitude } / Double(readings.count)
         
         // Calculate session duration from first to last reading
         let duration: TimeInterval
-        if let first = sensorData.first?.timestamp, let last = sensorData.last?.timestamp {
+        if let first = readings.first?.timestamp, let last = readings.last?.timestamp {
             duration = last.timeIntervalSince(first)
         } else {
             duration = 0
@@ -446,19 +463,19 @@ class SharedDataManager: ObservableObject {
         record["peakIntensity"] = peakIntensity as CKRecordValue
         
         // Heart rate data
-        let heartRateData = sensorData.compactMap { $0.heartRate?.bpm }
+        let heartRateData = readings.compactMap { $0.heartRateBPM }
         if !heartRateData.isEmpty, let hrData = try? JSONEncoder().encode(heartRateData) {
             record["heartRateData"] = hrData as CKRecordValue
         }
         
         // SpO2 data
-        let spo2Data = sensorData.compactMap { $0.spo2?.percentage }
+        let spo2Data = readings.compactMap { $0.spo2Percentage }
         if !spo2Data.isEmpty, let spo2JSON = try? JSONEncoder().encode(spo2Data) {
             record["oxygenSaturation"] = spo2JSON as CKRecordValue
         }
         
         // Compress and store full sensor data for time-series charts
-        let bruxismSessionData = BruxismSessionData(sensorData: sensorData)
+        let bruxismSessionData = BruxismSessionData(sensorReadings: readings)
         if let jsonData = try? JSONEncoder().encode(bruxismSessionData) {
             let uncompressedSize = jsonData.count
             if let compressed = jsonData.compressed() {
@@ -470,22 +487,57 @@ class SharedDataManager: ObservableObject {
             }
         }
     }
+
+    private func decodeCompressedSensorReadings(from record: CKRecord) -> [SerializableSensorData] {
+        guard let compressedData = record["sensorDataCompressed"] as? Data,
+              let uncompressedSize = uncompressedSensorDataSize(from: record),
+              let decompressed = compressedData.decompressed(expectedSize: uncompressedSize) else {
+            return []
+        }
+
+        do {
+            return try JSONDecoder().decode(BruxismSessionData.self, from: decompressed).sensorReadings
+        } catch {
+            Logger.shared.warning("[SharedDataManager] Failed to decode existing day record sensor data: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    private func uncompressedSensorDataSize(from record: CKRecord) -> Int? {
+        if let size = record["sensorDataUncompressedSize"] as? Int {
+            return size
+        }
+        if let size = record["sensorDataUncompressedSize"] as? NSNumber {
+            return size.intValue
+        }
+        return nil
+    }
     
-    /// Call this when the Share screen appears or when user wants to sync
-    func uploadCurrentDataForSharing() async {
+    /// Call this when the Share screen appears or when user wants to sync.
+    /// Force disconnect/background syncs so the final samples are not stranded behind UI throttling.
+    func uploadCurrentDataForSharing(force: Bool = false) async {
         // Coalesce rapid-fire requests (e.g. disconnect loops + backgrounding).
         // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
         let now = Date()
         lastSyncRequestDate = now
         if isSyncing {
-            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
+            hasPendingSyncRequest = true
+            pendingSyncShouldForce = pendingSyncShouldForce || force
+            Logger.shared.info("[SharedDataManager] Deferring upload: already syncing")
             return
         }
-        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info(
-                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
-            )
-            return
+        if !force, let last = lastSyncDate {
+            let elapsed = now.timeIntervalSince(last)
+            guard elapsed >= syncThrottleInterval else {
+                let delay = syncThrottleInterval - elapsed
+                hasPendingSyncRequest = true
+                pendingSyncShouldForce = pendingSyncShouldForce || force
+                scheduleDeferredUpload(after: delay)
+                Logger.shared.info(
+                    "[SharedDataManager] Deferring upload: last sync \(String(format: "%.1f", elapsed))s ago, retrying in \(String(format: "%.1f", delay))s"
+                )
+                return
+            }
         }
 
         do {
@@ -496,6 +548,40 @@ class SharedDataManager: ObservableObject {
                 self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
             }
         }
+
+        await runPendingSyncIfNeeded()
+    }
+
+    private func scheduleDeferredUpload(after delay: TimeInterval) {
+        guard deferredSyncTask == nil else { return }
+
+        let milliseconds = max(1, Int(delay * 1_000))
+        deferredSyncTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(milliseconds))
+            await self?.runDeferredSync()
+        }
+    }
+
+    private func runDeferredSync() async {
+        deferredSyncTask = nil
+        await runPendingSyncIfNeeded()
+    }
+
+    private func runPendingSyncIfNeeded() async {
+        guard hasPendingSyncRequest, !isSyncing else { return }
+
+        let shouldForce = pendingSyncShouldForce
+        hasPendingSyncRequest = false
+        pendingSyncShouldForce = false
+
+        if shouldForce {
+            Logger.shared.info(
+                "[SharedDataManager] Running deferred forced upload"
+            )
+        } else {
+            Logger.shared.info("[SharedDataManager] Running deferred upload")
+        }
+        await uploadCurrentDataForSharing(force: shouldForce)
     }
 
     // MARK: - Get Patient Health Data for Sharing
@@ -764,10 +850,57 @@ struct BruxismSessionData: Codable {
     let endDate: Date
 
     init(sensorData: [SensorData]) {
-        self.sensorReadings = sensorData.map { SerializableSensorData(from: $0) }
-        self.recordingCount = sensorData.count
-        self.startDate = sensorData.first?.timestamp ?? Date()
-        self.endDate = sensorData.last?.timestamp ?? Date()
+        self.init(sensorReadings: sensorData.map { SerializableSensorData(from: $0) })
+    }
+
+    init(sensorReadings: [SerializableSensorData]) {
+        self.sensorReadings = sensorReadings
+        self.recordingCount = sensorReadings.count
+        self.startDate = sensorReadings.first?.timestamp ?? Date()
+        self.endDate = sensorReadings.last?.timestamp ?? Date()
+    }
+
+    static func mergedReadings(existing: [SerializableSensorData], newSensorData: [SensorData]) -> [SerializableSensorData] {
+        let newReadings = newSensorData.map { SerializableSensorData(from: $0) }
+        var indexesByIdentity: [SensorReadingIdentity: Int] = [:]
+        var merged: [SerializableSensorData] = []
+        merged.reserveCapacity(existing.count + newReadings.count)
+
+        for reading in existing + newReadings {
+            let identity = SensorReadingIdentity(reading)
+            if let index = indexesByIdentity[identity] {
+                merged[index] = reading
+            } else {
+                indexesByIdentity[identity] = merged.count
+                merged.append(reading)
+            }
+        }
+
+        return merged.sorted(by: { $0.timestamp < $1.timestamp })
+    }
+}
+
+private struct SensorReadingIdentity: Hashable {
+    let timestamp: Date
+    let deviceType: String
+    let ppgRed: Int32
+    let ppgIR: Int32
+    let ppgGreen: Int32
+    let emg: Double?
+    let accelX: Int16
+    let accelY: Int16
+    let accelZ: Int16
+
+    init(_ reading: SerializableSensorData) {
+        self.timestamp = reading.timestamp
+        self.deviceType = reading.deviceType
+        self.ppgRed = reading.ppgRed
+        self.ppgIR = reading.ppgIR
+        self.ppgGreen = reading.ppgGreen
+        self.emg = reading.emg
+        self.accelX = reading.accelX
+        self.accelY = reading.accelY
+        self.accelZ = reading.accelZ
     }
 }
 

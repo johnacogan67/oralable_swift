@@ -349,6 +349,26 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func makeSensorData(timestamp: Date, ppgIR: Int32 = 100_000, deviceType: DeviceType = .oralable) -> SensorData {
+        let ppg = PPGData(red: 100_000, ir: ppgIR, green: 100_000, timestamp: timestamp)
+        let accelerometer = AccelerometerData(x: 10, y: 20, z: 30, timestamp: timestamp)
+        let temperature = TemperatureData(celsius: 37.0, timestamp: timestamp)
+        let battery = BatteryData(percentage: 80, timestamp: timestamp)
+        let heartRate = HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp)
+        let spo2 = SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp)
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: ppg,
+            accelerometer: accelerometer,
+            temperature: temperature,
+            battery: battery,
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: deviceType
+        )
+    }
+
     private func createMockSensorDataWithHighAccel(count: Int = 5, magnitude: Double = 3.0) -> [SensorData] {
         // Create sensor data with high accelerometer values to trigger bruxism detection
         // magnitude is in raw units where the threshold compares accelerometer.magnitude
@@ -726,6 +746,32 @@ final class SharedDataModelTests: XCTestCase {
             XCTAssertEqual(decodedReading.temperatureCelsius, originalReading.temperatureCelsius, accuracy: 0.001)
             XCTAssertEqual(decodedReading.batteryPercentage, originalReading.batteryPercentage)
         }
+    }
+
+    func testBruxismSessionDataMergePreservesExistingReadingsWhenNewBufferOverlaps() {
+        // Given - a same-day CloudKit record already has readings older than the in-memory buffer.
+        let existingSensorData = createMockSensorData(count: 4)
+        let existingReadings = BruxismSessionData(sensorData: existingSensorData).sensorReadings
+        let newTailReading = makeSensorData(
+            timestamp: existingSensorData.last!.timestamp.addingTimeInterval(5),
+            ppgIR: 345_678
+        )
+
+        // When - the current RAM buffer overlaps the last two uploaded readings and adds one new sample.
+        let merged = BruxismSessionData.mergedReadings(
+            existing: existingReadings,
+            newSensorData: Array(existingSensorData.suffix(2)) + [newTailReading]
+        )
+
+        // Then - old readings remain, overlapping readings are not duplicated, and the new reading is appended.
+        XCTAssertEqual(merged.count, existingReadings.count + 1)
+        XCTAssertEqual(merged.first?.timestamp, existingReadings.first?.timestamp)
+        XCTAssertEqual(merged.last?.timestamp, newTailReading.timestamp)
+        XCTAssertEqual(
+            merged.map(\.timestamp),
+            merged.map(\.timestamp).sorted(),
+            "Merged readings should remain chronological for session duration and charts"
+        )
     }
 
     // MARK: - SerializableSensorData Tests
