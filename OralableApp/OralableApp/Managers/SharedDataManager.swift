@@ -118,6 +118,33 @@ struct SharedProfessional: Identifiable {
     let isActive: Bool
 }
 
+enum SharedDataUploadDecision: Equatable {
+    case uploadNow
+    case deferUpload(TimeInterval)
+
+    static func evaluate(
+        now: Date,
+        isSyncing: Bool,
+        lastSyncDate: Date?,
+        coalesceInterval: TimeInterval
+    ) -> SharedDataUploadDecision {
+        if isSyncing {
+            return .deferUpload(0.5)
+        }
+
+        guard let lastSyncDate else {
+            return .uploadNow
+        }
+
+        let elapsed = now.timeIntervalSince(lastSyncDate)
+        guard elapsed < coalesceInterval else {
+            return .uploadNow
+        }
+
+        return .deferUpload(coalesceInterval - elapsed)
+    }
+}
+
 // MARK: - Shared Data Manager
 
 @MainActor
@@ -133,6 +160,9 @@ class SharedDataManager: ObservableObject {
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
     private var lastSyncRequestDate: Date?
+    private var deferredUploadTask: Task<Void, Never>?
+
+    private static let uploadCoalesceInterval: TimeInterval = 20
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -477,17 +507,25 @@ class SharedDataManager: ObservableObject {
         // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
         let now = Date()
         lastSyncRequestDate = now
-        if isSyncing {
-            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
-            return
-        }
-        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info(
-                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
-            )
-            return
-        }
 
+        switch SharedDataUploadDecision.evaluate(
+            now: now,
+            isSyncing: isSyncing,
+            lastSyncDate: lastSyncDate,
+            coalesceInterval: Self.uploadCoalesceInterval
+        ) {
+        case .uploadNow:
+            await performCurrentDataUpload()
+        case .deferUpload(let delay):
+            let reason = isSyncing ? "already syncing" : "last sync \(String(format: "%.1f", now.timeIntervalSince(lastSyncDate ?? now)))s ago"
+            Logger.shared.info(
+                "[SharedDataManager] Deferring upload: \(reason)"
+            )
+            scheduleDeferredCurrentDataUpload(after: delay)
+        }
+    }
+
+    private func performCurrentDataUpload() async {
         do {
             try await syncSensorDataToCloudKit()
         } catch {
@@ -496,6 +534,29 @@ class SharedDataManager: ObservableObject {
                 self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
             }
         }
+    }
+
+    private func scheduleDeferredCurrentDataUpload(after delay: TimeInterval) {
+        deferredUploadTask?.cancel()
+        let nanoseconds = UInt64(max(0, delay) * 1_000_000_000)
+        deferredUploadTask = Task { [weak self] in
+            if nanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: nanoseconds)
+            }
+            guard !Task.isCancelled else { return }
+            await self?.runDeferredCurrentDataUpload()
+        }
+    }
+
+    private func runDeferredCurrentDataUpload() async {
+        deferredUploadTask = nil
+
+        while isSyncing {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+        }
+
+        await performCurrentDataUpload()
     }
 
     // MARK: - Get Patient Health Data for Sharing
