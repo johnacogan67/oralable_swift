@@ -406,8 +406,10 @@ class SharedDataManager: ObservableObject {
     }
 
     private static func decodeSensorData(from record: CKRecord) -> [SensorData] {
+        let rawUncompressedSize = record["sensorDataUncompressedSize"]
+        let uncompressedSize = (rawUncompressedSize as? Int) ?? (rawUncompressedSize as? NSNumber)?.intValue
         guard let compressed = record["sensorDataCompressed"] as? Data,
-              let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let uncompressedSize,
               let jsonData = compressed.decompressed(expectedSize: uncompressedSize),
               let sessionData = try? JSONDecoder().decode(BruxismSessionData.self, from: jsonData) else {
             return []
