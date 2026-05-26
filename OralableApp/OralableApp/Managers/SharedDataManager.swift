@@ -396,11 +396,55 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+        let existingSensorData = Self.decodeSensorData(from: record)
+        let mergedSensorData = Self.mergeSensorDataForDay(existing: existingSensorData, incoming: sensorData)
+
+        try await populateRecord(record, with: mergedSensorData, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
-        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date) with \(mergedSensorData.count) merged readings")
+    }
+
+    private static func decodeSensorData(from record: CKRecord) -> [SensorData] {
+        guard let compressed = record["sensorDataCompressed"] as? Data,
+              let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let jsonData = compressed.decompressed(expectedSize: uncompressedSize),
+              let sessionData = try? JSONDecoder().decode(BruxismSessionData.self, from: jsonData) else {
+            return []
+        }
+        return sessionData.sensorData
+    }
+
+    static func mergeSensorDataForDay(existing: [SensorData], incoming: [SensorData]) -> [SensorData] {
+        var mergedByKey: [String: SensorData] = [:]
+        mergedByKey.reserveCapacity(existing.count + incoming.count)
+
+        for data in existing {
+            mergedByKey[mergeKey(for: data)] = data
+        }
+        for data in incoming {
+            mergedByKey[mergeKey(for: data)] = data
+        }
+
+        return mergedByKey.values.sorted { lhs, rhs in
+            if lhs.timestamp != rhs.timestamp {
+                return lhs.timestamp < rhs.timestamp
+            }
+            return lhs.deviceType.rawValue < rhs.deviceType.rawValue
+        }
+    }
+
+    private static func mergeKey(for data: SensorData) -> String {
+        [
+            String(format: "%.6f", data.timestamp.timeIntervalSinceReferenceDate),
+            data.deviceType.rawValue,
+            "\(data.ppg.red)",
+            "\(data.ppg.ir)",
+            "\(data.ppg.green)",
+            "\(data.accelerometer.x)",
+            "\(data.accelerometer.y)",
+            "\(data.accelerometer.z)"
+        ].joined(separator: "|")
     }
     
     /// Populate a record with sensor data
@@ -762,6 +806,9 @@ struct BruxismSessionData: Codable {
     let recordingCount: Int
     let startDate: Date
     let endDate: Date
+    var sensorData: [SensorData] {
+        sensorReadings.map { $0.sensorData }
+    }
 
     init(sensorData: [SensorData]) {
         self.sensorReadings = sensorData.map { SerializableSensorData(from: $0) }
@@ -803,6 +850,26 @@ struct SerializableSensorData: Codable {
     let heartRateQuality: Double?
     let spo2Percentage: Double?
     let spo2Quality: Double?
+
+    var sensorData: SensorData {
+        let heartRate = heartRateBPM.map {
+            HeartRateData(bpm: $0, quality: heartRateQuality ?? 0, timestamp: timestamp)
+        }
+        let spo2 = spo2Percentage.map {
+            SpO2Data(percentage: $0, quality: spo2Quality ?? 0, timestamp: timestamp)
+        }
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: ppgRed, ir: ppgIR, green: ppgGreen, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: accelX, y: accelY, z: accelZ, timestamp: timestamp),
+            temperature: TemperatureData(celsius: temperatureCelsius, timestamp: timestamp),
+            battery: BatteryData(percentage: batteryPercentage, timestamp: timestamp),
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: deviceType == "ANR M40" ? .anr : .oralable
+        )
+    }
 
     init(from sensorData: SensorData) {
         self.timestamp = sensorData.timestamp

@@ -1567,6 +1567,93 @@ final class DayGroupingTests: XCTestCase {
     }
 }
 
+// MARK: - Sensor Data Sync Preservation Tests
+
+@MainActor
+final class SensorDataSyncPreservationTests: XCTestCase {
+
+    func testMergeSensorDataForDayPreservesEarlierCloudKitSamples() {
+        // Given
+        let start = Date(timeIntervalSince1970: 1_735_689_600)
+        let existing = [
+            createMockSensorData(at: start, ir: 100),
+            createMockSensorData(at: start.addingTimeInterval(1), ir: 101)
+        ]
+        let incoming = [
+            existing[1],
+            createMockSensorData(at: start.addingTimeInterval(2), ir: 102)
+        ]
+
+        // When
+        let merged = SharedDataManager.mergeSensorDataForDay(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 3, "Existing day samples should be merged instead of overwritten")
+        XCTAssertEqual(merged.map { $0.ppg.ir }, [100, 101, 102])
+    }
+
+    func testBruxismSessionDataRehydratesSerializableSamples() throws {
+        // Given
+        let sample = createMockSensorData(at: Date(timeIntervalSince1970: 1_735_689_600), ir: 42)
+        let payload = BruxismSessionData(sensorData: [sample])
+
+        // When
+        let encoded = try JSONEncoder().encode(payload)
+        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: encoded)
+        let restored = try XCTUnwrap(decoded.sensorData.first)
+
+        // Then
+        XCTAssertEqual(decoded.sensorData.count, 1)
+        XCTAssertEqual(restored.timestamp, sample.timestamp)
+        XCTAssertEqual(restored.ppg.ir, sample.ppg.ir)
+        XCTAssertEqual(restored.accelerometer.x, sample.accelerometer.x)
+        XCTAssertEqual(restored.heartRate?.bpm, sample.heartRate?.bpm)
+        XCTAssertEqual(restored.spo2?.percentage, sample.spo2?.percentage)
+        XCTAssertEqual(restored.deviceType, sample.deviceType)
+    }
+
+    func testProcessorFlushFailureRetainsLiveHistory() {
+        // Given
+        let processor = SensorDataProcessor(calculator: BioMetricCalculator())
+        let sample = createMockSensorData(at: Date(timeIntervalSince1970: 1_735_689_600), ir: 42)
+        processor.appendBatchToHistory([sample])
+
+        // When
+        processor.flushLiveHistoryToTempFileIfNonEmpty { _, _ in
+            throw NSError(domain: "SensorDataSyncPreservationTests", code: 1)
+        }
+
+        // Then
+        XCTAssertEqual(processor.sensorDataHistory.count, 1, "Failed flushes must not drop unsynced live samples")
+    }
+
+    func testProcessorFlushSuccessClearsLiveHistory() {
+        // Given
+        let processor = SensorDataProcessor(calculator: BioMetricCalculator())
+        let sample = createMockSensorData(at: Date(timeIntervalSince1970: 1_735_689_600), ir: 42)
+        processor.appendBatchToHistory([sample])
+
+        // When
+        processor.flushLiveHistoryToTempFileIfNonEmpty { _, _ in }
+
+        // Then
+        XCTAssertTrue(processor.sensorDataHistory.isEmpty)
+    }
+
+    private func createMockSensorData(at timestamp: Date, ir: Int32) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: ir + 1, ir: ir, green: ir + 2, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 10, y: 20, z: 30, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.0, timestamp: timestamp),
+            battery: BatteryData(percentage: 80, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp),
+            deviceType: .oralable
+        )
+    }
+}
+
 // MARK: - GDPR Deletion State Tests
 
 @MainActor

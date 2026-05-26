@@ -183,15 +183,16 @@ final class SessionHistoryStore: ObservableObject {
         resetHourBucket()
     }
 
-    /// Clears in-memory segment state when the device disconnects.
-    func resetForDisconnect() {
+    /// Finalizes in-memory rollups when the device disconnects.
+    func resetForDisconnect(at date: Date = Date()) {
+        flushCurrentHour(at: date)
+        pushToRecordingSession()
         sessionAnchor = nil
         activeSessionId = nil
         autoSessionUUID = nil
         currentHourIndex = 0
         resetHourBucket()
         lastSpO2Timestamp = nil
-        segmentByHour = [:]
     }
 
     func recordTemporalis(_ probabilities: TemporalisProbabilities, at date: Date) {
