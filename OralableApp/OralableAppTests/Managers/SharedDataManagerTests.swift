@@ -728,6 +728,36 @@ final class SharedDataModelTests: XCTestCase {
         }
     }
 
+    func testMergedSensorReadingsPreservesExistingDataAndDeduplicatesOverlap() {
+        // Given - an existing CloudKit day payload and an overlapping in-memory upload window
+        let allReadings = BruxismSessionData(sensorData: createMockSensorData(count: 5)).sensorReadings
+        let existing = Array(allReadings[0...2])
+        let incoming = Array(allReadings[2...4])
+
+        // When
+        let merged = SharedDataManager.mergedSensorReadings(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 5, "Merged upload should keep previous CloudKit readings without duplicating overlap")
+        XCTAssertEqual(merged.map(\.timestamp), allReadings.map(\.timestamp), "Merged readings should be sorted chronologically")
+        XCTAssertEqual(merged.first?.ppgIR, allReadings.first?.ppgIR)
+        XCTAssertEqual(merged.last?.ppgIR, allReadings.last?.ppgIR)
+    }
+
+    func testBruxismSessionDataFromSerializableReadingsUsesFullMergedRange() {
+        // Given
+        let readings = BruxismSessionData(sensorData: createMockSensorData(count: 4)).sensorReadings
+
+        // When
+        let sessionData = BruxismSessionData(sensorReadings: readings)
+
+        // Then
+        XCTAssertEqual(sessionData.recordingCount, readings.count)
+        XCTAssertEqual(sessionData.sensorReadings.count, readings.count)
+        XCTAssertEqual(sessionData.startDate, readings.first?.timestamp)
+        XCTAssertEqual(sessionData.endDate, readings.last?.timestamp)
+    }
+
     // MARK: - SerializableSensorData Tests
 
     func testSerializableSensorDataFromOralableDevice() {
