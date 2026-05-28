@@ -174,6 +174,7 @@ actor UnifiedBiometricProcessor {
     // MARK: - Signal Buffers (CircularBuffer for O(1) append)
 
     private var irBuffer: CircularBuffer<Double>
+    private var rawIRBuffer: CircularBuffer<Double>
     private var redBuffer: CircularBuffer<Double>
     private var greenBuffer: CircularBuffer<Double>
     private var accelMagnitudeBuffer: CircularBuffer<Double>
@@ -236,8 +237,9 @@ actor UnifiedBiometricProcessor {
         self.activityClassifier = ActivityClassifier()
 
         // Initialize circular buffers with fixed capacity (O(1) append, no removeFirst)
-        let capacity = config.hrWindowSize
+        let capacity = max(config.hrWindowSize, config.spo2WindowSize)
         self.irBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.rawIRBuffer = CircularBuffer<Double>(capacity: capacity)
         self.redBuffer = CircularBuffer<Double>(capacity: capacity)
         self.greenBuffer = CircularBuffer<Double>(capacity: capacity)
         self.accelMagnitudeBuffer = CircularBuffer<Double>(capacity: capacity)
@@ -337,6 +339,7 @@ actor UnifiedBiometricProcessor {
     /// Reset all internal state (call when device reconnects or starting new session)
     func reset() {
         irBuffer.removeAll()
+        rawIRBuffer.removeAll()
         redBuffer.removeAll()
         greenBuffer.removeAll()
         accelMagnitudeBuffer.removeAll()
@@ -443,7 +446,7 @@ actor UnifiedBiometricProcessor {
             )
         }
 
-        let perfusionIndex = calculatePerfusionIndex(signal: irBuffer.all)
+        let perfusionIndex = calculatePerfusionIndex(signal: rawIRBuffer.all)
         let signalStrength = SignalStrength(perfusionIndex: perfusionIndex)
 
         var heartRate = 0
@@ -595,8 +598,9 @@ actor UnifiedBiometricProcessor {
         // Feeding motion-compensated residuals here causes negative "IR_DC" and breaks normalization/gating.
         let irDCFiltered = irdcProcessor.processSample(irRaw).dcValue
 
-        irBuffer.append(irBP)
         // Keep raw (non-negative) channels for SpO2 / DC-based metrics.
+        irBuffer.append(irBP)
+        rawIRBuffer.append(irRaw)
         redBuffer.append(redRaw)
         greenBuffer.append(greenBP)
         accelMagnitudeBuffer.append(motion)
@@ -877,13 +881,13 @@ actor UnifiedBiometricProcessor {
 
     private func calculateSpO2() -> (spo2: Double, quality: Double) {
         guard redBuffer.count >= config.spo2WindowSize,
-              irBuffer.count >= config.spo2WindowSize else {
+              rawIRBuffer.count >= config.spo2WindowSize else {
             return (0, 0)
         }
 
         // Snapshot buffers to arrays for efficient multi-pass calculation
         let redValues = redBuffer.all
-        let irValues = irBuffer.all
+        let irValues = rawIRBuffer.all
 
         // DC components (mean)
         let dcRed = redValues.reduce(0, +) / Double(redValues.count)

@@ -99,7 +99,8 @@ final class AppDependencies: ObservableObject {
         .sink { [weak self] _, _, _ in
             guard let self else { return }
             self.sessionHistoryStore.applyPrimaryDeviceForSleepGate(
-                primaryPeripheralId: self.deviceManager.primaryDevice?.peripheralIdentifier
+                primaryPeripheralId: self.deviceManager.primaryDevice?.peripheralIdentifier,
+                primaryDeviceType: self.deviceManager.primaryDevice?.type
             )
             self.appStateManager.refreshOralableClinicalMetrics(
                 primaryBLE: self.deviceManager.primaryBLEDevice
