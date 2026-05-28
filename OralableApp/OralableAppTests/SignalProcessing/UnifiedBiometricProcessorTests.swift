@@ -116,6 +116,42 @@ final class UnifiedBiometricProcessorTests: XCTestCase {
         XCTAssertEqual(result.spo2, 0, "SpO2 should be 0 when R-value is outside physiological bounds")
     }
 
+    func testSpO2UsesRawIRDCForValidSyntheticPPG() async {
+        let processor = UnifiedBiometricProcessor()
+        let sampleCount = 200
+        let sampleRate = 50.0
+        let frequencyHz = 1.2
+
+        var irSamples = [Double]()
+        var redSamples = [Double]()
+        var greenSamples = [Double]()
+        var accelX = [Double]()
+        var accelY = [Double]()
+        var accelZ = [Double]()
+
+        for i in 0..<sampleCount {
+            let t = Double(i) / sampleRate
+            irSamples.append(10_000.0 + 500.0 * sin(2.0 * .pi * frequencyHz * t))
+            redSamples.append(10_000.0 + 300.0 * sin(2.0 * .pi * frequencyHz * t))
+            greenSamples.append(10_000.0 + 200.0 * sin(2.0 * .pi * frequencyHz * t))
+            accelX.append(0)
+            accelY.append(0)
+            accelZ.append(16_384)
+        }
+
+        let result = await processor.processBatch(
+            irSamples: irSamples,
+            redSamples: redSamples,
+            greenSamples: greenSamples,
+            accelX: accelX,
+            accelY: accelY,
+            accelZ: accelZ
+        )
+
+        XCTAssertGreaterThan(result.spo2, 90, "Valid PPG should produce an SpO2 estimate")
+        XCTAssertLessThanOrEqual(result.spo2, 100, "SpO2 should stay in the physiological range")
+    }
+
     /// Stationary accelerometer (0, 0, 16384) should produce low motionLevel and activity != .motion.
     func testMotionDetectionStationary() async {
         let processor = UnifiedBiometricProcessor()

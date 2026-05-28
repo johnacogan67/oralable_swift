@@ -195,6 +195,17 @@ extension DeviceManager {
                 }
             }
 
+            guard !Task.isCancelled else {
+                Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Discovery cancelled before ready promotion")
+                return
+            }
+
+            guard peripheral.state == .connected else {
+                Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected before ready promotion")
+                updateDeviceReadiness(peripheral.identifier, to: .disconnected)
+                return
+            }
+
             // Device is now ready!
             updateDeviceReadiness(peripheral.identifier, to: .ready)
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")

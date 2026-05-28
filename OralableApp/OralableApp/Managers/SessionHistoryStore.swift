@@ -124,9 +124,11 @@ final class SessionHistoryStore: ObservableObject {
         persistSleepCalibration()
     }
 
-    /// Call when BLE primary changes: drop stored calibration if a different peripheral is now primary.
-    func applyPrimaryDeviceForSleepGate(primaryPeripheralId: UUID?) {
-        guard let cal = temporalisSleepCalibration, let pid = primaryPeripheralId else { return }
+    /// Call when BLE primary changes: drop stored calibration only when another Oralable becomes primary.
+    func applyPrimaryDeviceForSleepGate(primaryPeripheralId: UUID?, primaryDeviceType: DeviceType?) {
+        guard primaryDeviceType == .oralable,
+              let cal = temporalisSleepCalibration,
+              let pid = primaryPeripheralId else { return }
         if cal.peripheralId != pid {
             temporalisSleepCalibration = nil
             persistSleepCalibration()
@@ -162,7 +164,10 @@ final class SessionHistoryStore: ObservableObject {
     func attach(recordingManager: RecordingSessionManager, deviceManager: DeviceManager) {
         self.recordingManager = recordingManager
         self.deviceManager = deviceManager
-        applyPrimaryDeviceForSleepGate(primaryPeripheralId: deviceManager.primaryDevice?.peripheralIdentifier)
+        applyPrimaryDeviceForSleepGate(
+            primaryPeripheralId: deviceManager.primaryDevice?.peripheralIdentifier,
+            primaryDeviceType: deviceManager.primaryDevice?.type
+        )
     }
 
     func beginSession(anchor: Date, sessionId: UUID) {

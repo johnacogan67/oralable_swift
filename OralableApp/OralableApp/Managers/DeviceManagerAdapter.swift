@@ -137,15 +137,40 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 Task.detached(priority: .userInitiated) { [weak self, processor, flat] in
                     guard let self else { return }
                     let latestByType = DeviceManagerAdapter.latestBySensorType(from: flat)
+                    let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
+                    let result: BiometricResult?
+                    if arrays.ir.isEmpty {
+                        result = nil
+                    } else {
+                        result = await processor.processBatch(
+                            irSamples: arrays.ir,
+                            redSamples: arrays.red,
+                            greenSamples: arrays.green,
+                            accelX: arrays.ax,
+                            accelY: arrays.ay,
+                            accelZ: arrays.az,
+                            resetState: false
+                        )
+                    }
+
+                    let ts = Date()
                     await MainActor.run { [weak self] in
                         guard let self else { return }
                         self.ingestLiveMetricsFromLatestReadings(latestByType)
+
+                        let calculatedSpO2 = (result?.spo2 ?? 0) > 0 ? result?.spo2 : nil
+                        if let calculatedSpO2 {
+                            self.spO2 = Int(calculatedSpO2.rounded())
+                        }
+
                         let oral = DeviceManagerAdapter.oralableSensorDataRows(
                             from: flat,
                             heartRate: self.heartRate,
                             heartRateQuality: self.heartRateQuality,
                             temperature: self.temperature,
-                            batteryLevel: self.batteryLevel
+                            batteryLevel: self.batteryLevel,
+                            spo2Percent: calculatedSpO2,
+                            spo2Quality: result?.spo2Quality
                         )
                         let anr = DeviceManagerAdapter.anrSensorDataRows(from: flat)
                         if !oral.isEmpty || !anr.isEmpty {
@@ -153,28 +178,13 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                             self.applyStreamingHistoryRows(oral: oral, anr: anr)
                             self.deviceManager.appendBatchToUnifiedSensorStream(allNew)
                         }
-                    }
 
-                    let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
-                    guard !arrays.ir.isEmpty else { return }
+                        if let result {
+                            self.temporalisFatigueIndexPercent = result.tfiPercent
+                            self.sessionHistoryStore?.recordTFI(percent: result.tfiPercent, at: ts)
+                        }
 
-                    let result = await processor.processBatch(
-                        irSamples: arrays.ir,
-                        redSamples: arrays.red,
-                        greenSamples: arrays.green,
-                        accelX: arrays.ax,
-                        accelY: arrays.ay,
-                        accelZ: arrays.az,
-                        resetState: false
-                    )
-
-                    let ts = Date()
-                    let tfi = result.tfiPercent
-                    await MainActor.run { [weak self] in
-                        guard let self else { return }
-                        let spo2Percent = self.spO2 > 0 ? Double(self.spO2) : nil
-                        self.temporalisFatigueIndexPercent = tfi
-                        self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)
+                        let spo2Percent = calculatedSpO2 ?? (self.spO2 > 0 ? Double(self.spO2) : nil)
                         self.sessionHistoryStore?.recordSpO2Sample(percent: spo2Percent, at: ts)
                     }
                 }
@@ -464,7 +474,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         heartRate: Int,
         heartRateQuality: Double,
         temperature: Double,
-        batteryLevel: Double
+        batteryLevel: Double,
+        spo2Percent: Double?,
+        spo2Quality: Double?
     ) -> [SensorData] {
         let sorted = readings.sorted { $0.timestamp < $1.timestamp }
         var lastAx = 0.0, lastAy = 0.0, lastAz = 16384.0
@@ -489,6 +501,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             let hrData: HeartRateData? = heartRate > 0
                 ? HeartRateData(bpm: Double(heartRate), quality: heartRateQuality, timestamp: ts)
                 : nil
+            let spo2Data: SpO2Data? = spo2Percent.map {
+                SpO2Data(percentage: $0, quality: spo2Quality ?? 0, timestamp: ts)
+            }
 
             let row = SensorData(
                 timestamp: ts,
@@ -502,7 +517,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 temperature: TemperatureData(celsius: temperature, timestamp: ts),
                 battery: BatteryData(percentage: Int(batteryLevel), timestamp: ts),
                 heartRate: hrData,
-                spo2: nil,
+                spo2: spo2Data,
                 deviceType: .oralable
             )
             out.append(row)
