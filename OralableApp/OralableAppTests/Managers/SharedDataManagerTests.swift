@@ -1273,6 +1273,95 @@ final class SerializationIntegrationTests: XCTestCase {
     }
 }
 
+// MARK: - CloudKit Day Record Merge Tests
+
+final class CloudKitDayRecordMergeTests: XCTestCase {
+
+    private func createMockSensorData(
+        at timestamp: Date,
+        deviceType: DeviceType = .oralable,
+        batteryPercentage: Int = 80
+    ) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 100, ir: 200, green: 300, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 10, y: 20, z: 30, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.0, timestamp: timestamp),
+            battery: BatteryData(percentage: batteryPercentage, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp),
+            deviceType: deviceType
+        )
+    }
+
+    func testMergeReadingsPreservesExistingAndNewSameDaySamples() {
+        // Given - an earlier sync already uploaded the first two samples for the day
+        let baseDate = Date(timeIntervalSince1970: 1_735_689_600)
+        let existing = [
+            SerializableSensorData(from: createMockSensorData(at: baseDate)),
+            SerializableSensorData(from: createMockSensorData(at: baseDate.addingTimeInterval(60)))
+        ]
+        let newReadings = [
+            SerializableSensorData(from: createMockSensorData(at: baseDate.addingTimeInterval(120))),
+            SerializableSensorData(from: createMockSensorData(at: baseDate.addingTimeInterval(180)))
+        ]
+
+        // When
+        let merged = BruxismSessionData.mergeReadings(existing: existing, with: newReadings)
+        let mergedSession = BruxismSessionData(sensorReadings: merged)
+
+        // Then
+        XCTAssertEqual(merged.map(\.timestamp), [
+            baseDate,
+            baseDate.addingTimeInterval(60),
+            baseDate.addingTimeInterval(120),
+            baseDate.addingTimeInterval(180)
+        ])
+        XCTAssertEqual(mergedSession.recordingCount, 4)
+        XCTAssertEqual(mergedSession.startDate, baseDate)
+        XCTAssertEqual(mergedSession.endDate, baseDate.addingTimeInterval(180))
+    }
+
+    func testMergeReadingsDeduplicatesOverlappingSyncBuffersWithNewReadingWinning() {
+        // Given - a later sync contains one already-uploaded sample and one new sample
+        let baseDate = Date(timeIntervalSince1970: 1_735_689_600)
+        let existing = [
+            SerializableSensorData(from: createMockSensorData(at: baseDate, batteryPercentage: 80))
+        ]
+        let newReadings = [
+            SerializableSensorData(from: createMockSensorData(at: baseDate, batteryPercentage: 65)),
+            SerializableSensorData(from: createMockSensorData(at: baseDate.addingTimeInterval(60), batteryPercentage: 64))
+        ]
+
+        // When
+        let merged = BruxismSessionData.mergeReadings(existing: existing, with: newReadings)
+
+        // Then
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(merged.first?.timestamp, baseDate)
+        XCTAssertEqual(merged.first?.batteryPercentage, 65, "The latest upload should replace duplicate readings from older syncs")
+        XCTAssertEqual(merged.last?.timestamp, baseDate.addingTimeInterval(60))
+    }
+
+    func testMergeReadingsKeepsDifferentDevicesAtSameTimestamp() {
+        // Given - Oralable and ANR can report distinct samples with the same timestamp
+        let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
+        let existing = [
+            SerializableSensorData(from: createMockSensorData(at: timestamp, deviceType: .oralable))
+        ]
+        let newReadings = [
+            SerializableSensorData(from: createMockSensorData(at: timestamp, deviceType: .anr))
+        ]
+
+        // When
+        let merged = BruxismSessionData.mergeReadings(existing: existing, with: newReadings)
+
+        // Then
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(Set(merged.map(\.deviceType)), Set(["Oralable", "ANR M40"]))
+    }
+}
+
 // MARK: - Bruxism Event Detection Logic Tests
 
 final class BruxismEventDetectionTests: XCTestCase {
