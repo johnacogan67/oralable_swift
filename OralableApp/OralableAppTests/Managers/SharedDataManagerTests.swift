@@ -1567,6 +1567,45 @@ final class DayGroupingTests: XCTestCase {
     }
 }
 
+// MARK: - Same-Day CloudKit Merge Tests
+
+final class SameDayCloudKitMergeTests: XCTestCase {
+
+    func testMergeSerializableSensorReadingsPreservesExistingRowsAndDeduplicatesRetries() {
+        let base = Date(timeIntervalSince1970: 1_704_067_200)
+        let first = SerializableSensorData(from: createSensorData(at: base, ir: 2_000))
+        let second = SerializableSensorData(from: createSensorData(at: base.addingTimeInterval(0.02), ir: 2_001))
+        let duplicateSecond = SerializableSensorData(from: createSensorData(at: base.addingTimeInterval(0.02), ir: 2_001))
+        let third = SerializableSensorData(from: createSensorData(at: base.addingTimeInterval(0.04), ir: 2_002))
+
+        let merged = SharedDataManager.mergeSerializableSensorReadings(
+            existing: [first, second],
+            incoming: [duplicateSecond, third]
+        )
+
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map { $0.ppgIR }, [2_000, 2_001, 2_002])
+        XCTAssertEqual(merged.map { $0.timestamp }, [
+            base,
+            base.addingTimeInterval(0.02),
+            base.addingTimeInterval(0.04)
+        ])
+    }
+
+    private func createSensorData(at timestamp: Date, ir: Int32) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: ir - 1_000, ir: ir, green: ir + 1_000, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 0, y: 0, z: 16_384, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 36.7, timestamp: timestamp),
+            battery: BatteryData(percentage: 88, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98, quality: 0.8, timestamp: timestamp),
+            deviceType: .oralable
+        )
+    }
+}
+
 // MARK: - GDPR Deletion State Tests
 
 @MainActor
