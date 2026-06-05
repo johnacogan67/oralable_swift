@@ -396,11 +396,41 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
+        let mergedData = Self.mergedSensorData(existingRecord: record, incoming: sensorData)
         
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+        try await populateRecord(record, with: mergedData, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
         Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+    }
+
+    static func mergedSensorData(existingRecord record: CKRecord, incoming sensorData: [SensorData]) -> [SensorData] {
+        let existing = existingSensorData(from: record)
+        guard !existing.isEmpty else {
+            return sensorData.sorted { $0.timestamp < $1.timestamp }
+        }
+
+        var merged: [SensorData] = []
+        var seenKeys = Set<String>()
+
+        for reading in (existing + sensorData).sorted(by: { $0.timestamp < $1.timestamp }) {
+            let key = "\(reading.timestamp.timeIntervalSince1970)-\(reading.deviceType)"
+            guard seenKeys.insert(key).inserted else { continue }
+            merged.append(reading)
+        }
+
+        return merged
+    }
+
+    private static func existingSensorData(from record: CKRecord) -> [SensorData] {
+        guard let compressedData = record["sensorDataCompressed"] as? Data,
+              let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let decompressedData = compressedData.decompressed(expectedSize: uncompressedSize),
+              let sessionData = try? JSONDecoder().decode(BruxismSessionData.self, from: decompressedData) else {
+            return []
+        }
+
+        return sessionData.sensorReadings.map { $0.sensorData() }
     }
     
     /// Populate a record with sensor data
@@ -840,5 +870,30 @@ struct SerializableSensorData: Codable {
         self.heartRateQuality = sensorData.heartRate?.quality
         self.spo2Percentage = sensorData.spo2?.percentage
         self.spo2Quality = sensorData.spo2?.quality
+    }
+
+    func sensorData() -> SensorData {
+        let ppg = PPGData(red: ppgRed, ir: ppgIR, green: ppgGreen, timestamp: timestamp)
+        let accelerometer = AccelerometerData(x: accelX, y: accelY, z: accelZ, timestamp: timestamp)
+        let temperature = TemperatureData(celsius: temperatureCelsius, timestamp: timestamp)
+        let battery = BatteryData(percentage: batteryPercentage, timestamp: timestamp)
+        let heartRate = heartRateBPM.map {
+            HeartRateData(bpm: $0, quality: heartRateQuality ?? 0, timestamp: timestamp)
+        }
+        let spo2 = spo2Percentage.map {
+            SpO2Data(percentage: $0, quality: spo2Quality ?? 0, timestamp: timestamp)
+        }
+        let type: DeviceType = deviceType == "ANR M40" ? .anr : .oralable
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: ppg,
+            accelerometer: accelerometer,
+            temperature: temperature,
+            battery: battery,
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: type
+        )
     }
 }

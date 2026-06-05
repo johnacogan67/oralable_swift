@@ -20,6 +20,7 @@
 import XCTest
 @testable import OralableApp
 import OralableCore
+import CloudKit
 
 // MARK: - Share Code Generation Tests
 
@@ -1564,6 +1565,35 @@ final class DayGroupingTests: XCTestCase {
 
         // Then
         XCTAssertTrue(groupedByDay.isEmpty, "Empty data should produce empty groups")
+    }
+
+    @MainActor
+    func testExistingDayRecordMergePreservesEarlierCompressedReadings() throws {
+        // Given - a CloudKit day record already contains earlier samples from the same day.
+        let calendar = Calendar.current
+        let baseDate = calendar.date(from: DateComponents(year: 2025, month: 6, day: 1, hour: 10))!
+        let first = createMockSensorData(at: baseDate)
+        let second = createMockSensorData(at: baseDate.addingTimeInterval(60))
+        let duplicateSecond = createMockSensorData(at: second.timestamp)
+        let third = createMockSensorData(at: baseDate.addingTimeInterval(120))
+
+        let existingSession = BruxismSessionData(sensorData: [first, second])
+        let encoded = try JSONEncoder().encode(existingSession)
+        let compressed = try XCTUnwrap(encoded.compressed())
+
+        let record = CKRecord(recordType: "HealthDataRecord")
+        record["sensorDataCompressed"] = compressed as CKRecordValue
+        record["sensorDataUncompressedSize"] = encoded.count as CKRecordValue
+
+        // When - a later sync uploads only the current in-memory window.
+        let merged = SharedDataManager.mergedSensorData(
+            existingRecord: record,
+            incoming: [duplicateSecond, third]
+        )
+
+        // Then - the earlier CloudKit data is retained and the overlapping row is not duplicated.
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map(\.timestamp), [first.timestamp, second.timestamp, third.timestamp])
     }
 }
 
