@@ -1595,6 +1595,37 @@ final class DayGroupingTests: XCTestCase {
         XCTAssertEqual(merged.count, 3)
         XCTAssertEqual(merged.map(\.timestamp), [first.timestamp, second.timestamp, third.timestamp])
     }
+
+    @MainActor
+    func testExistingDayRecordMergePreservesDistinctSamplesWithSameTimestamp() throws {
+        // Given - older packet parsing paths can emit multiple 50 Hz samples at one packet timestamp.
+        let timestamp = Date(timeIntervalSince1970: 1_749_000_000)
+        let first = createMockSensorData(at: timestamp)
+        let second = SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 101, ir: 201, green: 301, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 11, y: 21, z: 31, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.1, timestamp: timestamp),
+            battery: BatteryData(percentage: 79, timestamp: timestamp),
+            heartRate: nil,
+            spo2: nil
+        )
+
+        let existingSession = BruxismSessionData(sensorData: [first])
+        let encoded = try JSONEncoder().encode(existingSession)
+        let compressed = try XCTUnwrap(encoded.compressed())
+
+        let record = CKRecord(recordType: "HealthDataRecord")
+        record["sensorDataCompressed"] = compressed as CKRecordValue
+        record["sensorDataUncompressedSize"] = encoded.count as CKRecordValue
+
+        // When
+        let merged = SharedDataManager.mergedSensorData(existingRecord: record, incoming: [second])
+
+        // Then - same timestamp alone must not collapse distinct PPG samples.
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(Set(merged.map { $0.ppg.red }), Set([100, 101]))
+    }
 }
 
 // MARK: - GDPR Deletion State Tests

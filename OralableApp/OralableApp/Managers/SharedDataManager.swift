@@ -414,12 +414,31 @@ class SharedDataManager: ObservableObject {
         var seenKeys = Set<String>()
 
         for reading in (existing + sensorData).sorted(by: { $0.timestamp < $1.timestamp }) {
-            let key = "\(reading.timestamp.timeIntervalSince1970)-\(reading.deviceType)"
+            let key = sensorDataMergeKey(reading)
             guard seenKeys.insert(key).inserted else { continue }
             merged.append(reading)
         }
 
         return merged
+    }
+
+    private static func sensorDataMergeKey(_ reading: SensorData) -> String {
+        [
+            "\(reading.timestamp.timeIntervalSince1970)",
+            "\(reading.deviceType)",
+            "\(reading.ppg.red)",
+            "\(reading.ppg.ir)",
+            "\(reading.ppg.green)",
+            "\(reading.accelerometer.x)",
+            "\(reading.accelerometer.y)",
+            "\(reading.accelerometer.z)",
+            "\(reading.temperature.celsius)",
+            "\(reading.battery.percentage)",
+            "\(reading.heartRate?.bpm ?? -1)",
+            "\(reading.heartRate?.quality ?? -1)",
+            "\(reading.spo2?.percentage ?? -1)",
+            "\(reading.spo2?.quality ?? -1)"
+        ].joined(separator: "|")
     }
 
     private static func existingSensorData(from record: CKRecord) -> [SensorData] {
