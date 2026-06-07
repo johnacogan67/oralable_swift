@@ -77,12 +77,15 @@ extension OralableDevice {
         var latestGreen: SensorReading?
 
         for sample in samples {
+            // The firmware frame counter is packet-level. Do not stamp it onto
+            // every PPG sample or downstream per-sample grouping collapses a
+            // whole BLE packet into one RGB triplet.
             let redReading = SensorReading(
                 sensorType: .ppgRed,
                 value: Double(sample.red),
                 timestamp: sample.timestamp,
                 deviceId: deviceId,
-                frameNumber: frameCounter
+                frameNumber: nil
             )
 
             let irReading = SensorReading(
@@ -90,7 +93,7 @@ extension OralableDevice {
                 value: Double(sample.ir),
                 timestamp: sample.timestamp,
                 deviceId: deviceId,
-                frameNumber: frameCounter
+                frameNumber: nil
             )
 
             let greenReading = SensorReading(
@@ -98,7 +101,7 @@ extension OralableDevice {
                 value: Double(sample.green),
                 timestamp: sample.timestamp,
                 deviceId: deviceId,
-                frameNumber: frameCounter
+                frameNumber: nil
             )
 
             readings.append(redReading)
