@@ -133,6 +133,7 @@ class SharedDataManager: ObservableObject {
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
     private var lastSyncRequestDate: Date?
+    private var needsFollowUpSync = false
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -353,7 +354,9 @@ class SharedDataManager: ObservableObject {
 
         await MainActor.run {
             self.isSyncing = false
-            self.lastSyncDate = Date()
+            if errorCount == 0 {
+                self.lastSyncDate = Date()
+            }
         }
 
         let totalMs = Int((CFAbsoluteTimeGetCurrent() - wallStart) * 1000)
@@ -473,29 +476,30 @@ class SharedDataManager: ObservableObject {
     
     /// Call this when the Share screen appears or when user wants to sync
     func uploadCurrentDataForSharing() async {
-        // Coalesce rapid-fire requests (e.g. disconnect loops + backgrounding).
-        // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
-        let now = Date()
-        lastSyncRequestDate = now
         if isSyncing {
-            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
-            return
-        }
-        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info(
-                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
-            )
+            lastSyncRequestDate = Date()
+            needsFollowUpSync = true
+            Logger.shared.info("[SharedDataManager] Queueing follow-up upload: sync already in progress")
             return
         }
 
-        do {
-            try await syncSensorDataToCloudKit()
-        } catch {
-            Logger.shared.error("[SharedDataManager] ❌ Failed to sync data: \(error)")
-            await MainActor.run {
-                self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
+        repeat {
+            lastSyncRequestDate = Date()
+            needsFollowUpSync = false
+
+            do {
+                try await syncSensorDataToCloudKit()
+            } catch {
+                Logger.shared.error("[SharedDataManager] ❌ Failed to sync data: \(error)")
+                await MainActor.run {
+                    self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
+                }
             }
-        }
+
+            if needsFollowUpSync {
+                Logger.shared.info("[SharedDataManager] Running queued follow-up upload")
+            }
+        } while needsFollowUpSync
     }
 
     // MARK: - Get Patient Health Data for Sharing
