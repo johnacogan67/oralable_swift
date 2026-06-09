@@ -42,7 +42,7 @@ final class FirstLaunchManager: ObservableObject {
              .discoveringCharacteristics, .characteristicsDiscovered,
              .enablingNotifications, .ready:
             return true
-        case .disconnected, .failed:
+        case .disconnected, .failed(_):
             return false
         }
     }
