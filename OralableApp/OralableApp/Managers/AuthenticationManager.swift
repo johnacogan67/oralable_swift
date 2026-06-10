@@ -214,6 +214,8 @@ final class AuthenticationManager: ObservableObject {
         defaults.removeObject(forKey: "hasCompletedOnboarding")
         defaults.removeObject(forKey: "sessionCount")
         defaults.removeObject(forKey: "totalSleepHours")
+        FirstLaunchManager.clearPersistedState()
+        SessionHistoryStore.clearPersistedSleepCalibration()
 
         // Feature flags (reset to defaults)
         defaults.removeObject(forKey: "feature.dashboard.showMovement")

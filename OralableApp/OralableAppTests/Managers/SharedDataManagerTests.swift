@@ -283,6 +283,43 @@ final class DataCompressionTests: XCTestCase {
     }
 }
 
+// MARK: - Shared Data Merge Tests
+
+final class SharedDataMergeTests: XCTestCase {
+    func testMergeSensorDataPreservesExistingAndDistinctSameTimestampSamples() {
+        let base = Date(timeIntervalSinceReferenceDate: 2_000)
+        let existing = [
+            makeSensorData(timestamp: base, ir: 200, red: 100, green: 300)
+        ]
+        let incoming = [
+            makeSensorData(timestamp: base, ir: 200, red: 100, green: 300), // duplicate sync row
+            makeSensorData(timestamp: base, ir: 201, red: 101, green: 301), // distinct sample, same timestamp
+            makeSensorData(timestamp: base.addingTimeInterval(0.02), ir: 202, red: 102, green: 302)
+        ]
+
+        let merged = SharedDataManager.mergeSensorData(existing, with: incoming)
+
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(Set(merged.map { $0.ppg.ir }), Set<Int32>([200, 201, 202]))
+        XCTAssertTrue(zip(merged, merged.dropFirst()).allSatisfy { pair in
+            pair.0.timestamp <= pair.1.timestamp
+        })
+    }
+
+    private func makeSensorData(timestamp: Date, ir: Int32, red: Int32, green: Int32) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: red, ir: ir, green: green, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 1, y: 2, z: 16_384, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 36.5, timestamp: timestamp),
+            battery: BatteryData(percentage: 90, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72, quality: 0.9, timestamp: timestamp),
+            spo2: nil,
+            deviceType: .oralable
+        )
+    }
+}
+
 // MARK: - Data Model Tests
 
 final class SharedDataModelTests: XCTestCase {

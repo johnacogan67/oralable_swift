@@ -100,7 +100,6 @@ struct OralableApp: App {
                 Logger.shared.info("[OralableApp] Stopping BLE scan while backgrounded")
                 deviceManager.stopScanning()
             }
-            deviceManager.cancelAllReconnections()
             // Note: Automatic recording continues in background
             // Events are auto-saved every 3 minutes and on disconnect
             // Sync data when app goes to background

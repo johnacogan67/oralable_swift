@@ -267,4 +267,24 @@ final class OnboardingViewModelTests: XCTestCase {
         // Cannot go before first page
         XCTAssertGreaterThanOrEqual(currentPage, minPage, "Should not go below 0")
     }
+
+    func testAccountDeletionClearsFirstLaunchSetupGates() async {
+        let fitKey = "oralable.hasCompletedFirstFit"
+        let pairedKey = "oralable.hasPairedOralablePrimary"
+        let trialKey = "oralable.onboardingTrialSetupMode"
+        let calibrationKey = "oralable.temporalis_sleep_calibration"
+
+        UserDefaults.standard.set(true, forKey: fitKey)
+        UserDefaults.standard.set(true, forKey: pairedKey)
+        UserDefaults.standard.set(true, forKey: trialKey)
+        UserDefaults.standard.set(Data([1, 2, 3]), forKey: calibrationKey)
+
+        let authManager = AuthenticationManager()
+        await authManager.deleteAccount()
+
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: fitKey))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: pairedKey))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: trialKey))
+        XCTAssertNil(UserDefaults.standard.data(forKey: calibrationKey))
+    }
 }
