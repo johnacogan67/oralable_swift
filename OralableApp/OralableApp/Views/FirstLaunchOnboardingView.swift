@@ -77,22 +77,17 @@ struct FirstLaunchOnboardingView: View {
             .onAppear {
                 syncProgressIndexFromState()
                 applyExistingCalibrationGateIfNeeded()
+                presentFitGuideIfPrimaryOralableReady()
             }
-            .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, paired in
+            .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, _ in
                 syncProgressIndexFromState()
+                presentFitGuideIfPrimaryOralableReady()
             }
             .onChange(of: sessionHistoryStore.temporalisSleepCalibration?.calibrationId) { _, _ in
                 applyExistingCalibrationGateIfNeeded()
             }
             .onChange(of: deviceManager.deviceReadiness) { _, _ in
-                guard firstLaunchManager.hasPairedOralablePrimary else { return }
-                guard !firstLaunchManager.hasCompletedFirstFit else { return }
-                guard !showFitGuide else { return }
-                guard !showDeviceDiscoverySheet else { return }
-                guard case .ready = deviceManager.primaryDeviceReadiness else { return }
-
-                setupProgressIndex1IfNeeded()
-                showFitGuide = true
+                presentFitGuideIfPrimaryOralableReady()
             }
         }
         .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
@@ -104,14 +99,7 @@ struct FirstLaunchOnboardingView: View {
 
             // Manual pairing: BLE can reach `.ready` before `hasPairedOralablePrimary` flips, so
             // `.onChange(deviceReadiness)` aborts; onDismiss runs after flags and sheet state align.
-            if firstLaunchManager.hasPairedOralablePrimary,
-               !firstLaunchManager.hasCompletedFirstFit,
-               !showFitGuide,
-               case .ready = deviceManager.primaryDeviceReadiness {
-
-                setupProgressIndex1IfNeeded()
-                showFitGuide = true
-            }
+            presentFitGuideIfPrimaryOralableReady()
         }) {
             DeviceDiscoveryView(
                 onOralablePrimaryReady: {
@@ -226,6 +214,22 @@ struct FirstLaunchOnboardingView: View {
         guard let _ = sessionHistoryStore.temporalisSleepCalibration else { return }
         firstLaunchManager.markOralablePaired()
         firstLaunchManager.markFirstFitCompleted()
+    }
+
+    private func presentFitGuideIfPrimaryOralableReady() {
+        guard !firstLaunchManager.hasCompletedFirstFit else { return }
+        guard !showFitGuide else { return }
+        guard deviceManager.primaryDevice?.type == .oralable else { return }
+        guard case .ready = deviceManager.primaryDeviceReadiness else { return }
+
+        if !firstLaunchManager.hasPairedOralablePrimary {
+            firstLaunchManager.markOralablePaired()
+        }
+
+        setupProgressIndex1IfNeeded()
+        if !showDeviceDiscoverySheet {
+            showFitGuide = true
+        }
     }
 
     private var videoPlaceholderCard: some View {

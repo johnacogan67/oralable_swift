@@ -728,6 +728,26 @@ final class SharedDataModelTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testMergeSensorReadingsPreservesExistingAndDeduplicatesResync() {
+        // Given - the second sample was already synced, then appears again in a later upload batch
+        let sensorData = createMockSensorData(count: 3)
+        let existingReadings = BruxismSessionData(sensorData: Array(sensorData.prefix(2))).sensorReadings
+
+        // When
+        let merged = SharedDataManager.mergeSensorReadings(
+            existing: existingReadings,
+            incoming: [sensorData[1], sensorData[2]]
+        )
+
+        // Then
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map(\.timestamp), sensorData.map(\.timestamp))
+        XCTAssertEqual(merged[0].ppgRed, existingReadings[0].ppgRed)
+        XCTAssertEqual(merged[1].ppgRed, existingReadings[1].ppgRed)
+        XCTAssertEqual(merged[2].ppgRed, sensorData[2].ppg.red)
+    }
+
     // MARK: - SerializableSensorData Tests
 
     func testSerializableSensorDataFromOralableDevice() {
