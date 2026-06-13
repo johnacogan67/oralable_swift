@@ -1,5 +1,7 @@
 # App Store Connect In-App Purchase Configuration Guide
 
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) · [APP_STORE_METADATA.md](./APP_STORE_METADATA.md)
+
 ## Overview
 
 This guide walks you through creating all subscription products in App Store Connect for both Oralable apps. This **MUST** be completed before App Store release.

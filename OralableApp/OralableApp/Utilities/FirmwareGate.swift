@@ -8,8 +8,8 @@
 import Foundation
 
 enum FirmwareGate {
-    /// Minimum REV10 semantic version for trial capture. Blocked only when reported is strictly below this (so `1.0.0` is allowed).
-    static let minRequiredVersion = "1.0.0"
+    /// Minimum semantic version for nrfConnect-aligned worn-gated streaming (1.0.36+).
+    static let minRequiredVersion = "1.0.36"
 
     /// Alias for UI copy and existing call sites.
     static let minimumOralableSemanticVersion = minRequiredVersion

@@ -11,6 +11,7 @@
 import Foundation
 import CoreBluetooth
 import Combine
+import OralableCore
 
 /// Centralized BLE manager that conforms to BLEService protocol
 /// Surfaces discovery/connection events via Combine publishers
@@ -113,6 +114,7 @@ final class BLECentralManager: NSObject, BLEService {
     func startScanning(services: [CBUUID]? = nil) {
         serviceFilter = services
         discoveryLogState.removeAll()
+        NRFConnectBLELogger.shared.clear()
 
         Task { @MainActor in
             let serviceNames = services?.map { $0.uuidString } ?? ["all"]
@@ -137,6 +139,7 @@ final class BLECentralManager: NSObject, BLEService {
         }
 
         central.scanForPeripherals(withServices: services, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        NRFConnectBLELogger.shared.scannerOn()
         Task { @MainActor in
             Logger.shared.info("Scan started successfully")
         }
@@ -149,6 +152,7 @@ final class BLECentralManager: NSObject, BLEService {
             }
             return
         }
+        NRFConnectBLELogger.shared.scannerOff()
         Task { @MainActor in
             Logger.shared.info("Scanner Off")
         }
@@ -159,6 +163,18 @@ final class BLECentralManager: NSObject, BLEService {
     // MARK: - BLEService Protocol - Connection Management
 
     func connect(to peripheral: CBPeripheral) {
+        if connectedPeripherals.contains(peripheral.identifier) {
+            Task { @MainActor in
+                Logger.shared.debug("[BLECentralManager] Already connected to \(peripheral.name ?? "Unknown") — skipping duplicate connect")
+            }
+            return
+        }
+        if pendingConnections.contains(peripheral.identifier) {
+            Task { @MainActor in
+                Logger.shared.debug("[BLECentralManager] Connection already pending for \(peripheral.name ?? "Unknown") — skipping duplicate connect")
+            }
+            return
+        }
         pendingConnections.insert(peripheral.identifier)
         central.connect(peripheral, options: nil)
     }
@@ -340,6 +356,9 @@ extension BLECentralManager: CBCentralManagerDelegate {
 
         if shouldLogDiscovery {
             discoveryLogState[peripheral.identifier] = (count: updatedCount, lastLoggedAt: now)
+            if updatedCount == 1 {
+                NRFConnectBLELogger.shared.deviceScanned()
+            }
 
             // Log device discovery
             Task { @MainActor in
@@ -387,6 +406,7 @@ extension BLECentralManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        NRFConnectBLELogger.shared.connected()
         Task { @MainActor in
             Logger.shared.info("Connected to device: \(peripheral.name ?? "Unknown") (\(peripheral.identifier))")
         }
@@ -455,6 +475,8 @@ extension BLECentralManager: CBCentralManagerDelegate {
                 Logger.shared.info("Disconnected from device: \(peripheral.name ?? "Unknown")")
             }
         }
+
+        NRFConnectBLELogger.shared.disconnected()
 
         // Emit disconnection event via publisher
         eventSubject.send(.deviceDisconnected(peripheral: peripheral, error: error))

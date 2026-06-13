@@ -1,8 +1,18 @@
 # Oralable App Store Launch Readiness Checklist
 
-**Project Status: 85-90% Complete**
-**Target Launch Date:** [SET DATE]
-**Last Updated:** November 19, 2025
+**Project Status:** 85–90% complete  
+**Target Launch:** January 2026 (website)  
+**Last Updated:** June 7, 2026
+
+**Related documentation**
+
+| Area | Path |
+|------|------|
+| CloudKit deploy | [CLOUDKIT_PRODUCTION_SETUP.md](./CLOUDKIT_PRODUCTION_SETUP.md) |
+| IAP | [APP_STORE_CONNECT_IAP_SETUP.md](./APP_STORE_CONNECT_IAP_SETUP.md) |
+| Product / market | `oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md` |
+| Firmware ↔ iOS pairs | `oralable_nrf/docs/DEVELOPMENT.md` |
+| Clinical validation | `cursor_oralable/docs/README.md` |
 
 ---
 

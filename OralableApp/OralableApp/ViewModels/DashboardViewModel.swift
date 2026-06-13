@@ -114,7 +114,8 @@ class DashboardViewModel: ObservableObject {
 
     /// Whether automatic recording is active (device connected and streaming)
     var isRecording: Bool {
-        deviceManager.automaticRecordingSession?.isSessionActive ?? false
+        guard let session = deviceManager.automaticRecordingSession else { return false }
+        return session.isSessionActive && !session.isSessionPaused
     }
 
     /// Current recording state for display
@@ -415,6 +416,13 @@ class DashboardViewModel: ObservableObject {
             .throttle(for: .milliseconds(200), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] device in
                 self?.deviceName = device?.name ?? ""
+            }
+            .store(in: &cancellables)
+
+        deviceManager.$primaryFirmwareDeviceStatus
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateWornStatusFromFirmware()
             }
             .store(in: &cancellables)
 
@@ -910,16 +918,42 @@ extension DashboardViewModel {
             let result = await heartRateService.process(samples: rawIRSamples)
             await MainActor.run {
                 self.currentHRResult = result
-
-                // Map boolean isWorn to WornStatus enum
-                if result.confidence < 0.3 {
-                    self.wornStatus = .initializing
-                } else if result.isWorn {
-                    self.wornStatus = .active
-                } else {
-                    self.wornStatus = .repositioning
-                }
+                self.updateWornStatus(firmwareStatus: self.deviceManager.primaryFirmwareDeviceStatus,
+                                      perfusionResult: result)
             }
+        }
+    }
+
+    func updateWornStatusFromFirmware() {
+        updateWornStatus(firmwareStatus: deviceManager.primaryFirmwareDeviceStatus,
+                         perfusionResult: currentHRResult)
+    }
+
+    private func updateWornStatus(firmwareStatus: TGMDeviceStatus?, perfusionResult: HRResult?) {
+        if let firmwareStatus {
+            if firmwareStatus.worn {
+                if let result = perfusionResult, result.confidence < 0.3 {
+                    wornStatus = .initializing
+                } else {
+                    wornStatus = .active
+                }
+            } else {
+                wornStatus = .repositioning
+            }
+            return
+        }
+
+        guard let result = perfusionResult else {
+            wornStatus = .initializing
+            return
+        }
+
+        if result.confidence < 0.3 {
+            wornStatus = .initializing
+        } else if result.isWorn {
+            wornStatus = .active
+        } else {
+            wornStatus = .repositioning
         }
     }
 }

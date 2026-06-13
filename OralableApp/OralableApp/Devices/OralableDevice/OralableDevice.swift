@@ -45,15 +45,21 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     let sensorDataCharUUID = CBUUID(string: "3A0FF001-98C4-46B2-94AF-1AEE0FD4C48E")      // PPG
     let accelerometerCharUUID = CBUUID(string: "3A0FF002-98C4-46B2-94AF-1AEE0FD4C48E")    // Accelerometer
     let commandCharUUID = CBUUID(string: "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")          // Temperature/Command
-    let tgmBatteryCharUUID = CBUUID(string: "3A0FF004-98C4-46B2-94AF-1AEE0FD4C48E")       // Battery (millivolts)
-    let firmwareVersionCharUUID = CBUUID(string: "3A0FF006-98C4-46B2-94AF-1AEE0FD4C48E")  // Firmware string (read)
-    let firmwareLogCharUUID = CBUUID(string: "3A0FF00A-98C4-46B2-94AF-1AEE0FD4C48E")      // Firmware logs (notify)
-    let firmwareConfigCharUUID = CBUUID(string: "3A0FF00B-98C4-46B2-94AF-1AEE0FD4C48E")   // Firmware config (write)
-    let firmwareConfigStateCharUUID = CBUUID(string: "3A0FF00C-98C4-46B2-94AF-1AEE0FD4C48E") // Firmware config state (read/notify)
+    let tgmBatteryCharUUID = CBUUID(string: BLEConstants.TGM.batteryCharUUID)
+    let deviceIdCharUUID = CBUUID(string: BLEConstants.TGM.deviceIdCharUUID)
+    let firmwareVersionCharUUID = CBUUID(string: BLEConstants.TGM.firmwareVersionCharUUID)
+    let ppgRegReadCharUUID = CBUUID(string: BLEConstants.TGM.ppgRegReadCharUUID)
+    let ppgRegWriteCharUUID = CBUUID(string: BLEConstants.TGM.ppgRegWriteCharUUID)
+    let statusCharUUID = CBUUID(string: BLEConstants.TGM.statusCharUUID)
 
-    // Standard Battery Service
-    let batteryServiceUUID = CBUUID(string: "180F")
-    let batteryLevelCharUUID = CBUUID(string: "2A19")
+    /// Legacy REV10 optional characteristics (not present on pcb00003 nRF Connect baseline).
+    let firmwareLogCharUUID = CBUUID(string: "3A0FF00A-98C4-46B2-94AF-1AEE0FD4C48E")
+    let firmwareConfigCharUUID = CBUUID(string: "3A0FF00B-98C4-46B2-94AF-1AEE0FD4C48E")
+    let firmwareConfigStateCharUUID = CBUUID(string: "3A0FF00C-98C4-46B2-94AF-1AEE0FD4C48E")
+
+    /// Stagger between CCC enables (matches nRF Connect manual pacing).
+    static let cccStaggerShortNs: UInt64 = 300_000_000
+    static let cccStaggerLongNs: UInt64 = 500_000_000
 
     // MARK: - BLE Protocol Properties
 
@@ -86,6 +92,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     @Published var latestReadings: [SensorType: SensorReading] = [:]
     @Published var batteryLevel: Int?
+    @Published var firmwareDeviceStatus: TGMDeviceStatus?
+    @Published var deviceIdValue: UInt64?
 
     // MARK: - Service & Characteristic References
 
@@ -94,6 +102,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var accelerometerCharacteristic: CBCharacteristic?
     var commandCharacteristic: CBCharacteristic?
     var tgmBatteryCharacteristic: CBCharacteristic?
+    var deviceIdCharacteristic: CBCharacteristic?
+    var statusCharacteristic: CBCharacteristic?
+    var ppgRegWriteCharacteristic: CBCharacteristic?
     var firmwareVersionCharacteristic: CBCharacteristic?
     var firmwareLogCharacteristic: CBCharacteristic?
     var firmwareConfigCharacteristic: CBCharacteristic?
@@ -109,9 +120,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         static let accelerometer = NotificationReadiness(rawValue: 1 << 1)
         static let temperature = NotificationReadiness(rawValue: 1 << 2)
         static let battery = NotificationReadiness(rawValue: 1 << 3)
+        static let status = NotificationReadiness(rawValue: 1 << 4)
 
         static let allRequired: NotificationReadiness = [.ppgData, .accelerometer]
-        static let all: NotificationReadiness = [.ppgData, .accelerometer, .temperature, .battery]
+        static let all: NotificationReadiness = [.ppgData, .accelerometer, .temperature, .battery, .status]
     }
 
     var notificationReadiness: NotificationReadiness = []
@@ -127,8 +139,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var notificationEnableContinuation: CheckedContinuation<Void, Error>?
     var connectionReadyContinuation: CheckedContinuation<Void, Never>?
     var accelerometerNotificationContinuation: CheckedContinuation<Void, Error>?
+    var statusNotificationContinuation: CheckedContinuation<Void, Error>?
     var writeCompletionContinuation: CheckedContinuation<Void, Error>?
     var firmwareReadContinuation: CheckedContinuation<String, Error>?
+    var deviceIdReadContinuation: CheckedContinuation<UInt64, Error>?
 
     // MARK: - Frame Counter Tracking (Fix 9)
 
@@ -149,6 +163,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     /// Called after each successful `readRSSI` (e.g. for link-quality summaries in `BLEBackgroundWorker`).
     var linkMetricsHandler: ((UUID, Int) -> Void)?
+
+    /// Called when any GATT value is received (battery/status/PPG) for connection health tracking.
+    var linkActivityHandler: ((UUID) -> Void)?
+
+    private var offBodyKeepaliveTask: Task<Void, Never>?
 
     // MARK: - Sample Rate Verification
 
@@ -183,6 +202,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     func disconnect() async {
         Logger.shared.info("[OralableDevice] 🔌 Disconnect requested")
         deviceInfo.connectionState = .disconnecting
+        setOffBodyLinkKeepaliveActive(false)
 
         // Cancel any pending write continuation to avoid leaked continuations
         if let continuation = writeCompletionContinuation {
@@ -192,6 +212,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
         // Reset state
         notificationReadiness = []
+        firmwareDeviceStatus = nil
+        deviceIdValue = nil
         lastPPGFrameCounter = nil
         lastAccelFrameCounter = nil
         ppgPacketsLost = 0
@@ -201,6 +223,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     /// Cancel any pending async continuations to prevent hangs on disconnect
     func cancelPendingContinuations() {
+        setOffBodyLinkKeepaliveActive(false)
         serviceDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         serviceDiscoveryContinuation = nil
         characteristicDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
@@ -211,10 +234,14 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         connectionReadyContinuation = nil
         accelerometerNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         accelerometerNotificationContinuation = nil
+        statusNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        statusNotificationContinuation = nil
         writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         writeCompletionContinuation = nil
         firmwareReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         firmwareReadContinuation = nil
+        deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        deviceIdReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
@@ -233,10 +260,17 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     func stopDataStream() async {
         guard let peripheral = peripheral else { return }
-        sensorDataCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
-        accelerometerCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
-        commandCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
-        tgmBatteryCharacteristic.map { peripheral.setNotifyValue(false, for: $0) }
+        sensorDataCharacteristic.map { setNotifyValue(false, for: $0, on: peripheral) }
+        accelerometerCharacteristic.map { setNotifyValue(false, for: $0, on: peripheral) }
+        commandCharacteristic.map { setNotifyValue(false, for: $0, on: peripheral) }
+        tgmBatteryCharacteristic.map { setNotifyValue(false, for: $0, on: peripheral) }
+        statusCharacteristic.map { setNotifyValue(false, for: $0, on: peripheral) }
+    }
+
+    /// Logs nRF Connect–style CCC lines then forwards to CoreBluetooth.
+    func setNotifyValue(_ enabled: Bool, for characteristic: CBCharacteristic, on peripheral: CBPeripheral) {
+        NRFConnectBLELogger.shared.settingNotify(enabled, for: characteristic.uuid.uuidString)
+        peripheral.setNotifyValue(enabled, for: characteristic)
     }
 
     func requestReading(for sensorType: SensorType) async throws -> SensorReading? {
@@ -261,7 +295,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
         return try await withCheckedThrowingContinuation { continuation in
             self.serviceDiscoveryContinuation = continuation
-            peripheral.discoverServices([tgmServiceUUID, batteryServiceUUID])
+            // pcb00003 exposes battery on TGM 004 only (no SIG 180F service).
+            peripheral.discoverServices([tgmServiceUUID])
         }
     }
 
@@ -276,6 +311,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
 
         Logger.shared.info("[OralableDevice] 🔍 Discovering characteristics for TGM service...")
+        NRFConnectBLELogger.shared.serviceDiscoveryReturnedNil()
 
         return try await withCheckedThrowingContinuation { continuation in
             self.characteristicDiscoveryContinuation = continuation
@@ -285,7 +321,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
                     accelerometerCharUUID,
                     commandCharUUID,
                     tgmBatteryCharUUID,
+                    deviceIdCharUUID,
                     firmwareVersionCharUUID,
+                    ppgRegReadCharUUID,
+                    ppgRegWriteCharUUID,
+                    statusCharUUID,
                     firmwareLogCharUUID,
                     firmwareConfigCharUUID,
                     firmwareConfigStateCharUUID
@@ -331,7 +371,45 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     }
 
     func requestFirmwareConnParamUpdate() throws {
+        guard firmwareConfigCharacteristic != nil else {
+            Logger.shared.debug("[OralableDevice] Skipping conn param update (00B not on this firmware)")
+            return
+        }
         try writeFirmwareConfig(Data([FirmwareConfigOpcode.requestConnParamUpdate.rawValue]))
+    }
+
+    /// Off-body: firmware sends battery/status keepalive every 5s, but iOS may negotiate a short
+    /// supervision timeout. Periodic status reads keep ATT traffic flowing (nRF Connect stays up
+    /// because the user often reads characteristics manually).
+    func setOffBodyLinkKeepaliveActive(_ active: Bool) {
+        offBodyKeepaliveTask?.cancel()
+        offBodyKeepaliveTask = nil
+
+        guard active,
+              let peripheral,
+              let characteristic = statusCharacteristic,
+              peripheral.state == .connected else {
+            return
+        }
+
+        Logger.shared.info("[OralableDevice] 🔗 Off-body link keepalive started (status read every 3s)")
+
+        offBodyKeepaliveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
+                } catch {
+                    return
+                }
+                guard let self,
+                      let peripheral = self.peripheral,
+                      peripheral.state == .connected,
+                      let characteristic = self.statusCharacteristic else {
+                    return
+                }
+                peripheral.readValue(for: characteristic)
+            }
+        }
     }
 
     func setFirmwareBatteryIntervalSeconds(_ seconds: UInt8) throws {
@@ -345,6 +423,26 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     /// bit0=PPG, bit1=ACC
     func setFirmwareStreamEnableMask(_ mask: UInt8) throws {
         try writeFirmwareConfig(Data([FirmwareConfigOpcode.setStreamEnableMask.rawValue, mask]))
+    }
+
+    /// TGM battery notify only — deferred until after firmware version read.
+    func enableDeferredDiscoverySubscriptions() {
+        guard let peripheral = peripheral else { return }
+        if let characteristic = tgmBatteryCharacteristic {
+            setNotifyValue(true, for: characteristic, on: peripheral)
+        }
+    }
+
+    /// nRF Connect–aligned staggered CCC enable: battery → status → PPG → ACC → temp.
+    func enableNRFAlignedStreamingNotifications() async throws {
+        try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
+        try await enableStatusNotifications()
+        try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
+        try await enableNotifications()
+        try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
+        await enableAccelerometerNotifications()
+        try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
+        await enableTemperatureNotifications()
     }
 
     /// Reads `3A0FF006` firmware string (must run after characteristic discovery).
@@ -364,6 +462,39 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
     }
 
+    func readDeviceId() async throws -> UInt64 {
+        guard let peripheral = peripheral,
+              let characteristic = deviceIdCharacteristic else {
+            throw DeviceError.characteristicNotFound("Device ID characteristic not found")
+        }
+        guard deviceIdReadContinuation == nil else {
+            throw DeviceError.deviceBusy
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.deviceIdReadContinuation = continuation
+            peripheral.readValue(for: characteristic)
+        }
+    }
+
+    func enableStatusNotifications() async throws {
+        guard let peripheral = peripheral,
+              let characteristic = statusCharacteristic else {
+            throw DeviceError.characteristicNotFound("Status characteristic not found")
+        }
+        guard statusNotificationContinuation == nil else {
+            throw DeviceError.deviceBusy
+        }
+
+        Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on status characteristic (3A0FF009)...")
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.statusNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
+            peripheral.readValue(for: characteristic)
+        }
+    }
+
     func enableNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = sensorDataCharacteristic else {
@@ -378,7 +509,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
         return try await withCheckedThrowingContinuation { continuation in
             self.notificationEnableContinuation = continuation
-            peripheral.setNotifyValue(true, for: characteristic)
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
     }
 
@@ -399,7 +530,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 self.accelerometerNotificationContinuation = continuation
-                peripheral.setNotifyValue(true, for: characteristic)
+                self.setNotifyValue(true, for: characteristic, on: peripheral)
             }
             Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
         } catch {
@@ -416,7 +547,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on temperature characteristic (3A0FF003)...")
-        peripheral.setNotifyValue(true, for: characteristic)
+        setNotifyValue(true, for: characteristic, on: peripheral)
         Logger.shared.info("[OralableDevice] ✅ Temperature notifications enabled")
     }
 
@@ -438,40 +569,20 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     // MARK: - LED Configuration
 
-    /// Configure PPG LED pulse amplitudes after connection
-    func configurePPGLEDs() async throws {
+    /// pcb00003 sets LED PA on worn transition in firmware (`main.c`). Optional manual override via 008.
+    func writePPGRegister(_ register: UInt8, value: UInt8) async throws {
         guard let peripheral = peripheral,
-              let commandChar = commandCharacteristic else {
-            throw DeviceError.characteristicNotFound("Command characteristic not found")
+              let characteristic = ppgRegWriteCharacteristic else {
+            throw DeviceError.characteristicNotFound("PPG register write characteristic not found")
         }
         guard writeCompletionContinuation == nil else {
-            Logger.shared.warning("[OralableDevice] ⚠️ configurePPGLEDs called while a write is already pending")
             throw DeviceError.deviceBusy
         }
 
-        // Some firmware builds expose 3A0FF003 as notify-only (temperature) and do not permit writes.
-        // Avoid spamming CoreBluetooth with a write that will always fail.
-        let canWriteWithResponse = commandChar.properties.contains(.write)
-        let canWriteWithoutResponse = commandChar.properties.contains(.writeWithoutResponse)
-        guard canWriteWithResponse || canWriteWithoutResponse else {
-            Logger.shared.debug("[OralableDevice] 💡 Skipping LED configuration (command characteristic not writable)")
-            return
-        }
-
-        Logger.shared.info("[OralableDevice] 💡 Configuring PPG LED amplitudes...")
-
-        // LED configuration command format depends on firmware
-        let configCommand = Data([0x01, 0x00])
-
-        if canWriteWithResponse {
-            return try await withCheckedThrowingContinuation { continuation in
-                self.writeCompletionContinuation = continuation
-                peripheral.writeValue(configCommand, for: commandChar, type: .withResponse)
-            }
-        } else {
-            // Without-response writes may not trigger didWrite callbacks; treat as fire-and-forget.
-            peripheral.writeValue(configCommand, for: commandChar, type: .withoutResponse)
-            return
+        let payload = Data([register, value])
+        return try await withCheckedThrowingContinuation { continuation in
+            self.writeCompletionContinuation = continuation
+            peripheral.writeValue(payload, for: characteristic, type: .withResponse)
         }
     }
 

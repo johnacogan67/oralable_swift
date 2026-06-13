@@ -1,5 +1,7 @@
 # App Store Metadata - Oralable (Patient App)
 
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) · `oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md` (positioning — wellness claims only)
+
 ## App Information
 
 **App Name:** Oralable

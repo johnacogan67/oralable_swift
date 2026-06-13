@@ -33,6 +33,7 @@ extension OralableDevice: CBPeripheralDelegate {
         }
 
         Logger.shared.info("[OralableDevice] Found \(services.count) services:")
+        NRFConnectBLELogger.shared.discoveredServices(services.map { $0.uuid.uuidString })
 
         for service in services {
             Logger.shared.info("[OralableDevice]   - \(service.uuid.uuidString)")
@@ -40,9 +41,6 @@ extension OralableDevice: CBPeripheralDelegate {
             if service.uuid == tgmServiceUUID {
                 tgmService = service
                 Logger.shared.info("[OralableDevice] ✅ TGM service found")
-            } else if service.uuid == batteryServiceUUID {
-                Logger.shared.info("[OralableDevice] 🔋 Battery service found - discovering characteristics...")
-                peripheral.discoverCharacteristics([batteryLevelCharUUID], for: service)
             }
         }
 
@@ -69,24 +67,13 @@ extension OralableDevice: CBPeripheralDelegate {
             return
         }
 
-        // Handle Battery Service characteristics separately
-        if service.uuid == batteryServiceUUID {
-            for characteristic in characteristics {
-                if characteristic.uuid == batteryLevelCharUUID {
-                    batteryLevelCharacteristic = characteristic
-                    Logger.shared.info("[OralableDevice] 🔋 Battery Level characteristic found")
-                    peripheral.setNotifyValue(true, for: characteristic)
-                    peripheral.readValue(for: characteristic)
-                }
-            }
-            return
-        }
-
         Logger.shared.info("[OralableDevice] Found \(characteristics.count) characteristics for TGM service:")
 
         var foundCount = 0
+        var discoveredUUIDs: [String] = []
 
         for characteristic in characteristics {
+            discoveredUUIDs.append(characteristic.uuid.uuidString)
             switch characteristic.uuid {
             case sensorDataCharUUID:
                 sensorDataCharacteristic = characteristic
@@ -106,17 +93,28 @@ extension OralableDevice: CBPeripheralDelegate {
             case tgmBatteryCharUUID:
                 tgmBatteryCharacteristic = characteristic
                 Logger.shared.info("[OralableDevice] 🔋 TGM Battery characteristic found (3A0FF004)")
-                peripheral.setNotifyValue(true, for: characteristic)
                 foundCount += 1
+
+            case deviceIdCharUUID:
+                deviceIdCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ✅ Device ID characteristic found (3A0FF005)")
 
             case firmwareVersionCharUUID:
                 firmwareVersionCharacteristic = characteristic
                 Logger.shared.info("[OralableDevice] ✅ Firmware version characteristic found (3A0FF006)")
 
+            case ppgRegWriteCharUUID:
+                ppgRegWriteCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ✅ PPG register write characteristic found (3A0FF008)")
+
+            case statusCharUUID:
+                statusCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] ✅ Status characteristic found (3A0FF009)")
+                foundCount += 1
+
             case firmwareLogCharUUID:
                 firmwareLogCharacteristic = characteristic
-                Logger.shared.info("[OralableDevice] 🪵 Firmware log characteristic found (3A0FF00A) - enabling notify")
-                peripheral.setNotifyValue(true, for: characteristic)
+                Logger.shared.info("[OralableDevice] 🪵 Firmware log characteristic found (3A0FF00A)")
 
             case firmwareConfigCharUUID:
                 firmwareConfigCharacteristic = characteristic
@@ -124,23 +122,50 @@ extension OralableDevice: CBPeripheralDelegate {
 
             case firmwareConfigStateCharUUID:
                 firmwareConfigStateCharacteristic = characteristic
-                Logger.shared.info("[OralableDevice] ⚙️ Firmware config state characteristic found (3A0FF00C) - enabling notify + read")
-                peripheral.setNotifyValue(true, for: characteristic)
-                peripheral.readValue(for: characteristic)
+                Logger.shared.info("[OralableDevice] ⚙️ Firmware config state characteristic found (3A0FF00C)")
 
             default:
                 Logger.shared.debug("[OralableDevice] Other characteristic: \(characteristic.uuid.uuidString)")
             }
+
+            peripheral.discoverDescriptors(for: characteristic)
         }
 
-        if foundCount >= 1 {
-            Logger.shared.info("[OralableDevice] ✅ Found \(foundCount)/4 expected characteristics")
+        if service.uuid == tgmServiceUUID, !discoveredUUIDs.isEmpty {
+            NRFConnectBLELogger.shared.discoveredCharacteristics(discoveredUUIDs, forService: service.uuid.uuidString)
+        }
+
+        let hasCoreStreaming = sensorDataCharacteristic != nil
+            && accelerometerCharacteristic != nil
+            && commandCharacteristic != nil
+            && tgmBatteryCharacteristic != nil
+            && statusCharacteristic != nil
+
+        if hasCoreStreaming {
+            Logger.shared.info("[OralableDevice] ✅ Core TGM characteristics discovered (\(foundCount) notify-capable)")
             characteristicDiscoveryContinuation?.resume()
             characteristicDiscoveryContinuation = nil
         } else {
             Logger.shared.error("[OralableDevice] ❌ Required characteristics not found")
-            characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("Required characteristics not found (found \(foundCount)/4)"))
+            characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("Required TGM characteristics not found (found \(foundCount))"))
             characteristicDiscoveryContinuation = nil
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+            Logger.shared.warning("[OralableDevice] ⚠️ Descriptor discovery failed for \(characteristic.uuid.uuidString): \(error.localizedDescription)")
+            return
+        }
+
+        let hasCCC = characteristic.descriptors?.contains(where: {
+            $0.uuid == CBUUID(string: "2902")
+        }) ?? false
+
+        if hasCCC {
+            NRFConnectBLELogger.shared.discoveredCCC(for: characteristic.uuid.uuidString)
+        } else {
+            NRFConnectBLELogger.shared.characteristicHasNoDescriptors(characteristic.uuid.uuidString)
         }
     }
 
@@ -154,6 +179,9 @@ extension OralableDevice: CBPeripheralDelegate {
             } else if characteristic.uuid == accelerometerCharUUID {
                 accelerometerNotificationContinuation?.resume(throwing: error)
                 accelerometerNotificationContinuation = nil
+            } else if characteristic.uuid == statusCharUUID {
+                statusNotificationContinuation?.resume(throwing: error)
+                statusNotificationContinuation = nil
             }
             return
         }
@@ -179,7 +207,13 @@ extension OralableDevice: CBPeripheralDelegate {
                 notificationReadiness.insert(.temperature)
                 Logger.shared.info("[OralableDevice] 📡 Temperature notifications confirmed ready")
 
-            case batteryLevelCharUUID, tgmBatteryCharUUID:
+            case statusCharUUID:
+                notificationReadiness.insert(.status)
+                Logger.shared.info("[OralableDevice] 📡 Status notifications confirmed ready")
+                statusNotificationContinuation?.resume()
+                statusNotificationContinuation = nil
+
+            case tgmBatteryCharUUID:
                 notificationReadiness.insert(.battery)
                 Logger.shared.info("[OralableDevice] 📡 Battery notifications confirmed ready")
 
@@ -205,7 +239,9 @@ extension OralableDevice: CBPeripheralDelegate {
                 notificationReadiness.remove(.accelerometer)
             case commandCharUUID:
                 notificationReadiness.remove(.temperature)
-            case batteryLevelCharUUID, tgmBatteryCharUUID:
+            case statusCharUUID:
+                notificationReadiness.remove(.status)
+            case tgmBatteryCharUUID:
                 notificationReadiness.remove(.battery)
             default:
                 break
@@ -245,8 +281,26 @@ extension OralableDevice: CBPeripheralDelegate {
             return
         }
 
+        NRFConnectBLELogger.shared.updatedValue(of: characteristic.uuid.uuidString, data: data)
+        linkActivityHandler?(peripheral.identifier)
+
         // Route data based on characteristic UUID
         switch characteristic.uuid {
+        case deviceIdCharUUID:
+            if let deviceId = OralableCore.BLEDataParser.parseDeviceId(data) {
+                deviceIdValue = deviceId
+                if let c = deviceIdReadContinuation {
+                    deviceIdReadContinuation = nil
+                    c.resume(returning: deviceId)
+                }
+            } else if let c = deviceIdReadContinuation {
+                deviceIdReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            }
+
+        case statusCharUUID:
+            parseDeviceStatus(data)
+
         case firmwareVersionCharUUID:
             let raw = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if raw.isEmpty {
@@ -273,10 +327,6 @@ extension OralableDevice: CBPeripheralDelegate {
         case commandCharUUID:
             // Temperature data (6 bytes typically: 4 + 2)
             parseTemperature(data)
-
-        case batteryLevelCharUUID:
-            // Standard battery level (1 byte, 0-100%)
-            parseStandardBatteryLevel(data)
 
         case tgmBatteryCharUUID:
             // TGM Battery (4 bytes, millivolts)

@@ -28,7 +28,7 @@ extension DeviceManager {
     func handleDeviceConnected(peripheral: CBPeripheral) {
         Logger.shared.info("[DeviceManager] Device connected: \(peripheral.name ?? "Unknown")")
 
-        isConnecting = false
+        // Keep isConnecting true until discovery reaches .ready / .failed (prevents duplicate Connect taps).
 
         // Update connection readiness to .connected
         updateDeviceReadiness(peripheral.identifier, to: .connected)
@@ -121,8 +121,17 @@ extension DeviceManager {
             }
             updateDeviceReadiness(peripheral.identifier, to: .characteristicsDiscovered)
 
-            // Firmware safety gate (REV10): read version before enabling notifications / streaming.
+            // nRF Connect order: device ID (005) → firmware (006) → battery CCC, then streaming CCCs.
             if let oralableDevice = device as? OralableDevice {
+                do {
+                    let deviceId = try await withTimeout(seconds: 5) {
+                        try await oralableDevice.readDeviceId()
+                    }
+                    Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Device ID: \(deviceId)")
+                } catch {
+                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Device ID read skipped: \(error.localizedDescription)")
+                }
+
                 let firmwareReadStart = Date()
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() start")
                 let version = try await withTimeout(seconds: 5) {
@@ -142,16 +151,34 @@ extension DeviceManager {
                     return
                 }
                 oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
+
+                oralableDevice.enableDeferredDiscoverySubscriptions()
             }
 
-            // Step 3: Enable notifications on main characteristic (10-second timeout)
-            let step4Start = Date()
-            Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 enableNotifications() start")
+            // Step 4: nRF Connect–aligned staggered notifications (battery already enabled).
+            let notifyStart = Date()
+            Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 enableNRFAlignedStreamingNotifications() start")
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
-            try await withTimeout(seconds: 10) {
-                try await device.enableNotifications()
+
+            if let oralableDevice = device as? OralableDevice {
+                try await withTimeout(seconds: 30) {
+                    try await oralableDevice.enableNRFAlignedStreamingNotifications()
+                }
+            } else {
+                try await withTimeout(seconds: 10) {
+                    try await device.enableNotifications()
+                }
             }
-            Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 enableNotifications() done in \(Int(Date().timeIntervalSince(step4Start) * 1000))ms")
+            Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 notifications done in \(Int(Date().timeIntervalSince(notifyStart) * 1000))ms")
+
+            if let oralableDevice = device as? OralableDevice {
+                do {
+                    try oralableDevice.requestFirmwareConnParamUpdate()
+                    Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Requested firmware conn param update (10s supervision)")
+                } catch {
+                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Conn param update skipped: \(error.localizedDescription)")
+                }
+            }
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during notification setup")
@@ -159,44 +186,9 @@ extension DeviceManager {
                 return
             }
 
-            // Step 4: Enable accelerometer notifications (with timeout)
-            if let oralableDevice = device as? OralableDevice {
-                do {
-                    let accelNotifyStart = Date()
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5/5 enableAccelerometerNotifications() start")
-                    try await withTimeout(seconds: 10) {
-                        await oralableDevice.enableAccelerometerNotifications()
-                    }
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5/5 enableAccelerometerNotifications() done in \(Int(Date().timeIntervalSince(accelNotifyStart) * 1000))ms")
-                } catch {
-                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Accelerometer notification timeout (non-critical): \(error.localizedDescription)")
-                }
-
-                // Step 4b: Enable temperature notifications on 3A0FF003 (with timeout)
-                do {
-                    let tempNotifyStart = Date()
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5b enableTemperatureNotifications() start")
-                    try await withTimeout(seconds: 10) {
-                        await oralableDevice.enableTemperatureNotifications()
-                    }
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5b enableTemperatureNotifications() done in \(Int(Date().timeIntervalSince(tempNotifyStart) * 1000))ms")
-                } catch {
-                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Temperature notification timeout (non-critical): \(error.localizedDescription)")
-                }
-
-                // Step 5: Configure PPG LEDs to turn them on
-                do {
-                    let ledConfigStart = Date()
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5c configurePPGLEDs() start")
-                    try await oralableDevice.configurePPGLEDs()
-                    Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 5c configurePPGLEDs() done in \(Int(Date().timeIntervalSince(ledConfigStart) * 1000))ms")
-                } catch {
-                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ LED configuration failed (non-critical): \(error.localizedDescription)")
-                }
-            }
-
             // Device is now ready!
             updateDeviceReadiness(peripheral.identifier, to: .ready)
+            isConnecting = false
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")
 
             // Start automatic recording session
@@ -204,6 +196,7 @@ extension DeviceManager {
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
+            isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
         }
     }
@@ -237,8 +230,14 @@ extension DeviceManager {
 
         isConnecting = false
 
-        // Stop automatic recording session (saves events and triggers sync)
         automaticRecordingSession?.onDeviceDisconnected()
+
+        if let oralable = devices[peripheral.identifier] as? OralableDevice {
+            backgroundWorker.setDeviceOffBody(false, for: peripheral.identifier)
+        }
+        if primaryDevice?.peripheralIdentifier == peripheral.identifier {
+            primaryFirmwareDeviceStatus = nil
+        }
 
         // Update readiness state
         updateDeviceReadiness(peripheral.identifier, to: .disconnected)
@@ -325,6 +324,20 @@ extension DeviceManager {
 
         guard let peripheral = device.peripheral else {
             throw DeviceError.invalidPeripheral("Device has no peripheral")
+        }
+
+        if peripheral.state == .connected {
+            Logger.shared.info("[DeviceManager] Already connected to \(deviceInfo.name) — ensuring discovery flow only")
+            if isConnecting == false {
+                isConnecting = true
+            }
+            startDiscoveryFlowIfNeeded(for: peripheral)
+            return
+        }
+
+        if peripheral.state == .connecting {
+            Logger.shared.info("[DeviceManager] Connection already in progress for \(deviceInfo.name) — ignoring duplicate connect")
+            return
         }
 
         isConnecting = true

@@ -126,6 +126,9 @@ class DeviceManager: ObservableObject {
     /// Errors
     @Published var lastError: DeviceError?
 
+    /// Latest firmware status from primary Oralable device (3A0FF009).
+    @Published var primaryFirmwareDeviceStatus: TGMDeviceStatus?
+
     /// REV10 peripherals that failed the minimum firmware gate (UUID matches `DeviceInfo.peripheralIdentifier`).
     @Published var oralableFirmwareBlockedPeripheralIds: Set<UUID> = []
 
@@ -258,12 +261,14 @@ class DeviceManager: ObservableObject {
     private func setupAutomaticRecordingSession() {
         let session = AutomaticRecordingSession()
 
-        session.onSessionStarted = {
+        session.onSessionStarted = { [weak self] in
             Logger.shared.info("[DeviceManager] Automatic recording session started")
+            self?.backgroundWorker.setUnlimitedReconnectActive(true)
         }
 
-        session.onSessionStopped = { eventCount in
+        session.onSessionStopped = { [weak self] eventCount in
             Logger.shared.info("[DeviceManager] Automatic recording session stopped with \(eventCount) events")
+            self?.backgroundWorker.setUnlimitedReconnectActive(false)
         }
 
         session.onStateChanged = { newState in
@@ -272,6 +277,13 @@ class DeviceManager: ObservableObject {
 
         automaticRecordingSession = session
         Logger.shared.info("[DeviceManager] Automatic recording session configured")
+
+        Timer.publish(every: 60, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.automaticRecordingSession?.endSessionIfPauseExpired()
+            }
+            .store(in: &cancellables)
     }
 
     /// Handle events from background worker
@@ -283,6 +295,9 @@ class DeviceManager: ObservableObject {
         case .reconnectionGaveUp(let peripheralId, let attempts):
             Logger.shared.warning("[DeviceManager] Reconnection gave up for \(peripheralId) after \(attempts) attempts")
             lastError = .connectionLost
+            if automaticRecordingSession?.isSessionPaused == true {
+                automaticRecordingSession?.endSession()
+            }
 
         case .connectionStale(let peripheralId):
             Logger.shared.warning("[DeviceManager] Connection stale for \(peripheralId)")

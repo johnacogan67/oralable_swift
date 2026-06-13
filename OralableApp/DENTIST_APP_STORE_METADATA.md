@@ -1,5 +1,7 @@
 # App Store Metadata - Oralable for Dentists
 
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) · `oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md` §11 (dentist GTM) · `ProfessionalHandshakeExport` in OralableCore
+
 ## App Information
 
 **App Name:** Oralable for Dentists

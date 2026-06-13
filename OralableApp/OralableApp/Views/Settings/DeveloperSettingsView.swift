@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct DeveloperSettingsView: View {
     @EnvironmentObject var designSystem: DesignSystem
@@ -23,6 +24,9 @@ struct DeveloperSettingsView: View {
     @State private var fwEnablePPG: Bool = true
     @State private var fwEnableACC: Bool = true
     @State private var lastFwConfigStatus: String?
+    @State private var nrfLogStatus: String = ""
+    @State private var nrfExportURL: URL?
+    @State private var showNRFExportSheet = false
 
     var body: some View {
         Form {
@@ -57,6 +61,35 @@ struct DeveloperSettingsView: View {
                     featureFlags.resetToDefaults()
                 }
                 .foregroundColor(designSystem.colors.error)
+            }
+
+            Section("nRF Connect BLE Log") {
+                Text("CSV format: Timestamp,Source,Level,Line — matches nRF Connect exports for side-by-side comparison.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
+
+                Text("Lines captured: \(NRFConnectBLELogger.shared.lineCount())")
+                    .font(designSystem.typography.bodySmall)
+
+                Toggle("Log all notify values (no 1 Hz throttle)", isOn: Binding(
+                    get: { !NRFConnectBLELogger.shared.throttleHighRateNotifications },
+                    set: { NRFConnectBLELogger.shared.throttleHighRateNotifications = !$0 }
+                ))
+
+                Button("Export nRF-style CSV") {
+                    exportNRFConnectLog()
+                }
+
+                Button("Clear BLE session log") {
+                    NRFConnectBLELogger.shared.clear()
+                    nrfLogStatus = "Log cleared"
+                }
+
+                if !nrfLogStatus.isEmpty {
+                    Text(nrfLogStatus)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                }
             }
 
             Section("Firmware (Oralable)") {
@@ -116,6 +149,22 @@ struct DeveloperSettingsView: View {
             }
         }
         .navigationTitle("Developer Settings")
+        .sheet(isPresented: $showNRFExportSheet) {
+            if let url = nrfExportURL {
+                ShareSheet(items: [url])
+            }
+        }
+    }
+
+    private func exportNRFConnectLog() {
+        do {
+            let url = try NRFConnectBLELogger.shared.exportToFile()
+            nrfExportURL = url
+            nrfLogStatus = "Exported \(NRFConnectBLELogger.shared.lineCount()) lines"
+            showNRFExportSheet = true
+        } catch {
+            nrfLogStatus = "Export failed: \(error.localizedDescription)"
+        }
     }
 
     private func applyFirmwareSettings() async {

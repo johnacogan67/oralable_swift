@@ -45,6 +45,9 @@ struct BLEBackgroundWorkerConfig {
     /// Whether to pause reconnection when Bluetooth is off
     var pauseOnBluetoothOff: Bool = true
 
+    /// Max attempts while a recording session is active (effectively unlimited).
+    static let recordingSessionMaxAttempts = 999
+
     /// Default configuration
     static let `default` = BLEBackgroundWorkerConfig()
 
@@ -173,6 +176,8 @@ final class BLEBackgroundWorker: ObservableObject {
     private var rssiPollingTask: Task<Void, Never>?
     private var healthCheckTask: Task<Void, Never>?
     private var lastDataReceived: [UUID: Date] = [:]
+    private var deviceOffBody: [UUID: Bool] = [:]
+    private var unlimitedReconnectActive: Bool = false
     private var bleServiceEventCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
     private let eventSubject = PassthroughSubject<BLEBackgroundWorkerEvent, Never>()
@@ -245,6 +250,26 @@ final class BLEBackgroundWorker: ObservableObject {
     func configure(bleService: BLEService) {
         self.bleService = bleService
         setupEventSubscription()
+    }
+
+    /// Use high retry budget while an automatic recording session is active.
+    func setUnlimitedReconnectActive(_ active: Bool) {
+        unlimitedReconnectActive = active
+        Logger.shared.info("[BLEBackgroundWorker] Unlimited reconnect \(active ? "enabled" : "disabled")")
+    }
+
+    /// Firmware worn-gate: off-body links may have no PPG/ACC traffic (nRF Connect baseline).
+    func setDeviceOffBody(_ offBody: Bool, for peripheralId: UUID) {
+        deviceOffBody[peripheralId] = offBody
+        if offBody, connectionHealth[peripheralId] != .healthy {
+            connectionHealth[peripheralId] = .healthy
+        }
+    }
+
+    private func effectiveMaxReconnectionAttempts() -> Int {
+        unlimitedReconnectActive
+            ? BLEBackgroundWorkerConfig.recordingSessionMaxAttempts
+            : config.maxReconnectionAttempts
     }
 
     // MARK: - Lifecycle
@@ -336,7 +361,7 @@ final class BLEBackgroundWorker: ObservableObject {
         var state = reconnectionStates[peripheralId] ?? ReconnectionState(peripheralId: peripheralId)
 
         // Check max attempts
-        guard state.attemptCount < config.maxReconnectionAttempts else {
+        guard state.attemptCount < effectiveMaxReconnectionAttempts() else {
             Logger.shared.warning("[BLEBackgroundWorker] Max reconnection attempts reached for \(peripheralId)")
             let totalAttempts = state.attemptCount
             let maxAttemptsError = BLEError.maxReconnectionAttemptsExceeded(
@@ -372,14 +397,14 @@ final class BLEBackgroundWorker: ObservableObject {
         eventSubject.send(.reconnectionAttemptStarted(
             peripheralId: peripheralId,
             attempt: state.attemptCount,
-            maxAttempts: config.maxReconnectionAttempts
+            maxAttempts: effectiveMaxReconnectionAttempts()
         ))
 
         // Notify delegate
         reconnectionDelegate?.reconnectionDidStart(
             for: peripheralId,
             attempt: state.attemptCount,
-            maxAttempts: config.maxReconnectionAttempts,
+            maxAttempts: effectiveMaxReconnectionAttempts(),
             nextRetryDelay: delay
         )
 
@@ -441,7 +466,7 @@ final class BLEBackgroundWorker: ObservableObject {
 
     /// Handle reconnection timeout
     private func handleReconnectionTimeout(for peripheralId: UUID, peripheral: CBPeripheral, attempt: Int) {
-        let willRetry = (reconnectionStates[peripheralId]?.attemptCount ?? 0) < config.maxReconnectionAttempts
+        let willRetry = (reconnectionStates[peripheralId]?.attemptCount ?? 0) < effectiveMaxReconnectionAttempts()
 
         // Cancel the pending connection
         bleService?.disconnect(from: peripheral)
@@ -641,6 +666,10 @@ final class BLEBackgroundWorker: ObservableObject {
         let now = Date()
 
         for (peripheralId, lastReceived) in lastDataReceived {
+            if deviceOffBody[peripheralId] == true {
+                continue
+            }
+
             let elapsed = now.timeIntervalSince(lastReceived)
 
             if elapsed > config.connectionStaleTimeout {
@@ -715,7 +744,7 @@ final class BLEBackgroundWorker: ObservableObject {
             // Mark reconnection as failed for this attempt
             if reconnectionStates[peripheralId]?.isActive == true {
                 let attempt = reconnectionStates[peripheralId]?.attemptCount ?? 0
-                let willRetry = attempt < config.maxReconnectionAttempts
+                let willRetry = attempt < effectiveMaxReconnectionAttempts()
                 reconnectionDelegate?.reconnectionAttemptDidFail(
                     for: peripheralId,
                     attempt: attempt,

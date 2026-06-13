@@ -1,5 +1,7 @@
 # CloudKit Production Schema Setup Guide
 
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) · `oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md` §11 (GTM / dentist share)
+
 ## Overview
 
 This guide walks you through deploying the CloudKit schema to production for the Oralable app. This **MUST** be completed before App Store release, as the app uses CloudKit's public database for patient-dentist data sharing.

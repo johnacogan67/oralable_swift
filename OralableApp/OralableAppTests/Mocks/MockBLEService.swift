@@ -243,7 +243,7 @@ class MockBLEService: BLEService {
 
     /// Simulate device discovery
     func simulateDeviceDiscovery(peripheral: CBPeripheral, name: String, rssi: Int) {
-        eventSubject.send(.deviceDiscovered(peripheral: peripheral, name: name, rssi: rssi))
+        eventSubject.send(.deviceDiscovered(peripheral: peripheral, name: name, rssi: rssi, advertisementData: [:]))
     }
 
     /// Simulate connection to a specific device
@@ -375,7 +375,8 @@ class MockBLEService: BLEService {
             eventSubject.send(.deviceDiscovered(
                 peripheral: peripheral,
                 name: peripheral.name ?? "Unknown",
-                rssi: -50
+                rssi: -50,
+                advertisementData: [:]
             ))
         }
     }

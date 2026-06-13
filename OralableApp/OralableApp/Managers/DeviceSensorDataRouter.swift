@@ -39,7 +39,30 @@ extension DeviceManager {
             }
             .store(in: &cancellables)
 
+        if let oralable = device as? OralableDevice {
+            oralable.$firmwareDeviceStatus
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] status in
+                    self?.handleFirmwareDeviceStatus(status, from: oralable)
+                }
+                .store(in: &cancellables)
+        }
+
         Logger.shared.debug("[DeviceManager] Batch subscription created")
+    }
+
+    func handleFirmwareDeviceStatus(_ status: TGMDeviceStatus?, from device: OralableDevice) {
+        guard let peripheralId = device.peripheral?.identifier else { return }
+        guard let status else { return }
+
+        if primaryDevice?.peripheralIdentifier == peripheralId {
+            primaryFirmwareDeviceStatus = status
+        }
+
+        let offBody = !status.worn
+        backgroundWorker.setDeviceOffBody(offBody, for: peripheralId)
+        device.setOffBodyLinkKeepaliveActive(offBody)
+        automaticRecordingSession?.updateFirmwareWornState(status.worn)
     }
 
     // MARK: - Reading Handlers

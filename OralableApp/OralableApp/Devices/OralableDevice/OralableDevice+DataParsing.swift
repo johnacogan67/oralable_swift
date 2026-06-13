@@ -259,6 +259,22 @@ extension OralableDevice {
         return false
     }
 
+    // MARK: - Device Status Parsing
+
+    func parseDeviceStatus(_ data: Data) {
+        guard let status = OralableCore.BLEDataParser.parseDeviceStatusPacket(data) else {
+            Logger.shared.warning("[OralableDevice] ⚠️ Failed to parse status packet (\(data.count) bytes)")
+            return
+        }
+
+        firmwareDeviceStatus = status
+        if status.batteryPercent > 0 {
+            batteryLevel = Int(status.batteryPercent)
+        }
+
+        Logger.shared.info("[OralableDevice] 📟 Status: worn=\(status.worn) charging=\(status.charging) state=\(status.deviceState) bat=\(status.batteryPercent)%")
+    }
+
     // MARK: - Battery Data Parsing
 
     /// Parse TGM battery data using OralableCore.BLEDataParser

@@ -119,6 +119,11 @@ extension DeviceManager {
                         self?.backgroundWorker.updateRSSI(for: peripheralId, rssi: rssi)
                     }
                 }
+                oralable.linkActivityHandler = { [weak self] peripheralId in
+                    Task { @MainActor in
+                        self?.backgroundWorker.recordDataReceived(from: peripheralId)
+                    }
+                }
                 device = oralable
             case .anr:
                 device = ANRMuscleSenseDevice(peripheral: peripheral, name: name)
@@ -130,6 +135,11 @@ extension DeviceManager {
                 oralableDemo.linkMetricsHandler = { [weak self] peripheralId, rssi in
                     Task { @MainActor in
                         self?.backgroundWorker.updateRSSI(for: peripheralId, rssi: rssi)
+                    }
+                }
+                oralableDemo.linkActivityHandler = { [weak self] peripheralId in
+                    Task { @MainActor in
+                        self?.backgroundWorker.recordDataReceived(from: peripheralId)
                     }
                 }
                 device = oralableDemo
