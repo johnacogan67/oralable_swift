@@ -269,6 +269,10 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareReadContinuation = nil
                 c.resume(throwing: error)
             }
+            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
+                firmwareConfigStateReadContinuation = nil
+                c.resume(throwing: error)
+            }
             return
         }
 
@@ -336,10 +340,19 @@ extension OralableDevice: CBPeripheralDelegate {
             let line = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .newlines) ?? "<non-utf8 \(data.count)b>"
             Logger.shared.info("[FW][\(peripheral.identifier.uuidString.prefix(8))] \(line)")
+            NRFConnectBLELogger.shared.log(
+                source: .connectedDevice,
+                level: .application,
+                line: "\"\(line)\" value received."
+            )
 
         case firmwareConfigStateCharUUID:
             let bytes = [UInt8](data)
             Logger.shared.info("[FWCFG][\(peripheral.identifier.uuidString.prefix(8))] state bytes=\(bytes)")
+            if let continuation = firmwareConfigStateReadContinuation {
+                firmwareConfigStateReadContinuation = nil
+                continuation.resume(returning: data)
+            }
 
         default:
             Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on unknown characteristic: \(characteristic.uuid.uuidString)")

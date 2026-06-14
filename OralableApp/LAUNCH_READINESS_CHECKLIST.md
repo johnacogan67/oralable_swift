@@ -13,6 +13,8 @@
 | Product / market | `oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md` |
 | Firmware ↔ iOS pairs | `oralable_nrf/docs/DEVELOPMENT.md` |
 | Clinical validation | `cursor_oralable/docs/README.md` |
+| Mobile flows / screens | [docs/MOBILE_APP_FLOWS.md](../docs/MOBILE_APP_FLOWS.md) |
+| Point A / pilot | `cursor_oralable/docs/data_room/` |
 
 ---
 

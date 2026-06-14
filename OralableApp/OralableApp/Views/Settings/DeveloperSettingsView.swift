@@ -146,6 +146,10 @@ struct DeveloperSettingsView: View {
                 Button("Request conn param update now") {
                     Task { await requestConnParamUpdate() }
                 }
+
+                Button("Dump firmware diagnostics") {
+                    Task { await dumpFirmwareDiagnostics() }
+                }
             }
         }
         .navigationTitle("Developer Settings")
@@ -199,6 +203,19 @@ struct DeveloperSettingsView: View {
             lastFwConfigStatus = "Requested conn param update @ \(Date().formatted(date: .omitted, time: .standard))"
         } catch {
             lastFwConfigStatus = "Request failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func dumpFirmwareDiagnostics() async {
+        guard let oralable = dependencies.deviceManager.primaryBLEDevice as? OralableDevice else {
+            lastFwConfigStatus = "No primary Oralable device connected"
+            return
+        }
+        do {
+            try await oralable.requestFirmwareDiagnosticsDump()
+            lastFwConfigStatus = "Diagnostics dump @ \(Date().formatted(date: .omitted, time: .standard)) — export nRF CSV for [FW] lines"
+        } catch {
+            lastFwConfigStatus = "Diagnostics failed: \(error.localizedDescription)"
         }
     }
 }

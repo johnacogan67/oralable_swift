@@ -52,7 +52,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     let ppgRegWriteCharUUID = CBUUID(string: BLEConstants.TGM.ppgRegWriteCharUUID)
     let statusCharUUID = CBUUID(string: BLEConstants.TGM.statusCharUUID)
 
-    /// Legacy REV10 optional characteristics (not present on pcb00003 nRF Connect baseline).
+    /// Firmware diagnostics (`3A0FF00A`–`00C`) on ≥ 1.0.37.
     let firmwareLogCharUUID = CBUUID(string: "3A0FF00A-98C4-46B2-94AF-1AEE0FD4C48E")
     let firmwareConfigCharUUID = CBUUID(string: "3A0FF00B-98C4-46B2-94AF-1AEE0FD4C48E")
     let firmwareConfigStateCharUUID = CBUUID(string: "3A0FF00C-98C4-46B2-94AF-1AEE0FD4C48E")
@@ -143,6 +143,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var writeCompletionContinuation: CheckedContinuation<Void, Error>?
     var firmwareReadContinuation: CheckedContinuation<String, Error>?
     var deviceIdReadContinuation: CheckedContinuation<UInt64, Error>?
+    var firmwareConfigStateReadContinuation: CheckedContinuation<Data, Error>?
 
     // MARK: - Frame Counter Tracking (Fix 9)
 
@@ -344,6 +345,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         case setBatteryIntervalSeconds = 0x04
         case setTempIntervalSeconds = 0x05
         case setStreamEnableMask = 0x06
+        case requestStatusSnapshot = 0x07
+        case restartConnectProbe = 0x08
     }
 
     enum FirmwareLedID: UInt8 {
@@ -425,6 +428,52 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try writeFirmwareConfig(Data([FirmwareConfigOpcode.setStreamEnableMask.rawValue, mask]))
     }
 
+    func requestFirmwareDiagnosticSnapshot() throws {
+        guard firmwareConfigCharacteristic != nil else {
+            throw DeviceError.characteristicNotFound("Firmware config characteristic not found")
+        }
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.requestStatusSnapshot.rawValue]))
+    }
+
+    func restartFirmwareConnectProbe() throws {
+        guard firmwareConfigCharacteristic != nil else {
+            throw DeviceError.characteristicNotFound("Firmware config characteristic not found")
+        }
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.restartConnectProbe.rawValue]))
+    }
+
+    func enableFirmwareLogNotificationsIfNeeded() {
+        guard let peripheral,
+              let characteristic = firmwareLogCharacteristic,
+              !characteristic.isNotifying else {
+            return
+        }
+        Logger.shared.info("[OralableDevice] 🪵 Enabling firmware log notifications (3A0FF00A)...")
+        setNotifyValue(true, for: characteristic, on: peripheral)
+    }
+
+    func readFirmwareConfigState() async throws -> Data {
+        guard let peripheral,
+              let characteristic = firmwareConfigStateCharacteristic else {
+            throw DeviceError.characteristicNotFound("Firmware config state characteristic not found")
+        }
+        guard firmwareConfigStateReadContinuation == nil else {
+            throw DeviceError.deviceBusy
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.firmwareConfigStateReadContinuation = continuation
+            peripheral.readValue(for: characteristic)
+        }
+    }
+
+    /// Enable fw-log notify, push snapshot to device + status char, read config state.
+    func requestFirmwareDiagnosticsDump() async throws {
+        enableFirmwareLogNotificationsIfNeeded()
+        try requestFirmwareDiagnosticSnapshot()
+        _ = try await readFirmwareConfigState()
+    }
+
     /// TGM battery notify only — deferred until after firmware version read.
     func enableDeferredDiscoverySubscriptions() {
         guard let peripheral = peripheral else { return }
@@ -437,6 +486,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     func enableNRFAlignedStreamingNotifications() async throws {
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableStatusNotifications()
+        enableFirmwareLogNotificationsIfNeeded()
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
