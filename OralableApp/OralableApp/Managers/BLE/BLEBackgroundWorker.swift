@@ -719,7 +719,7 @@ final class BLEBackgroundWorker: ObservableObject {
                 error: error
             )
 
-        case .characteristicUpdated:
+        case .characteristicUpdated(_, _, _):
             // Real sensor batches are reported through DeviceSensorDataRouter; status,
             // battery, and diagnostics traffic must not hide a stalled sensor stream.
             break
