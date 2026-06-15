@@ -269,6 +269,10 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareReadContinuation = nil
                 c.resume(throwing: error)
             }
+            if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
+                deviceIdReadContinuation = nil
+                c.resume(throwing: error)
+            }
             if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
                 firmwareConfigStateReadContinuation = nil
                 c.resume(throwing: error)
@@ -282,11 +286,18 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareReadContinuation = nil
                 c.resume(throwing: DeviceError.invalidData)
             }
+            if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
+                deviceIdReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            }
+            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
+                firmwareConfigStateReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            }
             return
         }
 
         NRFConnectBLELogger.shared.updatedValue(of: characteristic.uuid.uuidString, data: data)
-        linkActivityHandler?(peripheral.identifier)
 
         // Route data based on characteristic UUID
         switch characteristic.uuid {

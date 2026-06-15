@@ -719,8 +719,10 @@ final class BLEBackgroundWorker: ObservableObject {
                 error: error
             )
 
-        case .characteristicUpdated(let peripheral, _, _):
-            recordDataReceived(from: peripheral.identifier)
+        case .characteristicUpdated:
+            // Real sensor batches are reported through DeviceSensorDataRouter; status,
+            // battery, and diagnostics traffic must not hide a stalled sensor stream.
+            break
 
         case .bluetoothStateChanged(let state):
             handleBluetoothStateChange(state)

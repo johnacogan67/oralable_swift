@@ -180,6 +180,7 @@ final class BLECentralManager: NSObject, BLEService {
     }
 
     func disconnect(from peripheral: CBPeripheral) {
+        pendingConnections.remove(peripheral.identifier)
         central.cancelPeripheralConnection(peripheral)
     }
 
@@ -190,6 +191,7 @@ final class BLECentralManager: NSObject, BLEService {
             }
         }
         connectedPeripherals.removeAll()
+        pendingConnections.removeAll()
     }
 
     // MARK: - BLEService Protocol - Read/Write Operations
@@ -450,6 +452,7 @@ extension BLECentralManager: CBCentralManagerDelegate {
         error: Error?
     ) {
         connectedPeripherals.remove(peripheral.identifier)
+        pendingConnections.remove(peripheral.identifier)
 
         if let error = error {
             // Unexpected disconnection - convert for logging only. Do not also emit `.error`:
