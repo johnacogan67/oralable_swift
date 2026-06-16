@@ -687,6 +687,55 @@ final class SharedDataModelTests: XCTestCase {
         )
     }
 
+    func testBruxismSessionDataMergePreservesExistingAndIncomingReadings() {
+        // Given
+        let sensorData = createMockSensorData(count: 3)
+        let readings = sensorData.map { SerializableSensorData(from: $0) }
+        let existing = [readings[0], readings[1]]
+        let incoming = [readings[1], readings[2]]
+
+        // When
+        let merged = BruxismSessionData.mergeReadings(existing, with: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 3, "Exact duplicate samples should be deduplicated")
+        XCTAssertEqual(Set(merged), Set(readings))
+    }
+
+    func testBruxismSessionDataMergeKeepsSameTimestampDistinctReadings() {
+        // Given
+        let timestamp = Date()
+
+        func makeReading(red: Int32) -> SerializableSensorData {
+            let ppg = PPGData(red: red, ir: 200000, green: 180000, timestamp: timestamp)
+            let accelerometer = AccelerometerData(x: 100, y: -50, z: 300, timestamp: timestamp)
+            let temperature = TemperatureData(celsius: 36.8, timestamp: timestamp)
+            let battery = BatteryData(percentage: 85, timestamp: timestamp)
+            let sensorData = SensorData(
+                timestamp: timestamp,
+                ppg: ppg,
+                accelerometer: accelerometer,
+                temperature: temperature,
+                battery: battery,
+                heartRate: nil,
+                spo2: nil,
+                deviceType: .oralable
+            )
+            return SerializableSensorData(from: sensorData)
+        }
+
+        let first = makeReading(red: 150000)
+        let second = makeReading(red: 150001)
+
+        // When
+        let merged = BruxismSessionData.mergeReadings([first], with: [second])
+
+        // Then
+        XCTAssertEqual(merged.count, 2, "Distinct samples with the same timestamp must both be retained")
+        XCTAssertTrue(merged.contains(first))
+        XCTAssertTrue(merged.contains(second))
+    }
+
     func testBruxismSessionDataCompressionRoundtrip() throws {
         // Given - encode BruxismSessionData to JSON, compress, decompress, decode
         let sensorData = createMockSensorData(count: 20)

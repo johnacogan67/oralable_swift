@@ -396,23 +396,56 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+
+        let existingReadings = try existingSensorReadings(from: record)
+        let incomingReadings = sensorData.map { SerializableSensorData(from: $0) }
+        let mergedReadings = BruxismSessionData.mergeReadings(existingReadings, with: incomingReadings)
+
+        try await populateRecord(record, withSerializableReadings: mergedReadings, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
-        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date) (\(existingReadings.count) existing + \(incomingReadings.count) incoming -> \(mergedReadings.count) total)")
     }
     
     /// Populate a record with sensor data
     private func populateRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String, date: Date) async throws {
+        try await populateRecord(
+            record,
+            withSerializableReadings: sensorData.map { SerializableSensorData(from: $0) },
+            patientID: patientID,
+            date: date
+        )
+    }
+
+    private func existingSensorReadings(from record: CKRecord) throws -> [SerializableSensorData] {
+        guard let compressedData = record["sensorDataCompressed"] as? Data else {
+            return []
+        }
+        guard let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let decompressedData = compressedData.decompressed(expectedSize: uncompressedSize) else {
+            throw ShareError.cloudKitError(NSError(
+                domain: "SharedDataManager",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to decompress existing sensor payload"]
+            ))
+        }
+
+        do {
+            return try JSONDecoder().decode(BruxismSessionData.self, from: decompressedData).sensorReadings
+        } catch {
+            throw ShareError.cloudKitError(error)
+        }
+    }
+
+    private func populateRecord(_ record: CKRecord, withSerializableReadings sensorReadings: [SerializableSensorData], patientID: String, date: Date) async throws {
         // Calculate metrics
         var bruxismEvents = 0
         var peakIntensity = 0.0
         let bruxismThreshold = 2.0
         var isInEvent = false
         
-        for data in sensorData {
-            let magnitude = data.accelerometer.magnitude
+        for data in sensorReadings {
+            let magnitude = data.accelMagnitude
             if magnitude > bruxismThreshold {
                 if !isInEvent {
                     bruxismEvents += 1
@@ -426,12 +459,12 @@ class SharedDataManager: ObservableObject {
             }
         }
         
-        let averageIntensity = sensorData.isEmpty ? 0.0 :
-            sensorData.reduce(0.0) { $0 + $1.accelerometer.magnitude } / Double(sensorData.count)
+        let averageIntensity = sensorReadings.isEmpty ? 0.0 :
+            sensorReadings.reduce(0.0) { $0 + $1.accelMagnitude } / Double(sensorReadings.count)
         
         // Calculate session duration from first to last reading
         let duration: TimeInterval
-        if let first = sensorData.first?.timestamp, let last = sensorData.last?.timestamp {
+        if let first = sensorReadings.first?.timestamp, let last = sensorReadings.last?.timestamp {
             duration = last.timeIntervalSince(first)
         } else {
             duration = 0
@@ -446,29 +479,38 @@ class SharedDataManager: ObservableObject {
         record["peakIntensity"] = peakIntensity as CKRecordValue
         
         // Heart rate data
-        let heartRateData = sensorData.compactMap { $0.heartRate?.bpm }
+        let heartRateData = sensorReadings.compactMap { $0.heartRateBPM }
         if !heartRateData.isEmpty, let hrData = try? JSONEncoder().encode(heartRateData) {
             record["heartRateData"] = hrData as CKRecordValue
+        } else {
+            record["heartRateData"] = nil
         }
         
         // SpO2 data
-        let spo2Data = sensorData.compactMap { $0.spo2?.percentage }
+        let spo2Data = sensorReadings.compactMap { $0.spo2Percentage }
         if !spo2Data.isEmpty, let spo2JSON = try? JSONEncoder().encode(spo2Data) {
             record["oxygenSaturation"] = spo2JSON as CKRecordValue
+        } else {
+            record["oxygenSaturation"] = nil
         }
         
         // Compress and store full sensor data for time-series charts
-        let bruxismSessionData = BruxismSessionData(sensorData: sensorData)
-        if let jsonData = try? JSONEncoder().encode(bruxismSessionData) {
-            let uncompressedSize = jsonData.count
-            if let compressed = jsonData.compressed() {
-                record["sensorDataCompressed"] = compressed as CKRecordValue
-                record["sensorDataUncompressedSize"] = uncompressedSize as CKRecordValue
-                
-                let ratio = Double(uncompressedSize) / Double(compressed.count)
-                Logger.shared.info("[SharedDataManager] Compressed \(uncompressedSize) -> \(compressed.count) bytes (ratio: \(String(format: "%.1f", ratio))x)")
-            }
+        let bruxismSessionData = BruxismSessionData(sensorReadings: sensorReadings)
+        let jsonData = try JSONEncoder().encode(bruxismSessionData)
+        let uncompressedSize = jsonData.count
+        guard let compressed = jsonData.compressed() else {
+            throw ShareError.cloudKitError(NSError(
+                domain: "SharedDataManager",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Unable to compress sensor payload"]
+            ))
         }
+
+        record["sensorDataCompressed"] = compressed as CKRecordValue
+        record["sensorDataUncompressedSize"] = uncompressedSize as CKRecordValue
+        
+        let ratio = Double(uncompressedSize) / Double(compressed.count)
+        Logger.shared.info("[SharedDataManager] Compressed \(uncompressedSize) -> \(compressed.count) bytes (ratio: \(String(format: "%.1f", ratio))x)")
     }
     
     /// Call this when the Share screen appears or when user wants to sync
@@ -764,19 +806,36 @@ struct BruxismSessionData: Codable {
     let endDate: Date
 
     init(sensorData: [SensorData]) {
-        self.sensorReadings = sensorData.map { SerializableSensorData(from: $0) }
-        self.recordingCount = sensorData.count
-        self.startDate = sensorData.first?.timestamp ?? Date()
-        self.endDate = sensorData.last?.timestamp ?? Date()
+        self.init(sensorReadings: sensorData.map { SerializableSensorData(from: $0) })
+    }
+
+    init(sensorReadings: [SerializableSensorData]) {
+        self.sensorReadings = sensorReadings
+        self.recordingCount = sensorReadings.count
+        self.startDate = sensorReadings.first?.timestamp ?? Date()
+        self.endDate = sensorReadings.last?.timestamp ?? Date()
+    }
+
+    static func mergeReadings(_ existing: [SerializableSensorData], with incoming: [SerializableSensorData]) -> [SerializableSensorData] {
+        var seen = Set<SerializableSensorData>()
+        var merged: [SerializableSensorData] = []
+
+        for reading in existing + incoming where seen.insert(reading).inserted {
+            merged.append(reading)
+        }
+
+        return merged.sorted { lhs, rhs in
+            lhs.timestamp < rhs.timestamp
+        }
     }
 }
 
 /// Simplified sensor data structure for serialization
-struct SerializableSensorData: Codable {
+struct SerializableSensorData: Codable, Hashable {
     let timestamp: Date
 
     // Device identification
-    let deviceType: String  // "Oralable" or "ANR M40"
+    let deviceType: String?  // "Oralable" or "ANR M40"
 
     // PPG data (from Oralable device)
     let ppgRed: Int32
