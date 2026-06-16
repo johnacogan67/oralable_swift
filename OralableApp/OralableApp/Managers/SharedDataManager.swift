@@ -508,7 +508,7 @@ class SharedDataManager: ObservableObject {
 
         record["sensorDataCompressed"] = compressed as CKRecordValue
         record["sensorDataUncompressedSize"] = uncompressedSize as CKRecordValue
-        
+
         let ratio = Double(uncompressedSize) / Double(compressed.count)
         Logger.shared.info("[SharedDataManager] Compressed \(uncompressedSize) -> \(compressed.count) bytes (ratio: \(String(format: "%.1f", ratio))x)")
     }
