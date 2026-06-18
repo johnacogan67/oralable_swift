@@ -130,6 +130,7 @@ extension DeviceManager {
                     Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Device ID: \(deviceId)")
                 } catch {
                     Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Device ID read skipped: \(error.localizedDescription)")
+                    oralableDevice.cancelPendingContinuations()
                 }
 
                 let firmwareReadStart = Date()
@@ -196,6 +197,9 @@ extension DeviceManager {
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
+            if let oralableDevice = device as? OralableDevice {
+                oralableDevice.cancelPendingContinuations()
+            }
             isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
         }
@@ -435,6 +439,10 @@ extension DeviceManager {
     // Day 2: Timeout helper for async operations (safe unwrap fix)
     func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
         return try await withThrowingTaskGroup(of: T.self) { group in
+            defer {
+                group.cancelAll()
+            }
+
             // Add the actual operation
             group.addTask {
                 try await operation()
@@ -450,7 +458,6 @@ extension DeviceManager {
             guard let result = try await group.next() else {
                 throw DeviceError.timeout
             }
-            group.cancelAll()
             return result
         }
     }
