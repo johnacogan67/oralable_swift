@@ -319,6 +319,31 @@ final class BLEBackgroundWorkerTests: XCTestCase {
         XCTAssertTrue(mockBLEService.connectCalled)
     }
 
+    func testActiveReconnectionResumesAfterBluetoothPowerCycle() async {
+        // Given
+        sut.start()
+        let deviceId = UUID()
+        mockBLEService.addDiscoverableDevice(id: deviceId, name: "Test Device")
+        let peripheral = mockBLEService.discoveredPeripherals[deviceId]!
+
+        // Start a delayed reconnect and power Bluetooth off while it is active.
+        sut.scheduleReconnection(for: deviceId, peripheral: peripheral, immediate: false)
+        XCTAssertTrue(sut.activeReconnections.contains(deviceId))
+
+        mockBLEService.simulateBluetoothStateChange(.poweredOff)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertFalse(sut.activeReconnections.contains(deviceId), "Bluetooth off should pause active reconnect state")
+        XCTAssertFalse(mockBLEService.connectCalled, "Reconnect should not run while Bluetooth is powered off")
+
+        // When
+        mockBLEService.simulateBluetoothStateChange(.poweredOn)
+        try? await Task.sleep(nanoseconds: 400_000_000)
+
+        // Then
+        XCTAssertTrue(mockBLEService.connectCalled, "Pending reconnect should be rescheduled when Bluetooth returns")
+    }
+
     // MARK: - Connection Timeout Tests
 
     func testConnectionTimeoutTriggersRetry() async {

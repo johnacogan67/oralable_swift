@@ -396,11 +396,60 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+        let existingSensorData = try Self.decodeExistingSensorData(from: record)
+        let mergedSensorData = Self.mergeSensorData(existingSensorData, with: sensorData)
+
+        try await populateRecord(record, with: mergedSensorData, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
         Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+    }
+
+    nonisolated static func mergeSensorData(_ existing: [SensorData], with incoming: [SensorData]) -> [SensorData] {
+        var merged: [SensorData] = []
+        merged.reserveCapacity(existing.count + incoming.count)
+        var seen = Set<String>()
+
+        for data in existing + incoming {
+            let key = sensorDataIdentityKey(for: data)
+            if seen.insert(key).inserted {
+                merged.append(data)
+            }
+        }
+
+        return merged.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    nonisolated private static func decodeExistingSensorData(from record: CKRecord) throws -> [SensorData] {
+        guard let compressedData = record["sensorDataCompressed"] as? Data else {
+            return []
+        }
+        guard let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+              let decompressedData = compressedData.decompressed(expectedSize: uncompressedSize) else {
+            throw SharedDataMergeError.unreadableExistingPayload
+        }
+
+        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: decompressedData)
+        return decoded.sensorReadings.map { $0.sensorData }
+    }
+
+    nonisolated private static func sensorDataIdentityKey(for data: SensorData) -> String {
+        [
+            "\(Int64((data.timestamp.timeIntervalSinceReferenceDate * 1_000_000.0).rounded()))",
+            data.deviceType == .anr ? "anr" : "oralable",
+            "\(data.ppg.red)",
+            "\(data.ppg.ir)",
+            "\(data.ppg.green)",
+            "\(data.accelerometer.x)",
+            "\(data.accelerometer.y)",
+            "\(data.accelerometer.z)",
+            "\(data.temperature.celsius)",
+            "\(data.battery.percentage)",
+            "\(data.heartRate?.bpm ?? -1)",
+            "\(data.heartRate?.quality ?? -1)",
+            "\(data.spo2?.percentage ?? -1)",
+            "\(data.spo2?.quality ?? -1)"
+        ].joined(separator: "|")
     }
     
     /// Populate a record with sensor data
@@ -744,6 +793,14 @@ enum ShareError: LocalizedError {
     }
 }
 
+private enum SharedDataMergeError: LocalizedError {
+    case unreadableExistingPayload
+
+    var errorDescription: String? {
+        "Existing CloudKit sensor payload could not be decoded; refusing to overwrite it"
+    }
+}
+
 // MARK: - Health Data Record (for sharing)
 
 struct HealthDataRecord: Codable {
@@ -840,5 +897,29 @@ struct SerializableSensorData: Codable {
         self.heartRateQuality = sensorData.heartRate?.quality
         self.spo2Percentage = sensorData.spo2?.percentage
         self.spo2Quality = sensorData.spo2?.quality
+    }
+
+    var sensorData: SensorData {
+        let ppg = PPGData(red: ppgRed, ir: ppgIR, green: ppgGreen, timestamp: timestamp)
+        let accelerometer = AccelerometerData(x: accelX, y: accelY, z: accelZ, timestamp: timestamp)
+        let temperature = TemperatureData(celsius: temperatureCelsius, timestamp: timestamp)
+        let battery = BatteryData(percentage: batteryPercentage, timestamp: timestamp)
+        let heartRate = heartRateBPM.map {
+            HeartRateData(bpm: $0, quality: heartRateQuality ?? 0, timestamp: timestamp)
+        }
+        let spo2 = spo2Percentage.map {
+            SpO2Data(percentage: $0, quality: spo2Quality ?? 0, timestamp: timestamp)
+        }
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: ppg,
+            accelerometer: accelerometer,
+            temperature: temperature,
+            battery: battery,
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: deviceType == "ANR M40" ? .anr : .oralable
+        )
     }
 }

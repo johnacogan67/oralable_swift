@@ -26,6 +26,12 @@ final class FirstLaunchManager: ObservableObject {
         isTrialSetupMode = defaults.bool(forKey: Self.trialKey)
     }
 
+    nonisolated static func clearPersistedState() {
+        UserDefaults.standard.removeObject(forKey: fitKey)
+        UserDefaults.standard.removeObject(forKey: pairedKey)
+        UserDefaults.standard.removeObject(forKey: trialKey)
+    }
+
     /// REV10 / Oralable primary reached full BLE readiness during onboarding.
     func markOralablePaired() {
         UserDefaults.standard.set(true, forKey: Self.pairedKey)
