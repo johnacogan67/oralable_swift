@@ -73,15 +73,23 @@ struct DeviceDiscoveryView: View {
                 if onOralablePrimaryReady != nil {
                     didFireOralableReady = false
                 }
+                notifyOralableReadyIfNeeded(deviceManager.primaryDeviceReadiness)
             }
             .onChange(of: deviceManager.primaryDeviceReadiness) { _, readiness in
-                guard let onReady = onOralablePrimaryReady, !didFireOralableReady else { return }
-                guard readiness == .ready,
-                      deviceManager.primaryDevice?.type == .oralable else { return }
-                didFireOralableReady = true
-                onReady()
+                notifyOralableReadyIfNeeded(readiness)
             }
         }
+    }
+
+    private func notifyOralableReadyIfNeeded(_ readiness: ConnectionReadiness) {
+        guard let onReady = onOralablePrimaryReady, !didFireOralableReady else { return }
+        guard FirstLaunchManager.isReadyOralablePrimary(
+            primaryDevice: deviceManager.primaryDevice,
+            readiness: readiness
+        ) else { return }
+
+        didFireOralableReady = true
+        onReady()
     }
 
     private func discoveryCard(for product: DeviceManagerFactory.Product) -> some View {

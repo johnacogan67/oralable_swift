@@ -26,6 +26,27 @@ final class FirstLaunchManager: ObservableObject {
         isTrialSetupMode = defaults.bool(forKey: Self.trialKey)
     }
 
+    static func isReadyOralablePrimary(primaryDevice: DeviceInfo?, readiness: ConnectionReadiness) -> Bool {
+        guard readiness == .ready,
+              primaryDevice?.type == .oralable else {
+            return false
+        }
+        return true
+    }
+
+    static func isOralablePairingInProgressOrReady(primaryDevice: DeviceInfo?, readiness: ConnectionReadiness) -> Bool {
+        guard primaryDevice?.type == .oralable else { return false }
+
+        switch readiness {
+        case .connecting, .connected, .discoveringServices, .servicesDiscovered,
+             .discoveringCharacteristics, .characteristicsDiscovered,
+             .enablingNotifications, .ready:
+            return true
+        case .disconnected, .failed(_):
+            return false
+        }
+    }
+
     /// REV10 / Oralable primary reached full BLE readiness during onboarding.
     func markOralablePaired() {
         UserDefaults.standard.set(true, forKey: Self.pairedKey)
@@ -33,6 +54,17 @@ final class FirstLaunchManager: ObservableObject {
         UserDefaults.standard.set(false, forKey: Self.trialKey)
         isTrialSetupMode = false
         Logger.shared.info("[FirstLaunchManager] Oralable primary paired (onboarding)")
+    }
+
+    @discardableResult
+    func markOralablePairedIfReady(primaryDevice: DeviceInfo?, readiness: ConnectionReadiness) -> Bool {
+        guard Self.isReadyOralablePrimary(primaryDevice: primaryDevice, readiness: readiness) else {
+            return false
+        }
+        if !hasPairedOralablePrimary {
+            markOralablePaired()
+        }
+        return true
     }
 
     /// User closed pairing without connecting; limited trial dashboard.
