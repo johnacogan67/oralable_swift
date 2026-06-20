@@ -24,9 +24,9 @@ final class DeviceManagerAdapterPPGTests: XCTestCase {
         )
 
         XCTAssertEqual(rows.count, 3)
-        XCTAssertEqual(rows.map { $0.ppg.red }, [1_000, 1_001, 1_002])
-        XCTAssertEqual(rows.map { $0.ppg.ir }, [2_000, 2_001, 2_002])
-        XCTAssertEqual(rows.map { $0.ppg.green }, [3_000, 3_001, 3_002])
+        XCTAssertEqual(rows.map { $0.ppg.red }, [Int32(1_000), Int32(1_001), Int32(1_002)])
+        XCTAssertEqual(rows.map { $0.ppg.ir }, [Int32(2_000), Int32(2_001), Int32(2_002)])
+        XCTAssertEqual(rows.map { $0.ppg.green }, [Int32(3_000), Int32(3_001), Int32(3_002)])
     }
 
     private func makePacketReadings(sampleCount: Int, sameTimestamp: Bool) -> [SensorReading] {
