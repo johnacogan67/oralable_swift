@@ -75,31 +75,34 @@ extension DeviceManager {
         let traceId = String(peripheral.identifier.uuidString.prefix(8))
         let flowStartedAt = Date()
         Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ▶️ Discovery flow started for \(peripheral.name ?? "Unknown")")
+        func cancelPendingGATTOperations() {
+            (device as? OralableDevice)?.cancelPendingContinuations()
+        }
 
         // Guard against race condition: peripheral may disconnect before this task runs
         guard peripheral.state == .connected else {
             Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected before discovery could start")
+            cancelPendingGATTOperations()
             updateDeviceReadiness(peripheral.identifier, to: .disconnected)
             return
         }
 
         // Clear any prior pending continuations before starting a new flow (reconnect churn safety).
-        if let oralableDevice = device as? OralableDevice {
-            oralableDevice.cancelPendingContinuations()
-        }
+        cancelPendingGATTOperations()
 
         do {
             // Step 1: Discover services (10-second timeout)
             let step1Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringServices)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: cancelPendingGATTOperations) {
                 try await device.discoverServices()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() done in \(Int(Date().timeIntervalSince(step1Start) * 1000))ms")
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during service discovery")
+                cancelPendingGATTOperations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -109,13 +112,14 @@ extension DeviceManager {
             let step2Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringCharacteristics)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: cancelPendingGATTOperations) {
                 try await device.discoverCharacteristics()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() done in \(Int(Date().timeIntervalSince(step2Start) * 1000))ms")
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during characteristic discovery")
+                cancelPendingGATTOperations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -124,7 +128,7 @@ extension DeviceManager {
             // nRF Connect order: device ID (005) → firmware (006) → battery CCC, then streaming CCCs.
             if let oralableDevice = device as? OralableDevice {
                 do {
-                    let deviceId = try await withTimeout(seconds: 5) {
+                    let deviceId = try await withTimeout(seconds: 5, onTimeout: cancelPendingGATTOperations) {
                         try await oralableDevice.readDeviceId()
                     }
                     Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Device ID: \(deviceId)")
@@ -134,7 +138,7 @@ extension DeviceManager {
 
                 let firmwareReadStart = Date()
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() start")
-                let version = try await withTimeout(seconds: 5) {
+                let version = try await withTimeout(seconds: 5, onTimeout: cancelPendingGATTOperations) {
                     try await oralableDevice.readFirmwareVersion()
                 }
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() done in \(Int(Date().timeIntervalSince(firmwareReadStart) * 1000))ms -> \(version)")
@@ -147,6 +151,7 @@ extension DeviceManager {
                     oralableFirmwareBlockedPeripheralIds.insert(peripheral.identifier)
                     isConnecting = false
                     updateDeviceReadiness(peripheral.identifier, to: .failed("Firmware update required"))
+                    cancelPendingGATTOperations()
                     bleService?.disconnect(from: peripheral)
                     return
                 }
@@ -161,7 +166,7 @@ extension DeviceManager {
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
 
             if let oralableDevice = device as? OralableDevice {
-                try await withTimeout(seconds: 30) {
+                try await withTimeout(seconds: 30, onTimeout: cancelPendingGATTOperations) {
                     try await oralableDevice.enableNRFAlignedStreamingNotifications()
                 }
             } else {
@@ -182,6 +187,7 @@ extension DeviceManager {
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during notification setup")
+                cancelPendingGATTOperations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -196,6 +202,7 @@ extension DeviceManager {
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
+            cancelPendingGATTOperations()
             isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
         }
@@ -433,7 +440,11 @@ extension DeviceManager {
     // MARK: - Timeout Helper
 
     // Day 2: Timeout helper for async operations (safe unwrap fix)
-    func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+    func withTimeout<T>(
+        seconds: TimeInterval,
+        onTimeout: (@MainActor () -> Void)? = nil,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
         return try await withThrowingTaskGroup(of: T.self) { group in
             // Add the actual operation
             group.addTask {
@@ -443,6 +454,9 @@ extension DeviceManager {
             // Add a timeout task
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                if let onTimeout {
+                    await onTimeout()
+                }
                 throw DeviceError.timeout
             }
 
