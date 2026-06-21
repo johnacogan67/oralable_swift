@@ -205,11 +205,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         deviceInfo.connectionState = .disconnecting
         setOffBodyLinkKeepaliveActive(false)
 
-        // Cancel any pending write continuation to avoid leaked continuations
-        if let continuation = writeCompletionContinuation {
-            writeCompletionContinuation = nil
-            continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
-        }
+        // Cancel pending GATT operations so direct device disconnects cannot leave async callers hung.
+        cancelPendingContinuations()
 
         // Reset state
         notificationReadiness = []
@@ -243,6 +240,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         firmwareReadContinuation = nil
         deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         deviceIdReadContinuation = nil
+        firmwareConfigStateReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareConfigStateReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
@@ -535,6 +534,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard statusNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.status)
+            Logger.shared.info("[OralableDevice] ✅ Status notifications already enabled")
+            return
+        }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on status characteristic (3A0FF009)...")
 
@@ -554,6 +558,15 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             Logger.shared.warning("[OralableDevice] ⚠️ enableNotifications called while a previous request is still pending")
             throw DeviceError.deviceBusy
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.ppgData)
+            Logger.shared.info("[OralableDevice] ✅ PPG notifications already enabled")
+            if isConnectionReady, let continuation = connectionReadyContinuation {
+                connectionReadyContinuation = nil
+                continuation.resume()
+            }
+            return
+        }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on sensor data characteristic...")
 
@@ -572,6 +585,15 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
         guard accelerometerNotificationContinuation == nil else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
+            return
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.accelerometer)
+            Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications already enabled")
+            if isConnectionReady, let continuation = connectionReadyContinuation {
+                connectionReadyContinuation = nil
+                continuation.resume()
+            }
             return
         }
 
