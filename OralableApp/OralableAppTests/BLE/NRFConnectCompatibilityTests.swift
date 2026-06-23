@@ -67,4 +67,28 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         session.processSensorData(irValue: 1_000_000, timestamp: Date())
         XCTAssertEqual(session.eventCount, 1, "Only initial DataStreaming event expected off-body")
     }
+
+    func testCancelPendingContinuationsClearsFirmwareConfigStateRead() async {
+        let peripheral = MockPeripheralFactory.create(identifier: UUID(), name: "Oralable")
+        let device = OralableDevice(peripheral: peripheral)
+        let continuationStored = expectation(description: "Firmware config state continuation stored")
+
+        let readTask = Task<Data, Error> {
+            try await withCheckedThrowingContinuation { continuation in
+                device.firmwareConfigStateReadContinuation = continuation
+                continuationStored.fulfill()
+            }
+        }
+
+        await fulfillment(of: [continuationStored], timeout: 1)
+
+        device.cancelPendingContinuations()
+
+        do {
+            _ = try await readTask.value
+            XCTFail("Expected firmware config read continuation to be cancelled")
+        } catch {
+            XCTAssertNil(device.firmwareConfigStateReadContinuation)
+        }
+    }
 }
