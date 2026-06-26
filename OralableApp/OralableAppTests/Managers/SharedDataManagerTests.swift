@@ -349,6 +349,25 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func makeSerializableReading(timestamp: Date, ppgIR: Int32) -> SerializableSensorData {
+        let ppg = PPGData(red: 100, ir: ppgIR, green: 300, timestamp: timestamp)
+        let accelerometer = AccelerometerData(x: 1, y: 2, z: 3, timestamp: timestamp)
+        let temperature = TemperatureData(celsius: 37.0, timestamp: timestamp)
+        let battery = BatteryData(percentage: 90, timestamp: timestamp)
+        return SerializableSensorData(
+            from: SensorData(
+                timestamp: timestamp,
+                ppg: ppg,
+                accelerometer: accelerometer,
+                temperature: temperature,
+                battery: battery,
+                heartRate: nil,
+                spo2: nil,
+                deviceType: .oralable
+            )
+        )
+    }
+
     private func createMockSensorDataWithHighAccel(count: Int = 5, magnitude: Double = 3.0) -> [SensorData] {
         // Create sensor data with high accelerometer values to trigger bruxism detection
         // magnitude is in raw units where the threshold compares accelerometer.magnitude
@@ -849,6 +868,30 @@ final class SharedDataModelTests: XCTestCase {
         XCTAssertEqual(decoded.accelMagnitude, original.accelMagnitude, accuracy: 0.001)
     }
 
+    func testSharedDataMergePreservesExistingAndIncomingReadings() {
+        let existing = createMockSensorData(count: 3).map { SerializableSensorData(from: $0) }
+
+        let merged = SharedDataManager.mergedSensorReadings(
+            existing: existing,
+            incoming: [existing[1], existing[2]]
+        )
+
+        XCTAssertEqual(merged, existing)
+    }
+
+    func testSharedDataMergeKeepsDistinctSameTimestampReadingsStable() {
+        let timestamp = Date(timeIntervalSince1970: 1_704_067_200)
+        let first = makeSerializableReading(timestamp: timestamp, ppgIR: 100)
+        let second = makeSerializableReading(timestamp: timestamp, ppgIR: 200)
+
+        let merged = SharedDataManager.mergedSensorReadings(
+            existing: [second],
+            incoming: [first]
+        )
+
+        XCTAssertEqual(merged.map(\.ppgIR), [200, 100])
+    }
+
     func testSerializableSensorDataPreservesTimestamp() {
         // Given
         let timestamp = Date(timeIntervalSince1970: 1704067200)
@@ -918,6 +961,11 @@ final class ShareErrorTests: XCTestCase {
         XCTAssertEqual(error.errorDescription, "Professional not found")
     }
 
+    func testCorruptSensorDataErrorDescription() {
+        let error = ShareError.corruptSensorData
+        XCTAssertEqual(error.errorDescription, "Existing shared sensor data could not be decoded")
+    }
+
     func testShareErrorConformsToLocalizedError() {
         // Verify all cases conform to LocalizedError
         let errors: [ShareError] = [
@@ -925,7 +973,8 @@ final class ShareErrorTests: XCTestCase {
             .cloudKitError(NSError(domain: "test", code: 0)),
             .invalidShareCode,
             .shareCodeExpired,
-            .professionalNotFound
+            .professionalNotFound,
+            .corruptSensorData
         ]
 
         for error in errors {
