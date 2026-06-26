@@ -196,6 +196,9 @@ extension DeviceManager {
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
+            if let oralableDevice = device as? OralableDevice {
+                oralableDevice.cancelPendingContinuations()
+            }
             isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
         }

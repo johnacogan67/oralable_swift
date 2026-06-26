@@ -210,6 +210,10 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             writeCompletionContinuation = nil
             continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         }
+        if let continuation = firmwareConfigStateReadContinuation {
+            firmwareConfigStateReadContinuation = nil
+            continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        }
 
         // Reset state
         notificationReadiness = []
@@ -243,6 +247,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         firmwareReadContinuation = nil
         deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         deviceIdReadContinuation = nil
+        firmwareConfigStateReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareConfigStateReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
