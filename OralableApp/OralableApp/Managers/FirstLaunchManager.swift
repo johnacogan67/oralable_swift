@@ -56,3 +56,13 @@ final class FirstLaunchManager: ObservableObject {
         Logger.shared.info("[FirstLaunchManager] First Temporalis fit gate completed (setup finalized, MainTab eligible)")
     }
 }
+
+enum FirstLaunchOralableReadiness {
+    static func isReadyOralablePrimary(
+        _ device: DeviceInfo?,
+        readiness: ConnectionReadiness
+    ) -> Bool {
+        guard case .ready = readiness else { return false }
+        return device?.type == .oralable
+    }
+}

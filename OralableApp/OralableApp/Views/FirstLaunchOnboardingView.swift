@@ -96,9 +96,16 @@ struct FirstLaunchOnboardingView: View {
             }
         }
         .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
-            if !pairingJustCompletedSession,
-               !firstLaunchManager.hasPairedOralablePrimary {
-                firstLaunchManager.enterTrialSetupMode()
+            let oralableReady = FirstLaunchOralableReadiness.isReadyOralablePrimary(
+                deviceManager.primaryDevice,
+                readiness: deviceManager.primaryDeviceReadiness
+            )
+            if !firstLaunchManager.hasPairedOralablePrimary {
+                if oralableReady {
+                    firstLaunchManager.markOralablePaired()
+                } else if !pairingJustCompletedSession {
+                    firstLaunchManager.enterTrialSetupMode()
+                }
             }
             pairingJustCompletedSession = false
 
@@ -107,7 +114,7 @@ struct FirstLaunchOnboardingView: View {
             if firstLaunchManager.hasPairedOralablePrimary,
                !firstLaunchManager.hasCompletedFirstFit,
                !showFitGuide,
-               case .ready = deviceManager.primaryDeviceReadiness {
+               oralableReady {
 
                 setupProgressIndex1IfNeeded()
                 showFitGuide = true
