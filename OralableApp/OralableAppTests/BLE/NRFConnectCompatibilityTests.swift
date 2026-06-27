@@ -67,4 +67,39 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         session.processSensorData(irValue: 1_000_000, timestamp: Date())
         XCTAssertEqual(session.eventCount, 1, "Only initial DataStreaming event expected off-body")
     }
+
+    func testRequiredAccelerometerNotificationFailuresPropagate() throws {
+        let source = try String(
+            contentsOf: projectRoot()
+                .appendingPathComponent("OralableApp/Devices/OralableDevice/OralableDevice.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(
+            source.contains("func enableAccelerometerNotifications() async throws"),
+            "Accelerometer CCC setup must be throwing because it is required for complete recordings."
+        )
+        XCTAssertTrue(
+            source.contains("try await enableAccelerometerNotifications()"),
+            "The nRF-aligned setup flow must fail discovery when required accelerometer CCC setup fails."
+        )
+        XCTAssertFalse(
+            source.contains("Failed to enable accelerometer notifications"),
+            "Required accelerometer CCC failures must not be logged and swallowed."
+        )
+    }
+
+    private func projectRoot() -> URL {
+        var url = URL(fileURLWithPath: #filePath)
+
+        while url.path != "/" {
+            if FileManager.default.fileExists(atPath: url.appendingPathComponent("OralableApp").path),
+               FileManager.default.fileExists(atPath: url.appendingPathComponent("OralableAppTests").path) {
+                return url
+            }
+            url.deleteLastPathComponent()
+        }
+
+        return URL(fileURLWithPath: "/Users/johnacogan67/Projects/oralable_ios/OralableApp")
+    }
 }

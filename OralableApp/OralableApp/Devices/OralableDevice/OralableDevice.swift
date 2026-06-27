@@ -490,7 +490,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        await enableAccelerometerNotifications()
+        try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
         await enableTemperatureNotifications()
     }
@@ -563,29 +563,25 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
     }
 
-    // Enable accelerometer notifications (non-blocking)
-    func enableAccelerometerNotifications() async {
+    // Enable accelerometer notifications (required for a ready Oralable stream).
+    func enableAccelerometerNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = accelerometerCharacteristic else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer characteristic not found")
-            return
+            throw DeviceError.characteristicNotFound("Accelerometer characteristic not found")
         }
         guard accelerometerNotificationContinuation == nil else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
-            return
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on accelerometer characteristic...")
 
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                self.accelerometerNotificationContinuation = continuation
-                self.setNotifyValue(true, for: characteristic, on: peripheral)
-            }
-            Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
-        } catch {
-            Logger.shared.warning("[OralableDevice] ⚠️ Failed to enable accelerometer notifications: \(error.localizedDescription)")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.accelerometerNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
+        Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
     }
 
     // Enable temperature notifications on 3A0FF003
