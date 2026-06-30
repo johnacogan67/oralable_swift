@@ -243,6 +243,31 @@ final class DeviceManagerTests: XCTestCase {
         XCTAssertTrue(operationExecuted)
     }
 
+    func testWithTimeoutRunsCleanupWhenOperationTimesOut() async {
+        // Given
+        var cleanupCount = 0
+
+        do {
+            // When
+            let _: Void = try await sut.withTimeout(seconds: 0.01, onTimeout: {
+                cleanupCount += 1
+            }) {
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+
+            XCTFail("Expected timeout")
+        } catch let error as DeviceError {
+            // Then
+            if case .timeout = error {
+                XCTAssertEqual(cleanupCount, 1)
+            } else {
+                XCTFail("Expected timeout, got \(error)")
+            }
+        } catch {
+            XCTFail("Expected DeviceError.timeout, got \(error)")
+        }
+    }
+
     // MARK: - Integration Tests
 
     func testFullScanConnectDisconnectFlow() async {
