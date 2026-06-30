@@ -183,8 +183,9 @@ final class SessionHistoryStore: ObservableObject {
         resetHourBucket()
     }
 
-    /// Clears in-memory segment state when the device disconnects.
+    /// Clears in-memory segment state when the device disconnects outside an active recording.
     func resetForDisconnect() {
+        guard !isRecordingContextActive else { return }
         sessionAnchor = nil
         activeSessionId = nil
         autoSessionUUID = nil
