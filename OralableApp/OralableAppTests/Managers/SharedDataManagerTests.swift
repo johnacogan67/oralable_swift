@@ -349,6 +349,31 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func createSerializableReading(
+        timestamp: Date,
+        ppgRed: Int32,
+        accelMagnitude: Double = 0.0
+    ) -> SerializableSensorData {
+        SerializableSensorData(
+            timestamp: timestamp,
+            deviceType: "Oralable",
+            ppgRed: ppgRed,
+            ppgIR: 200,
+            ppgGreen: 300,
+            emg: nil,
+            accelX: 1,
+            accelY: 2,
+            accelZ: 3,
+            accelMagnitude: accelMagnitude,
+            temperatureCelsius: 37.0,
+            batteryPercentage: 80,
+            heartRateBPM: 72.0,
+            heartRateQuality: 0.9,
+            spo2Percentage: 98.0,
+            spo2Quality: 0.9
+        )
+    }
+
     private func createMockSensorDataWithHighAccel(count: Int = 5, magnitude: Double = 3.0) -> [SensorData] {
         // Create sensor data with high accelerometer values to trigger bruxism detection
         // magnitude is in raw units where the threshold compares accelerometer.magnitude
@@ -726,6 +751,21 @@ final class SharedDataModelTests: XCTestCase {
             XCTAssertEqual(decodedReading.temperatureCelsius, originalReading.temperatureCelsius, accuracy: 0.001)
             XCTAssertEqual(decodedReading.batteryPercentage, originalReading.batteryPercentage)
         }
+    }
+
+    func testMergedSensorReadingsPreservesExistingSameDayPayload() {
+        let timestamp = Date()
+        let existing = createSerializableReading(timestamp: timestamp, ppgRed: 100)
+        let duplicate = existing
+        let distinctSameTimestamp = createSerializableReading(timestamp: timestamp, ppgRed: 101)
+        let later = createSerializableReading(timestamp: timestamp.addingTimeInterval(5), ppgRed: 102)
+
+        let merged = SharedDataManager.mergedSensorReadings(
+            existing: [existing],
+            incoming: [duplicate, distinctSameTimestamp, later]
+        )
+
+        XCTAssertEqual(merged, [existing, distinctSameTimestamp, later])
     }
 
     // MARK: - SerializableSensorData Tests
