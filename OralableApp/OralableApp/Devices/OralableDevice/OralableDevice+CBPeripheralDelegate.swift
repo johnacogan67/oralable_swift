@@ -64,6 +64,8 @@ extension OralableDevice: CBPeripheralDelegate {
 
         guard let characteristics = service.characteristics else {
             Logger.shared.warning("[OralableDevice] ⚠️ No characteristics found for service \(service.uuid.uuidString)")
+            characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("No characteristics found for service \(service.uuid.uuidString)"))
+            characteristicDiscoveryContinuation = nil
             return
         }
 
@@ -265,23 +267,13 @@ extension OralableDevice: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Value update error: \(error.localizedDescription)")
-            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
-                firmwareReadContinuation = nil
-                c.resume(throwing: error)
-            }
-            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
-                firmwareConfigStateReadContinuation = nil
-                c.resume(throwing: error)
-            }
+            failPendingReadContinuation(for: characteristic.uuid, with: error)
             return
         }
 
         guard let data = characteristic.value else {
             Logger.shared.warning("[OralableDevice] ⚠️ Received nil data from characteristic")
-            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
-                firmwareReadContinuation = nil
-                c.resume(throwing: DeviceError.invalidData)
-            }
+            failPendingReadContinuation(for: characteristic.uuid, with: DeviceError.invalidData)
             return
         }
 
