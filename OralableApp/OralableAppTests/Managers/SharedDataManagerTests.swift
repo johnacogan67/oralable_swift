@@ -17,6 +17,7 @@
 //  - Bruxism event detection logic
 //
 
+import CloudKit
 import XCTest
 @testable import OralableApp
 import OralableCore
@@ -280,6 +281,55 @@ final class DataCompressionTests: XCTestCase {
             XCTAssertLessThanOrEqual(result.count, tooSmallSize, "Decompressed data should not exceed expected size")
         }
         // Not crashing is the important assertion here
+    }
+}
+
+// MARK: - CloudKit Day Merge Tests
+
+@MainActor
+final class SharedDataDayMergeTests: XCTestCase {
+
+    func testMergedSensorReadingsPreservesExistingSameTimestampSamples() {
+        let timestamp = Date(timeIntervalSince1970: 1_704_067_200)
+        let existingA = SerializableSensorData(from: makeSensorData(at: timestamp, red: 100, ir: 200, green: 300))
+        let existingB = SerializableSensorData(from: makeSensorData(at: timestamp, red: 101, ir: 201, green: 301))
+        let incomingDuplicate = makeSensorData(at: timestamp, red: 100, ir: 200, green: 300)
+        let incomingNew = makeSensorData(at: timestamp.addingTimeInterval(1), red: 102, ir: 202, green: 302)
+
+        let merged = SharedDataManager.mergedSensorReadings(
+            existing: [existingA, existingB],
+            incoming: [incomingDuplicate, incomingNew]
+        )
+
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged[0], existingA)
+        XCTAssertEqual(merged[1], existingB)
+        XCTAssertEqual(merged[2], SerializableSensorData(from: incomingNew))
+    }
+
+    func testExistingSensorReadingsThrowsForUndecodablePayload() {
+        let record = CKRecord(recordType: "HealthDataRecord")
+        record["sensorDataCompressed"] = Data([0x00, 0x01, 0x02, 0x03]) as CKRecordValue
+        record["sensorDataUncompressedSize"] = 1024 as CKRecordValue
+
+        XCTAssertThrowsError(try SharedDataManager.existingSensorReadings(from: record)) { error in
+            guard case ShareError.invalidExistingSensorPayload = error else {
+                return XCTFail("Expected invalidExistingSensorPayload, got \(error)")
+            }
+        }
+    }
+
+    private func makeSensorData(at timestamp: Date, red: Int32, ir: Int32, green: Int32) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: red, ir: ir, green: green, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 10, y: 20, z: 30, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.0, timestamp: timestamp),
+            battery: BatteryData(percentage: 80, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp),
+            deviceType: .oralable
+        )
     }
 }
 
