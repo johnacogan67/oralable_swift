@@ -83,23 +83,26 @@ extension DeviceManager {
             return
         }
 
-        // Clear any prior pending continuations before starting a new flow (reconnect churn safety).
-        if let oralableDevice = device as? OralableDevice {
-            oralableDevice.cancelPendingContinuations()
+        let cancelOralableContinuations = {
+            (device as? OralableDevice)?.cancelPendingContinuations()
         }
+
+        // Clear any prior pending continuations before starting a new flow (reconnect churn safety).
+        cancelOralableContinuations()
 
         do {
             // Step 1: Discover services (10-second timeout)
             let step1Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringServices)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: cancelOralableContinuations) {
                 try await device.discoverServices()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 1/5 discoverServices() done in \(Int(Date().timeIntervalSince(step1Start) * 1000))ms")
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during service discovery")
+                cancelOralableContinuations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -109,13 +112,14 @@ extension DeviceManager {
             let step2Start = Date()
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() start")
             updateDeviceReadiness(peripheral.identifier, to: .discoveringCharacteristics)
-            try await withTimeout(seconds: 10) {
+            try await withTimeout(seconds: 10, onTimeout: cancelOralableContinuations) {
                 try await device.discoverCharacteristics()
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 2/5 discoverCharacteristics() done in \(Int(Date().timeIntervalSince(step2Start) * 1000))ms")
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during characteristic discovery")
+                cancelOralableContinuations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -124,17 +128,18 @@ extension DeviceManager {
             // nRF Connect order: device ID (005) → firmware (006) → battery CCC, then streaming CCCs.
             if let oralableDevice = device as? OralableDevice {
                 do {
-                    let deviceId = try await withTimeout(seconds: 5) {
+                    let deviceId = try await withTimeout(seconds: 5, onTimeout: cancelOralableContinuations) {
                         try await oralableDevice.readDeviceId()
                     }
                     Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Device ID: \(deviceId)")
                 } catch {
+                    cancelOralableContinuations()
                     Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Device ID read skipped: \(error.localizedDescription)")
                 }
 
                 let firmwareReadStart = Date()
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() start")
-                let version = try await withTimeout(seconds: 5) {
+                let version = try await withTimeout(seconds: 5, onTimeout: cancelOralableContinuations) {
                     try await oralableDevice.readFirmwareVersion()
                 }
                 Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 3/5 readFirmwareVersion() done in \(Int(Date().timeIntervalSince(firmwareReadStart) * 1000))ms -> \(version)")
@@ -161,7 +166,7 @@ extension DeviceManager {
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
 
             if let oralableDevice = device as? OralableDevice {
-                try await withTimeout(seconds: 30) {
+                try await withTimeout(seconds: 30, onTimeout: cancelOralableContinuations) {
                     try await oralableDevice.enableNRFAlignedStreamingNotifications()
                 }
             } else {
@@ -182,6 +187,7 @@ extension DeviceManager {
 
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during notification setup")
+                cancelOralableContinuations()
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
                 return
             }
@@ -196,6 +202,7 @@ extension DeviceManager {
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
+            cancelOralableContinuations()
             isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
         }
@@ -433,7 +440,11 @@ extension DeviceManager {
     // MARK: - Timeout Helper
 
     // Day 2: Timeout helper for async operations (safe unwrap fix)
-    func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+    func withTimeout<T>(
+        seconds: TimeInterval,
+        onTimeout: (() -> Void)? = nil,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
         return try await withThrowingTaskGroup(of: T.self) { group in
             // Add the actual operation
             group.addTask {
@@ -446,12 +457,22 @@ extension DeviceManager {
                 throw DeviceError.timeout
             }
 
-            // Return the first one to complete (safe unwrap)
-            guard let result = try await group.next() else {
-                throw DeviceError.timeout
+            do {
+                // Return the first one to complete (safe unwrap)
+                guard let result = try await group.next() else {
+                    group.cancelAll()
+                    onTimeout?()
+                    throw DeviceError.timeout
+                }
+                group.cancelAll()
+                return result
+            } catch {
+                group.cancelAll()
+                if case DeviceError.timeout = error {
+                    onTimeout?()
+                }
+                throw error
             }
-            group.cancelAll()
-            return result
         }
     }
 }
