@@ -243,6 +243,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         firmwareReadContinuation = nil
         deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         deviceIdReadContinuation = nil
+        firmwareConfigStateReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareConfigStateReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
@@ -490,7 +492,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        await enableAccelerometerNotifications()
+        try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
         await enableTemperatureNotifications()
     }
@@ -532,6 +534,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = statusCharacteristic else {
             throw DeviceError.characteristicNotFound("Status characteristic not found")
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.status)
+            Logger.shared.info("[OralableDevice] Status notifications already enabled")
+            return
+        }
         guard statusNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
         }
@@ -550,6 +557,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = sensorDataCharacteristic else {
             throw DeviceError.characteristicNotFound("Sensor data characteristic not found")
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.ppgData)
+            Logger.shared.info("[OralableDevice] PPG notifications already enabled")
+            return
+        }
         guard notificationEnableContinuation == nil else {
             Logger.shared.warning("[OralableDevice] ⚠️ enableNotifications called while a previous request is still pending")
             throw DeviceError.deviceBusy
@@ -563,29 +575,30 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
     }
 
-    // Enable accelerometer notifications (non-blocking)
-    func enableAccelerometerNotifications() async {
+    // Enable accelerometer notifications.
+    func enableAccelerometerNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = accelerometerCharacteristic else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer characteristic not found")
+            throw DeviceError.characteristicNotFound("Accelerometer characteristic not found")
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.accelerometer)
+            Logger.shared.info("[OralableDevice] Accelerometer notifications already enabled")
             return
         }
         guard accelerometerNotificationContinuation == nil else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
-            return
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on accelerometer characteristic...")
 
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                self.accelerometerNotificationContinuation = continuation
-                self.setNotifyValue(true, for: characteristic, on: peripheral)
-            }
-            Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
-        } catch {
-            Logger.shared.warning("[OralableDevice] ⚠️ Failed to enable accelerometer notifications: \(error.localizedDescription)")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.accelerometerNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
+        Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
     }
 
     // Enable temperature notifications on 3A0FF003
