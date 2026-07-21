@@ -55,14 +55,25 @@ extension DeviceManager {
         guard let peripheralId = device.peripheral?.identifier else { return }
         guard let status else { return }
 
-        if primaryDevice?.peripheralIdentifier == peripheralId {
+        if Self.shouldRouteFirmwareWornState(
+            from: peripheralId,
+            primaryPeripheralId: primaryDevice?.peripheralIdentifier
+        ) {
             primaryFirmwareDeviceStatus = status
+            automaticRecordingSession?.updateFirmwareWornState(status.worn)
         }
 
         let offBody = !status.worn
         backgroundWorker.setDeviceOffBody(offBody, for: peripheralId)
         device.setOffBodyLinkKeepaliveActive(offBody)
-        automaticRecordingSession?.updateFirmwareWornState(status.worn)
+    }
+
+    /// The automatic recording session represents the primary sensor only.
+    static func shouldRouteFirmwareWornState(
+        from peripheralId: UUID,
+        primaryPeripheralId: UUID?
+    ) -> Bool {
+        peripheralId == primaryPeripheralId
     }
 
     // MARK: - Reading Handlers
