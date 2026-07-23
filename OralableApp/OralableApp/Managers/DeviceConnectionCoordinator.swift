@@ -18,6 +18,8 @@ import CoreBluetooth
 import Combine
 import OralableCore
 
+private struct BLEOperationTimeout: Error {}
+
 // MARK: - Device Connection Management
 
 extension DeviceManager {
@@ -464,8 +466,7 @@ extension DeviceManager {
             // Add a timeout task
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                await onTimeout?()
-                throw DeviceError.timeout
+                throw BLEOperationTimeout()
             }
 
             // Return the first one to complete (safe unwrap)
@@ -475,6 +476,12 @@ extension DeviceManager {
                 }
                 group.cancelAll()
                 return result
+            } catch is BLEOperationTimeout {
+                // Cancel first so an operation that has not installed its waiter yet
+                // cannot do so after cleanup has already run.
+                group.cancelAll()
+                await onTimeout?()
+                throw DeviceError.timeout
             } catch {
                 group.cancelAll()
                 throw error

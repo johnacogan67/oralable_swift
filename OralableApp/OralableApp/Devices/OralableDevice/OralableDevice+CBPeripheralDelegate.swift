@@ -20,15 +20,14 @@ extension OralableDevice: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Service discovery failed: \(error.localizedDescription)")
-            serviceDiscoveryContinuation?.resume(throwing: error)
-            serviceDiscoveryContinuation = nil
+            takeContinuation(at: \.serviceDiscoveryContinuation)?.resume(throwing: error)
             return
         }
 
         guard let services = peripheral.services else {
             Logger.shared.error("[OralableDevice] ❌ No services found")
-            serviceDiscoveryContinuation?.resume(throwing: DeviceError.serviceNotFound("No services found"))
-            serviceDiscoveryContinuation = nil
+            takeContinuation(at: \.serviceDiscoveryContinuation)?
+                .resume(throwing: DeviceError.serviceNotFound("No services found"))
             return
         }
 
@@ -45,27 +44,25 @@ extension OralableDevice: CBPeripheralDelegate {
         }
 
         if tgmService != nil {
-            serviceDiscoveryContinuation?.resume()
-            serviceDiscoveryContinuation = nil
+            takeContinuation(at: \.serviceDiscoveryContinuation)?.resume()
         } else {
             Logger.shared.error("[OralableDevice] ❌ TGM service not found")
-            serviceDiscoveryContinuation?.resume(throwing: DeviceError.serviceNotFound("TGM service not found"))
-            serviceDiscoveryContinuation = nil
+            takeContinuation(at: \.serviceDiscoveryContinuation)?
+                .resume(throwing: DeviceError.serviceNotFound("TGM service not found"))
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Characteristic discovery failed: \(error.localizedDescription)")
-            characteristicDiscoveryContinuation?.resume(throwing: error)
-            characteristicDiscoveryContinuation = nil
+            takeContinuation(at: \.characteristicDiscoveryContinuation)?.resume(throwing: error)
             return
         }
 
         guard let characteristics = service.characteristics else {
             Logger.shared.warning("[OralableDevice] ⚠️ No characteristics found for service \(service.uuid.uuidString)")
-            characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("No characteristics found for service \(service.uuid.uuidString)"))
-            characteristicDiscoveryContinuation = nil
+            takeContinuation(at: \.characteristicDiscoveryContinuation)?
+                .resume(throwing: DeviceError.characteristicNotFound("No characteristics found for service \(service.uuid.uuidString)"))
             return
         }
 
@@ -145,12 +142,11 @@ extension OralableDevice: CBPeripheralDelegate {
 
         if hasCoreStreaming {
             Logger.shared.info("[OralableDevice] ✅ Core TGM characteristics discovered (\(foundCount) notify-capable)")
-            characteristicDiscoveryContinuation?.resume()
-            characteristicDiscoveryContinuation = nil
+            takeContinuation(at: \.characteristicDiscoveryContinuation)?.resume()
         } else {
             Logger.shared.error("[OralableDevice] ❌ Required characteristics not found")
-            characteristicDiscoveryContinuation?.resume(throwing: DeviceError.characteristicNotFound("Required TGM characteristics not found (found \(foundCount))"))
-            characteristicDiscoveryContinuation = nil
+            takeContinuation(at: \.characteristicDiscoveryContinuation)?
+                .resume(throwing: DeviceError.characteristicNotFound("Required TGM characteristics not found (found \(foundCount))"))
         }
     }
 
@@ -176,14 +172,11 @@ extension OralableDevice: CBPeripheralDelegate {
             Logger.shared.error("[OralableDevice] ❌ Notification state update failed: \(error.localizedDescription)")
 
             if characteristic.uuid == sensorDataCharUUID {
-                notificationEnableContinuation?.resume(throwing: error)
-                notificationEnableContinuation = nil
+                takeContinuation(at: \.notificationEnableContinuation)?.resume(throwing: error)
             } else if characteristic.uuid == accelerometerCharUUID {
-                accelerometerNotificationContinuation?.resume(throwing: error)
-                accelerometerNotificationContinuation = nil
+                takeContinuation(at: \.accelerometerNotificationContinuation)?.resume(throwing: error)
             } else if characteristic.uuid == statusCharUUID {
-                statusNotificationContinuation?.resume(throwing: error)
-                statusNotificationContinuation = nil
+                takeContinuation(at: \.statusNotificationContinuation)?.resume(throwing: error)
             }
             return
         }
@@ -196,14 +189,12 @@ extension OralableDevice: CBPeripheralDelegate {
             case sensorDataCharUUID:
                 notificationReadiness.insert(.ppgData)
                 Logger.shared.info("[OralableDevice] 📡 PPG notifications confirmed ready")
-                notificationEnableContinuation?.resume()
-                notificationEnableContinuation = nil
+                takeContinuation(at: \.notificationEnableContinuation)?.resume()
 
             case accelerometerCharUUID:
                 notificationReadiness.insert(.accelerometer)
                 Logger.shared.info("[OralableDevice] 📡 Accelerometer notifications confirmed ready")
-                accelerometerNotificationContinuation?.resume()
-                accelerometerNotificationContinuation = nil
+                takeContinuation(at: \.accelerometerNotificationContinuation)?.resume()
 
             case commandCharUUID:
                 notificationReadiness.insert(.temperature)
@@ -212,8 +203,7 @@ extension OralableDevice: CBPeripheralDelegate {
             case statusCharUUID:
                 notificationReadiness.insert(.status)
                 Logger.shared.info("[OralableDevice] 📡 Status notifications confirmed ready")
-                statusNotificationContinuation?.resume()
-                statusNotificationContinuation = nil
+                takeContinuation(at: \.statusNotificationContinuation)?.resume()
 
             case tgmBatteryCharUUID:
                 notificationReadiness.insert(.battery)
@@ -228,10 +218,7 @@ extension OralableDevice: CBPeripheralDelegate {
             if isConnectionReady {
                 Logger.shared.info("[OralableDevice] 🎉 Connection fully ready - all required notifications enabled")
 
-                if let continuation = connectionReadyContinuation {
-                    connectionReadyContinuation = nil
-                    continuation.resume()
-                }
+                takeContinuation(at: \.connectionReadyContinuation)?.resume()
             }
         } else {
             switch characteristic.uuid {
@@ -255,46 +242,38 @@ extension OralableDevice: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Write failed for \(characteristic.uuid.uuidString.prefix(12)): \(error.localizedDescription)")
-            writeCompletionContinuation?.resume(throwing: error)
-            writeCompletionContinuation = nil
+            takeContinuation(at: \.writeCompletionContinuation)?.resume(throwing: error)
         } else {
             Logger.shared.debug("[OralableDevice] ✅ Write succeeded for \(characteristic.uuid.uuidString.prefix(12))")
-            writeCompletionContinuation?.resume()
-            writeCompletionContinuation = nil
+            takeContinuation(at: \.writeCompletionContinuation)?.resume()
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
             Logger.shared.error("[OralableDevice] ❌ Value update error: \(error.localizedDescription)")
-            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
-                firmwareReadContinuation = nil
-                c.resume(throwing: error)
+            if characteristic.uuid == firmwareVersionCharUUID {
+                takeContinuation(at: \.firmwareReadContinuation)?.resume(throwing: error)
             }
-            if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
-                deviceIdReadContinuation = nil
-                c.resume(throwing: error)
+            if characteristic.uuid == deviceIdCharUUID {
+                takeContinuation(at: \.deviceIdReadContinuation)?.resume(throwing: error)
             }
-            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
-                firmwareConfigStateReadContinuation = nil
-                c.resume(throwing: error)
+            if characteristic.uuid == firmwareConfigStateCharUUID {
+                takeContinuation(at: \.firmwareConfigStateReadContinuation)?.resume(throwing: error)
             }
             return
         }
 
         guard let data = characteristic.value else {
             Logger.shared.warning("[OralableDevice] ⚠️ Received nil data from characteristic")
-            if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
-                firmwareReadContinuation = nil
-                c.resume(throwing: DeviceError.invalidData)
+            if characteristic.uuid == firmwareVersionCharUUID {
+                takeContinuation(at: \.firmwareReadContinuation)?.resume(throwing: DeviceError.invalidData)
             }
-            if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
-                deviceIdReadContinuation = nil
-                c.resume(throwing: DeviceError.invalidData)
+            if characteristic.uuid == deviceIdCharUUID {
+                takeContinuation(at: \.deviceIdReadContinuation)?.resume(throwing: DeviceError.invalidData)
             }
-            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
-                firmwareConfigStateReadContinuation = nil
-                c.resume(throwing: DeviceError.invalidData)
+            if characteristic.uuid == firmwareConfigStateCharUUID {
+                takeContinuation(at: \.firmwareConfigStateReadContinuation)?.resume(throwing: DeviceError.invalidData)
             }
             return
         }
@@ -307,13 +286,9 @@ extension OralableDevice: CBPeripheralDelegate {
         case deviceIdCharUUID:
             if let deviceId = OralableCore.BLEDataParser.parseDeviceId(data) {
                 deviceIdValue = deviceId
-                if let c = deviceIdReadContinuation {
-                    deviceIdReadContinuation = nil
-                    c.resume(returning: deviceId)
-                }
-            } else if let c = deviceIdReadContinuation {
-                deviceIdReadContinuation = nil
-                c.resume(throwing: DeviceError.invalidData)
+                takeContinuation(at: \.deviceIdReadContinuation)?.resume(returning: deviceId)
+            } else {
+                takeContinuation(at: \.deviceIdReadContinuation)?.resume(throwing: DeviceError.invalidData)
             }
 
         case statusCharUUID:
@@ -322,17 +297,11 @@ extension OralableDevice: CBPeripheralDelegate {
         case firmwareVersionCharUUID:
             let raw = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if raw.isEmpty {
-                if let c = firmwareReadContinuation {
-                    firmwareReadContinuation = nil
-                    c.resume(throwing: DeviceError.invalidData)
-                }
+                takeContinuation(at: \.firmwareReadContinuation)?.resume(throwing: DeviceError.invalidData)
                 return
             }
             deviceInfo.firmwareVersion = raw
-            if let c = firmwareReadContinuation {
-                firmwareReadContinuation = nil
-                c.resume(returning: raw)
-            }
+            takeContinuation(at: \.firmwareReadContinuation)?.resume(returning: raw)
 
         case sensorDataCharUUID:
             // PPG data (244 bytes typically: 4 + 20x12)
@@ -363,10 +332,7 @@ extension OralableDevice: CBPeripheralDelegate {
         case firmwareConfigStateCharUUID:
             let bytes = [UInt8](data)
             Logger.shared.info("[FWCFG][\(peripheral.identifier.uuidString.prefix(8))] state bytes=\(bytes)")
-            if let continuation = firmwareConfigStateReadContinuation {
-                firmwareConfigStateReadContinuation = nil
-                continuation.resume(returning: data)
-            }
+            takeContinuation(at: \.firmwareConfigStateReadContinuation)?.resume(returning: data)
 
         default:
             Logger.shared.debug("[OralableDevice] 📦 Received \(data.count) bytes on unknown characteristic: \(characteristic.uuid.uuidString)")

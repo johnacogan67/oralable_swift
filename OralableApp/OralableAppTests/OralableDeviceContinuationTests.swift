@@ -49,6 +49,11 @@ private final class TimeoutCleanupProbe: @unchecked Sendable {
 
     func store(_ continuation: CheckedContinuation<Void, Error>) {
         lock.lock()
+        guard !Task.isCancelled else {
+            lock.unlock()
+            continuation.resume(throwing: CancellationError())
+            return
+        }
         self.continuation = continuation
         lock.unlock()
     }
