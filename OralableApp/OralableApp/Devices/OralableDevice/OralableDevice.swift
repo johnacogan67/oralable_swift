@@ -144,6 +144,49 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var firmwareReadContinuation: CheckedContinuation<String, Error>?
     var deviceIdReadContinuation: CheckedContinuation<UInt64, Error>?
     var firmwareConfigStateReadContinuation: CheckedContinuation<Data, Error>?
+    private let continuationLock = NSLock()
+    private var continuationCancellationGeneration: UInt = 0
+
+    func continuationGeneration() -> UInt {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        return continuationCancellationGeneration
+    }
+
+    func hasPendingContinuation<T, E: Error>(
+        at keyPath: ReferenceWritableKeyPath<OralableDevice, CheckedContinuation<T, E>?>
+    ) -> Bool {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        return self[keyPath: keyPath] != nil
+    }
+
+    @discardableResult
+    func installContinuation<T, E: Error>(
+        _ continuation: CheckedContinuation<T, E>,
+        at keyPath: ReferenceWritableKeyPath<OralableDevice, CheckedContinuation<T, E>?>,
+        generation: UInt
+    ) -> Bool {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        guard !Task.isCancelled,
+              generation == continuationCancellationGeneration,
+              self[keyPath: keyPath] == nil else {
+            return false
+        }
+        self[keyPath: keyPath] = continuation
+        return true
+    }
+
+    func takeContinuation<T, E: Error>(
+        at keyPath: ReferenceWritableKeyPath<OralableDevice, CheckedContinuation<T, E>?>
+    ) -> CheckedContinuation<T, E>? {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
+        let continuation = self[keyPath: keyPath]
+        self[keyPath: keyPath] = nil
+        return continuation
+    }
 
     // MARK: - Frame Counter Tracking (Fix 9)
 
@@ -206,8 +249,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         setOffBodyLinkKeepaliveActive(false)
 
         // Cancel any pending write continuation to avoid leaked continuations
-        if let continuation = writeCompletionContinuation {
-            writeCompletionContinuation = nil
+        if let continuation = takeContinuation(at: \.writeCompletionContinuation) {
             continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         }
 
@@ -225,24 +267,41 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     /// Cancel any pending async continuations to prevent hangs on disconnect
     func cancelPendingContinuations() {
         setOffBodyLinkKeepaliveActive(false)
-        serviceDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        continuationLock.lock()
+        continuationCancellationGeneration &+= 1
+        let serviceDiscovery = serviceDiscoveryContinuation
         serviceDiscoveryContinuation = nil
-        characteristicDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let characteristicDiscovery = characteristicDiscoveryContinuation
         characteristicDiscoveryContinuation = nil
-        notificationEnableContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let notificationEnable = notificationEnableContinuation
         notificationEnableContinuation = nil
-        connectionReadyContinuation?.resume()
+        let connectionReady = connectionReadyContinuation
         connectionReadyContinuation = nil
-        accelerometerNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let accelerometerNotification = accelerometerNotificationContinuation
         accelerometerNotificationContinuation = nil
-        statusNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let statusNotification = statusNotificationContinuation
         statusNotificationContinuation = nil
-        writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let writeCompletion = writeCompletionContinuation
         writeCompletionContinuation = nil
-        firmwareReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let firmwareRead = firmwareReadContinuation
         firmwareReadContinuation = nil
-        deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        let deviceIdRead = deviceIdReadContinuation
         deviceIdReadContinuation = nil
+        let firmwareConfigStateRead = firmwareConfigStateReadContinuation
+        firmwareConfigStateReadContinuation = nil
+        continuationLock.unlock()
+
+        let disconnected = DeviceError.connectionFailed("Device disconnected")
+        serviceDiscovery?.resume(throwing: disconnected)
+        characteristicDiscovery?.resume(throwing: disconnected)
+        notificationEnable?.resume(throwing: disconnected)
+        connectionReady?.resume()
+        accelerometerNotification?.resume(throwing: disconnected)
+        statusNotification?.resume(throwing: disconnected)
+        writeCompletion?.resume(throwing: disconnected)
+        firmwareRead?.resume(throwing: disconnected)
+        deviceIdRead?.resume(throwing: disconnected)
+        firmwareConfigStateRead?.resume(throwing: disconnected)
     }
 
     func isAvailable() -> Bool {
@@ -285,17 +344,25 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral else {
             throw DeviceError.invalidPeripheral("Peripheral is nil")
         }
-        guard serviceDiscoveryContinuation == nil else {
+        guard !hasPendingContinuation(at: \.serviceDiscoveryContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ discoverServices called while a previous request is still pending")
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         Logger.shared.info("[OralableDevice] 🔍 Starting service discovery...")
 
         peripheral.delegate = self
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.serviceDiscoveryContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.serviceDiscoveryContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Service discovery cancelled"))
+                return
+            }
             // pcb00003 exposes battery on TGM 004 only (no SIG 180F service).
             peripheral.discoverServices([tgmServiceUUID])
         }
@@ -306,16 +373,24 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let service = tgmService else {
             throw DeviceError.serviceNotFound("TGM service not found")
         }
-        guard characteristicDiscoveryContinuation == nil else {
+        guard !hasPendingContinuation(at: \.characteristicDiscoveryContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ discoverCharacteristics called while a previous request is still pending")
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         Logger.shared.info("[OralableDevice] 🔍 Discovering characteristics for TGM service...")
         NRFConnectBLELogger.shared.serviceDiscoveryReturnedNil()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.characteristicDiscoveryContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.characteristicDiscoveryContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Characteristic discovery cancelled"))
+                return
+            }
             peripheral.discoverCharacteristics(
                 [
                     sensorDataCharUUID,
@@ -457,12 +532,20 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = firmwareConfigStateCharacteristic else {
             throw DeviceError.characteristicNotFound("Firmware config state characteristic not found")
         }
-        guard firmwareConfigStateReadContinuation == nil else {
+        guard !hasPendingContinuation(at: \.firmwareConfigStateReadContinuation) else {
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.firmwareConfigStateReadContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.firmwareConfigStateReadContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Firmware config-state read cancelled"))
+                return
+            }
             peripheral.readValue(for: characteristic)
         }
     }
@@ -490,7 +573,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        await enableAccelerometerNotifications()
+        try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
         await enableTemperatureNotifications()
     }
@@ -501,13 +584,21 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = firmwareVersionCharacteristic else {
             throw DeviceError.characteristicNotFound("Firmware version characteristic not found")
         }
-        guard firmwareReadContinuation == nil else {
+        guard !hasPendingContinuation(at: \.firmwareReadContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ readFirmwareVersion called while a previous read is still pending")
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.firmwareReadContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.firmwareReadContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Firmware read cancelled"))
+                return
+            }
             peripheral.readValue(for: characteristic)
         }
     }
@@ -517,12 +608,20 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = deviceIdCharacteristic else {
             throw DeviceError.characteristicNotFound("Device ID characteristic not found")
         }
-        guard deviceIdReadContinuation == nil else {
+        guard !hasPendingContinuation(at: \.deviceIdReadContinuation) else {
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.deviceIdReadContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.deviceIdReadContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Device ID read cancelled"))
+                return
+            }
             peripheral.readValue(for: characteristic)
         }
     }
@@ -532,14 +631,28 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = statusCharacteristic else {
             throw DeviceError.characteristicNotFound("Status characteristic not found")
         }
-        guard statusNotificationContinuation == nil else {
+        guard !hasPendingContinuation(at: \.statusNotificationContinuation) else {
             throw DeviceError.deviceBusy
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.status)
+            peripheral.readValue(for: characteristic)
+            Logger.shared.info("[OralableDevice] Status notifications already enabled")
+            return
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on status characteristic (3A0FF009)...")
+        let generation = continuationGeneration()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.statusNotificationContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.statusNotificationContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Status notification setup cancelled"))
+                return
+            }
             self.setNotifyValue(true, for: characteristic, on: peripheral)
             peripheral.readValue(for: characteristic)
         }
@@ -550,42 +663,64 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = sensorDataCharacteristic else {
             throw DeviceError.characteristicNotFound("Sensor data characteristic not found")
         }
-        guard notificationEnableContinuation == nil else {
+        guard !hasPendingContinuation(at: \.notificationEnableContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ enableNotifications called while a previous request is still pending")
             throw DeviceError.deviceBusy
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.ppgData)
+            Logger.shared.info("[OralableDevice] PPG notifications already enabled")
+            return
+        }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on sensor data characteristic...")
+        let generation = continuationGeneration()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.notificationEnableContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.notificationEnableContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("PPG notification setup cancelled"))
+                return
+            }
             self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
     }
 
-    // Enable accelerometer notifications (non-blocking)
-    func enableAccelerometerNotifications() async {
+    // Enable accelerometer notifications (required for a ready Oralable connection)
+    func enableAccelerometerNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = accelerometerCharacteristic else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer characteristic not found")
-            return
+            throw DeviceError.characteristicNotFound("Accelerometer characteristic not found")
         }
-        guard accelerometerNotificationContinuation == nil else {
+        guard !hasPendingContinuation(at: \.accelerometerNotificationContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
+            throw DeviceError.deviceBusy
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.accelerometer)
+            Logger.shared.info("[OralableDevice] Accelerometer notifications already enabled")
             return
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on accelerometer characteristic...")
+        let generation = continuationGeneration()
 
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                self.accelerometerNotificationContinuation = continuation
-                self.setNotifyValue(true, for: characteristic, on: peripheral)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            guard self.installContinuation(
+                continuation,
+                at: \.accelerometerNotificationContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Accelerometer notification setup cancelled"))
+                return
             }
-            Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
-        } catch {
-            Logger.shared.warning("[OralableDevice] ⚠️ Failed to enable accelerometer notifications: \(error.localizedDescription)")
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
+        Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
     }
 
     // Enable temperature notifications on 3A0FF003
@@ -609,9 +744,17 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
 
         Logger.shared.info("[OralableDevice] ⏳ Waiting for connection readiness...")
+        let generation = continuationGeneration()
 
         await withCheckedContinuation { continuation in
-            self.connectionReadyContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.connectionReadyContinuation,
+                generation: generation
+            ) else {
+                continuation.resume()
+                return
+            }
         }
 
         Logger.shared.info("[OralableDevice] ✅ Connection ready")
@@ -625,13 +768,21 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = ppgRegWriteCharacteristic else {
             throw DeviceError.characteristicNotFound("PPG register write characteristic not found")
         }
-        guard writeCompletionContinuation == nil else {
+        guard !hasPendingContinuation(at: \.writeCompletionContinuation) else {
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         let payload = Data([register, value])
         return try await withCheckedThrowingContinuation { continuation in
-            self.writeCompletionContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.writeCompletionContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("PPG register write cancelled"))
+                return
+            }
             peripheral.writeValue(payload, for: characteristic, type: .withResponse)
         }
     }
@@ -652,15 +803,23 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = commandCharacteristic else {
             throw DeviceError.characteristicNotFound("Command characteristic not found")
         }
-        guard writeCompletionContinuation == nil else {
+        guard !hasPendingContinuation(at: \.writeCompletionContinuation) else {
             Logger.shared.warning("[OralableDevice] ⚠️ sendCommand called while a write is already pending")
             throw DeviceError.deviceBusy
         }
+        let generation = continuationGeneration()
 
         let commandData = command.rawValue.data(using: .utf8) ?? Data()
 
         return try await withCheckedThrowingContinuation { continuation in
-            self.writeCompletionContinuation = continuation
+            guard self.installContinuation(
+                continuation,
+                at: \.writeCompletionContinuation,
+                generation: generation
+            ) else {
+                continuation.resume(throwing: DeviceError.connectionFailed("Command write cancelled"))
+                return
+            }
             peripheral.writeValue(commandData, for: characteristic, type: .withResponse)
         }
     }
