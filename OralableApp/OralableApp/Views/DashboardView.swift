@@ -155,7 +155,7 @@ struct DashboardView: View {
 
                     if showClinicalOralable && !suppressTemporalisSummary {
                         TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
-                        let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
+                        let hourlySorted = dependencies.sessionHistoryStore.hourlySegmentsIncludingInProgress()
                         let chartModel = TemporalisAnalysisChart.build(
                             from: dependencies.sensorDataProcessor.sensorDataHistory,
                             hourlyRescue: hourlySorted,
@@ -349,7 +349,9 @@ struct DashboardView: View {
     // MARK: - Apple Health–style summary (home)
 
     private var sashbSessionTotal: Double {
-        dependencies.sessionHistoryStore.segmentByHour.values.map(\.sashbHypoxicBurden).reduce(0, +)
+        dependencies.sessionHistoryStore.hourlySegmentsIncludingInProgress()
+            .map(\.sashbHypoxicBurden)
+            .reduce(0, +)
     }
 
     @ViewBuilder
