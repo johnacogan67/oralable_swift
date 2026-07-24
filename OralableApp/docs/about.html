@@ -61,62 +61,162 @@
             </p>
 
             <h2 style="font-size: 28px; margin-bottom: 24px;">Roadmap</h2>
+            <p style="color: var(--color-text-secondary); margin-bottom: 16px; font-size: 15px;">
+                <strong>Gen1 / Gen2</strong> are hardware generations (Kaga module + BOM). <strong>Phase 0 / Phase 1+</strong> are software feature phases — they run on Gen1 hardware today and carry forward to Gen2.
+                Product path: <strong>Stage A wellness wearable first</strong>, then <strong>Stage B medical device</strong> later — implementing the new US patent filing as a working product (not claimed as a medical device today).
+            </p>
+
+            <div class="section-box" style="margin-bottom: 32px;">
+                <h3 style="margin-top: 0; margin-bottom: 12px;">Hardware ↔ BOM map</h3>
+                <table class="specs-table" style="margin: 0;">
+                    <tr>
+                        <th style="text-align: left;">Generation</th>
+                        <th style="text-align: left;">BOM</th>
+                        <th style="text-align: left;">PCB</th>
+                        <th style="text-align: left;">Module (U5)</th>
+                        <th style="text-align: left;">Firmware</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Gen1</strong> (shipping)</td>
+                        <td>PCB00003-TGM-<strong>BOM-REV8</strong></td>
+                        <td><strong>REV10</strong> pilot (REV8 prod data)</td>
+                        <td>Kaga <strong>ES2832AA2</strong> · nRF52832</td>
+                        <td><strong>1.0.70</strong> ship (min 1.0.63)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gen2</strong> (upcoming)</td>
+                        <td>PCB00003-TGM-<strong>BOM-REV9</strong></td>
+                        <td><strong>REV11</strong></td>
+                        <td>Kaga <strong>ES4L15BA1</strong> · nRF54L15</td>
+                        <td><strong>2.0.x</strong> target (not shipping)</td>
+                    </tr>
+                </table>
+                <p style="margin: 12px 0 0; font-size: 13px; color: var(--color-text-secondary);">
+                    Battery: Gen1 CG-320B ~15&nbsp;mAh · Gen2 LP260820 ~30&nbsp;mAh. Same clip/case charge architecture (LTC4124 / LTC6990 — not WPC Qi). Software phases do not change the BOM.
+                </p>
+            </div>
 
             <div class="timeline">
                 <div class="timeline-item">
                     <div class="timeline-year">2024</div>
                     <div class="timeline-content">
-                        <p class="timeline-milestone done">Technology development</p>
-                        <p class="timeline-milestone done">Patent protection</p>
+                        <p class="timeline-milestone done"><strong>Foundation</strong></p>
+                        <ul class="timeline-features">
+                            <li>Optical myography (OMG) / PPG approach for jaw load</li>
+                            <li>Patent protection (US &amp; EU)</li>
+                            <li>Early masseter → temporalis placement research</li>
+                        </ul>
                     </div>
                 </div>
 
                 <div class="timeline-item">
                     <div class="timeline-year">2025</div>
                     <div class="timeline-content">
-                        <p class="timeline-milestone done">Hardware manufacturing</p>
-                        <p class="timeline-milestone done">iOS app development</p>
-                        <p class="timeline-milestone done">Beta testing</p>
+                        <p class="timeline-milestone done"><strong>Gen1 platform build</strong></p>
+                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB00003 · ES2832AA2</p>
+                        <ul class="timeline-features">
+                            <li>PCB00003 clip + Oralable magnetic charging case</li>
+                            <li>Kaga ES2832AA2 (nRF52832) · MAXM86161 PPG · LIS2DTW12 accel</li>
+                            <li>iOS app + BLE TGM streaming (50&nbsp;Hz PPG/ACC)</li>
+                            <li>Invitation beta / early adopters</li>
+                        </ul>
                     </div>
                 </div>
 
                 <div class="timeline-item">
-                    <div class="timeline-year">January 2026</div>
-                    <div class="timeline-content current">
-                        <p class="timeline-milestone current"><strong>Public launch (You are here)</strong></p>
-                        <p class="timeline-milestone">App Store release</p>
-                    </div>
-                </div>
-
-                <div class="timeline-item">
-                    <div class="timeline-year">Q2 2026</div>
+                    <div class="timeline-year">H1 2026</div>
                     <div class="timeline-content">
-                        <p class="timeline-milestone future">Oralable for Research</p>
-                        <p class="timeline-milestone future">ANR device comparison support</p>
-                        <p class="timeline-milestone future">University partnerships</p>
+                        <p class="timeline-milestone done"><strong>Gen1 kits in the field</strong></p>
+                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW 1.0.6x</p>
+                        <ul class="timeline-features">
+                            <li>App Store / early access presence</li>
+                            <li>Ed/Pedro-class kits: REV10 assemblies on BOM REV8</li>
+                            <li>Honest device state (charger / bench / worn) + LED status matrix</li>
+                            <li>OTA DFU path for field updates</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">Mid 2026</div>
+                    <div class="timeline-content current">
+                        <p class="timeline-milestone current"><strong>Vitals Phase 0 — Gen1 (You are here)</strong></p>
+                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW <strong>1.0.70</strong></p>
+                        <ul class="timeline-features">
+                            <li>Temple / temporalis placement (no muscle-fit calibration)</li>
+                            <li>Heart rate (green PPG) with signal-quality gating</li>
+                            <li>SpO₂ (red / IR) with quality gating</li>
+                            <li>Battery &amp; charge status cards; Device LED mirror in app</li>
+                            <li>Manual placement modes for Gen1 charge-sense limitations</li>
+                            <li>Beacon Hospital clinical program</li>
+                            <li><em>Not yet:</em> clench/grind detection, Protocol B, EMG-style muscle UI</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">Late 2026+</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone future"><strong>Muscle Phase 1+ — Gen1 software</strong></p>
+                        <p class="timeline-hw">Hardware unchanged: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 (same kits; app/FW features unlock)</p>
+                        <ul class="timeline-features">
+                            <li>IR-DC occlusion / hemodynamic load for clench &amp; grind phenotypes</li>
+                            <li>Temporalis Fatigue Index (TFI) session &amp; hourly rollups</li>
+                            <li>Hypoxic burden (SASHB) correlated with overnight SpO₂</li>
+                            <li>Actigraphy / jaw vibration from accelerometer</li>
+                            <li>Protocol B / muscle calibration flows (when gates pass)</li>
+                            <li>Oralable for Professionals &amp; research export workflows</li>
+                            <li>Clinical PDF / handshake summaries (TFI, SASHB, events)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-year">2026–2027</div>
+                    <div class="timeline-content">
+                        <p class="timeline-milestone future"><strong>Gen2 hardware — new BOM</strong></p>
+                        <p class="timeline-hw">Hardware: Gen2 · BOM REV9 · PCB REV11 · ES4L15BA1 · FW 2.0.x (target)</p>
+                        <ul class="timeline-features">
+                            <li>Kaga ES4L15BA1 (nRF54L15, BLE 6.0) — more RAM/Flash</li>
+                            <li>LP260820 ~30&nbsp;mAh battery (longer temple sessions)</li>
+                            <li>Same GATT / 50&nbsp;Hz stream contract as Gen1 (app continues)</li>
+                            <li>Re-validated charge-status (chrsts) → automatic on-dock when hardware allows</li>
+                            <li>Calibrated battery SOC on case; dedicated status LED (no PPG/LED confusion)</li>
+                            <li>Skin thermistor path for worn detect (fewer die-heat false positives)</li>
+                            <li>Richer OTA slots; optional on-device ML (bruxism / vitals) later</li>
+                            <li>Pilot parity: temple HR &amp; SpO₂ gates equal or better than Gen1</li>
+                        </ul>
                     </div>
                 </div>
 
                 <div class="timeline-item">
                     <div class="timeline-year">2027+</div>
                     <div class="timeline-content">
-                        <p class="timeline-milestone future">Clinical validation studies</p>
-                        <p class="timeline-milestone future">Medical device pathway (future)</p>
+                        <p class="timeline-milestone future"><strong>Stage B — medical device path (later)</strong></p>
+                        <p class="timeline-hw">Primary on Gen2 (BOM REV9 / REV11); Gen1 sunset after parity</p>
+                        <ul class="timeline-features">
+                            <li><strong>Stage A first:</strong> patent-implementing <em>wellness wearable</em> (not claimed as a medical device today)</li>
+                            <li>Working embodiment of the <strong>new US patent submission</strong> (Temporalis OMG / IR-DC / TFI / SASHB)</li>
+                            <li>Foundation patents remain: granted US &amp; EU (details with counsel)</li>
+                            <li>Expanded clinical validation → future <strong>510(k) / CE</strong> exploration</li>
+                            <li>Academic / hospital partnerships</li>
+                            <li>Gen1 sunset after Gen2 IR-DC, RF, and iOS soak parity</li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
             <h2 style="font-size: 28px; margin-top: 60px; margin-bottom: 24px;">What We're Building</h2>
             <p style="color: var(--color-text-secondary);">
-                Oralable is a personal wellness tool that provides biofeedback about jaw muscle activity. It's designed for people curious about their patterns — whether during sleep, work, or daily activities.
+                Oralable is a personal wellness tool for overnight temple vitals today, with jaw-muscle biofeedback as Phase 1+ lands — for people curious about their patterns during sleep, work, or daily activities.
             </p>
 
             <div class="section-box" style="margin-top: 32px;">
                 <h3 style="margin-top: 0; margin-bottom: 15px;">What It Monitors</h3>
                 <ul style="color: var(--color-text-secondary); margin: 0;">
-                    <li><strong>Clenching</strong> — Sustained jaw muscle contraction</li>
-                    <li><strong>Grinding</strong> — Rhythmic jaw muscle movement</li>
-                    <li><strong>Rest periods</strong> — Normal relaxed state</li>
+                    <li><strong>Phase 0 (now)</strong> — Temple heart rate &amp; SpO₂ with honest device state</li>
+                    <li><strong>Phase 1+</strong> — Clenching, grinding, rest periods via IR-DC / TFI</li>
+                    <li><strong>Overnight context</strong> — SpO₂ burden (SASHB) alongside muscle load</li>
                 </ul>
             </div>
 

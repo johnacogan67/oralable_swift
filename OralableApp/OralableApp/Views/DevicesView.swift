@@ -50,9 +50,13 @@ struct DevicesView: View {
                             message: error.recoverySuggestion ?? "Please try again.",
                             isRecoverable: error.isRecoverable,
                             retryAction: error.isRecoverable ? {
-                                if let firstDevice = deviceManager.discoveredDevices.first {
-                                    Task {
-                                        try? await deviceManager.connect(to: firstDevice)
+                                Task {
+                                    if let target = deviceManager.preferredOralableReconnectTarget() {
+                                        try? await deviceManager.connect(to: target)
+                                    } else if let remembered = persistenceManager.getRememberedDevices().first(where: {
+                                        $0.name.lowercased().contains("oralable")
+                                    }) {
+                                        try? await deviceManager.connectToRememberedDevice(id: remembered.id)
                                     }
                                 }
                                 dismissedErrorDescription = error.errorDescription
@@ -162,6 +166,9 @@ struct DevicesView: View {
         Section {
             // Use discoveredDevices directly (demo device is added there when demo mode is enabled)
             let discoveredDevices = deviceManager.discoveredDevices.filter { discovered in
+                if FeatureFlags.shared.vitalsPhaseEnabled && discovered.type == .anr {
+                    return false
+                }
                 guard let peripheralId = discovered.peripheralIdentifier else { return true }
                 return !persistenceManager.isDeviceRemembered(id: peripheralId.uuidString)
             }
@@ -308,21 +315,13 @@ struct DevicesView: View {
 
     private func connectToDevice(id: String) {
         Logger.shared.info("[DevicesView] 🔌 connectToDevice called for id: \(id)")
-        if let device = deviceManager.discoveredDevices.first(where: { $0.peripheralIdentifier?.uuidString == id }) {
-            Logger.shared.info("[DevicesView] 🔌 Found device in discoveredDevices: \(device.name)")
-            Task {
-                do {
-                    Logger.shared.info("[DevicesView] 🔌 Calling deviceManager.connect(to: \(device.name))")
-                    try await deviceManager.connect(to: device)
-                    Logger.shared.info("[DevicesView] ✅ Connection initiated successfully")
-                } catch {
-                    Logger.shared.error("[DevicesView] ❌ Failed to connect: \(error.localizedDescription)")
-                }
+        Task {
+            do {
+                try await deviceManager.connectToRememberedDevice(id: id)
+                Logger.shared.info("[DevicesView] ✅ Connection initiated successfully")
+            } catch {
+                Logger.shared.error("[DevicesView] ❌ Failed to connect: \(error.localizedDescription)")
             }
-        } else {
-            Logger.shared.warning("[DevicesView] ⚠️ Device not in discovered list, starting scan to find it")
-            // Device not in discovered list, start scanning to find it
-            startScanning()
         }
     }
 

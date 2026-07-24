@@ -11,11 +11,20 @@ import OralableCore
 
 final class NRFConnectCompatibilityTests: XCTestCase {
 
-    func testFirmwareGateRequires136() {
-        XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.36")
-        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.36-nrfconnect"))
-        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.37"))
-        XCTAssertTrue(FirmwareGate.isOralableVersionOutdated("1.0.35-nrfconnect"))
+    func testFirmwareGateRequires163() {
+        XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.63")
+        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.70")
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.63-nrfconnect"))
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.64"))
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.65-nrfconnect"))
+        XCTAssertTrue(FirmwareGate.isOralableVersionOutdated("1.0.62-nrfconnect"))
+        XCTAssertTrue(FirmwareGate.supportsPlacementMode("1.0.63-nrfconnect"))
+        XCTAssertFalse(FirmwareGate.supportsPlacementMode("1.0.61"))
+        XCTAssertFalse(FirmwareGate.supportsAutomaticDockDetect("1.0.66"))
+        XCTAssertTrue(FirmwareGate.supportsAutomaticDockDetect("1.0.70-nrfconnect"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.66"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.70"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.62"))
     }
 
     func testTGMBaselineCharacteristicUUIDs() {
@@ -29,10 +38,27 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         let payload = Data([0, 1, 2, 75])
         let status = BLEDataParser.parseDeviceStatusPacket(payload)
         XCTAssertNotNil(status)
-        XCTAssertFalse(status!.charging)
+        XCTAssertFalse(status!.onDock)
+        XCTAssertFalse(status!.chargeActive)
         XCTAssertTrue(status!.worn)
         XCTAssertEqual(status!.deviceState, 2)
         XCTAssertEqual(status!.batteryPercent, 75)
+    }
+
+    func testValidationLogNotClearedOnScanWhenRecordingActive() {
+        let central = BLECentralManager()
+        NRFConnectBLELogger.shared.clear()
+        NRFConnectBLELogger.shared.connected()
+        XCTAssertEqual(NRFConnectBLELogger.shared.lineCount(), 1)
+
+        central.shouldPreserveValidationLog = { true }
+        central.startScanning()
+        XCTAssertEqual(NRFConnectBLELogger.shared.lineCount(), 1, "Log preserved while recording")
+
+        central.shouldPreserveValidationLog = { false }
+        central.startScanning()
+        XCTAssertEqual(NRFConnectBLELogger.shared.lineCount(), 0, "Log cleared when not recording")
+        NRFConnectBLELogger.shared.clear()
     }
 
     func testAutomaticRecordingSessionPauseResumeWindow() {
@@ -49,6 +75,16 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         session.onDeviceConnected()
         XCTAssertTrue(session.isSessionActive)
         XCTAssertFalse(session.isSessionPaused)
+    }
+
+    func testPrepareProtocolBSessionSetsWorn() {
+        let flags = FeatureFlags.shared
+        flags.devicePlacementMode = .offDockIdle
+        flags.protocolBSessionPrepared = false
+        let manager = DeviceManager()
+        manager.prepareProtocolBSession()
+        XCTAssertEqual(flags.devicePlacementMode, .worn)
+        XCTAssertTrue(flags.protocolBSessionPrepared)
     }
 
     func testNRFConnectLoggerMatchesExportHeader() {

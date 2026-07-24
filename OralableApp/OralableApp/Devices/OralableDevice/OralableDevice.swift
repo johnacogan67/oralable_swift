@@ -122,7 +122,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         static let battery = NotificationReadiness(rawValue: 1 << 3)
         static let status = NotificationReadiness(rawValue: 1 << 4)
 
-        static let allRequired: NotificationReadiness = [.ppgData, .accelerometer]
+        static let allRequired: NotificationReadiness = [.ppgData, .accelerometer, .status, .battery]
         static let all: NotificationReadiness = [.ppgData, .accelerometer, .temperature, .battery, .status]
     }
 
@@ -140,6 +140,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var connectionReadyContinuation: CheckedContinuation<Void, Never>?
     var accelerometerNotificationContinuation: CheckedContinuation<Void, Error>?
     var statusNotificationContinuation: CheckedContinuation<Void, Error>?
+    var batteryNotificationContinuation: CheckedContinuation<Void, Error>?
+    var temperatureNotificationContinuation: CheckedContinuation<Void, Error>?
     var writeCompletionContinuation: CheckedContinuation<Void, Error>?
     var firmwareReadContinuation: CheckedContinuation<String, Error>?
     var deviceIdReadContinuation: CheckedContinuation<UInt64, Error>?
@@ -161,6 +163,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var lastBatteryParseFailureLogAt: Date?
     var lastTemperatureDebugLogAt: Date?
     var lastTemperatureDebugValue: Double?
+
+    /// Last placement mode successfully written to firmware this connection (skip redundant 00B writes).
+    var lastAppliedPlacementMode: FeatureFlags.DevicePlacementMode?
 
     /// Called after each successful `readRSSI` (e.g. for link-quality summaries in `BLEBackgroundWorker`).
     var linkMetricsHandler: ((UUID, Int) -> Void)?
@@ -220,6 +225,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         ppgPacketsLost = 0
         accelPacketsLost = 0
         sampleRateStats.reset()
+        lastAppliedPlacementMode = nil
     }
 
     /// Cancel any pending async continuations to prevent hangs on disconnect
@@ -237,12 +243,18 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         accelerometerNotificationContinuation = nil
         statusNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         statusNotificationContinuation = nil
+        batteryNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        batteryNotificationContinuation = nil
+        temperatureNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        temperatureNotificationContinuation = nil
         writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         writeCompletionContinuation = nil
         firmwareReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         firmwareReadContinuation = nil
         deviceIdReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         deviceIdReadContinuation = nil
+        firmwareConfigStateReadContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        firmwareConfigStateReadContinuation = nil
     }
 
     func isAvailable() -> Bool {
@@ -256,7 +268,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
         try await enableNotifications()
         try await enableAccelerometerNotifications()
-        await enableTemperatureNotifications()
+        try await enableTemperatureNotifications()
     }
 
     func stopDataStream() async {
@@ -347,6 +359,20 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         case setStreamEnableMask = 0x06
         case requestStatusSnapshot = 0x07
         case restartConnectProbe = 0x08
+        case setUserDeviceMode = 0x09
+        case setDebugRebootIntervalSeconds = 0x0A
+    }
+
+    /// Matches firmware + FeatureFlags.DevicePlacementMode (FW >= 1.0.62).
+    enum UserDeviceMode: UInt8 {
+        case auto = 0
+        case onCharger = 1
+        case offDockIdle = 2
+        case worn = 3
+
+        init(_ placement: FeatureFlags.DevicePlacementMode) {
+            self = UserDeviceMode(rawValue: placement.rawValue) ?? .auto
+        }
     }
 
     enum FirmwareLedID: UInt8 {
@@ -384,7 +410,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     /// Off-body: firmware sends battery/status keepalive every 5s, but iOS may negotiate a short
     /// supervision timeout. Periodic status reads keep ATT traffic flowing (nRF Connect stays up
     /// because the user often reads characteristics manually).
-    func setOffBodyLinkKeepaliveActive(_ active: Bool) {
+    func setOffBodyLinkKeepaliveActive(_ active: Bool, onDock: Bool = false) {
         offBodyKeepaliveTask?.cancel()
         offBodyKeepaliveTask = nil
 
@@ -395,12 +421,13 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             return
         }
 
-        Logger.shared.info("[OralableDevice] 🔗 Off-body link keepalive started (status read every 3s)")
+        let intervalSeconds: UInt64 = onDock ? 8 : 5
+        Logger.shared.info("[OralableDevice] 🔗 Off-body link keepalive started (status read every \(intervalSeconds)s, onDock=\(onDock))")
 
         offBodyKeepaliveTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(nanoseconds: 3_000_000_000)
+                    try await Task.sleep(nanoseconds: intervalSeconds * 1_000_000_000)
                 } catch {
                     return
                 }
@@ -442,6 +469,39 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try writeFirmwareConfig(Data([FirmwareConfigOpcode.restartConnectProbe.rawValue]))
     }
 
+    /// Explicit placement override (`00B` opcode 0x09). Use when chrsts GPIO is unavailable.
+    func setFirmwareUserDeviceMode(_ mode: UserDeviceMode) throws {
+        guard firmwareConfigCharacteristic != nil else {
+            throw DeviceError.characteristicNotFound("Firmware config characteristic not found")
+        }
+        try writeFirmwareConfig(Data([FirmwareConfigOpcode.setUserDeviceMode.rawValue, mode.rawValue]))
+        Logger.shared.info("[OralableDevice] Set firmware user device mode: \(mode.rawValue)")
+    }
+
+    func setFirmwareUserDeviceMode(_ placement: FeatureFlags.DevicePlacementMode) throws {
+        if lastAppliedPlacementMode == placement {
+            Logger.shared.info("[OralableDevice] Skipping placement write — already applied: \(placement.title)")
+            return
+        }
+        try setFirmwareUserDeviceMode(UserDeviceMode(placement))
+        lastAppliedPlacementMode = placement
+    }
+
+    /// Bench recovery: warm reboot after `seconds` (0 = disable). FW >= 1.0.63 opcode 0x0A.
+    func setFirmwareDebugRebootInterval(seconds: UInt16) throws {
+        guard firmwareConfigCharacteristic != nil else {
+            throw DeviceError.characteristicNotFound("Firmware config characteristic not found")
+        }
+        let lo = UInt8(seconds & 0xFF)
+        let hi = UInt8((seconds >> 8) & 0xFF)
+        try writeFirmwareConfig(Data([
+            FirmwareConfigOpcode.setDebugRebootIntervalSeconds.rawValue,
+            lo,
+            hi
+        ]))
+        Logger.shared.info("[OralableDevice] Set debug reboot interval: \(seconds)s")
+    }
+
     func enableFirmwareLogNotificationsIfNeeded() {
         guard let peripheral,
               let characteristic = firmwareLogCharacteristic,
@@ -474,25 +534,37 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         _ = try await readFirmwareConfigState()
     }
 
-    /// TGM battery notify only — deferred until after firmware version read.
-    func enableDeferredDiscoverySubscriptions() {
-        guard let peripheral = peripheral else { return }
-        if let characteristic = tgmBatteryCharacteristic {
-            setNotifyValue(true, for: characteristic, on: peripheral)
+    /// TGM battery notify — await CCC complete (Apple/Nordic: one ATT CCC at a time).
+    func enableDeferredDiscoverySubscriptions() async throws {
+        guard let peripheral = peripheral,
+              let characteristic = tgmBatteryCharacteristic else {
+            throw DeviceError.characteristicNotFound("Battery characteristic not found")
+        }
+        guard batteryNotificationContinuation == nil else {
+            throw DeviceError.deviceBusy
+        }
+
+        Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on battery characteristic (3A0FF004)...")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.batteryNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
     }
 
     /// nRF Connect–aligned staggered CCC enable: battery → status → PPG → ACC → temp.
+    /// Each step waits for `didUpdateNotificationState` before the next CCC write.
     func enableNRFAlignedStreamingNotifications() async throws {
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableStatusNotifications()
-        enableFirmwareLogNotificationsIfNeeded()
+        if FeatureFlags.shared.enableFirmwareLogNotify {
+            enableFirmwareLogNotificationsIfNeeded()
+        }
         try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
         try await enableNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        await enableAccelerometerNotifications()
+        try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        await enableTemperatureNotifications()
+        try await enableTemperatureNotifications()
     }
 
     /// Reads `3A0FF006` firmware string (must run after characteristic discovery).
@@ -563,41 +635,40 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
     }
 
-    // Enable accelerometer notifications (non-blocking)
-    func enableAccelerometerNotifications() async {
+    // Enable accelerometer notifications (await CCC callback).
+    func enableAccelerometerNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = accelerometerCharacteristic else {
-            Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer characteristic not found")
-            return
+            throw DeviceError.characteristicNotFound("Accelerometer characteristic not found")
         }
         guard accelerometerNotificationContinuation == nil else {
-            Logger.shared.warning("[OralableDevice] ⚠️ Accelerometer notification enable already pending")
-            return
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on accelerometer characteristic...")
 
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                self.accelerometerNotificationContinuation = continuation
-                self.setNotifyValue(true, for: characteristic, on: peripheral)
-            }
-            Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
-        } catch {
-            Logger.shared.warning("[OralableDevice] ⚠️ Failed to enable accelerometer notifications: \(error.localizedDescription)")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.accelerometerNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
+        Logger.shared.info("[OralableDevice] ✅ Accelerometer notifications enabled")
     }
 
-    // Enable temperature notifications on 3A0FF003
-    func enableTemperatureNotifications() async {
+    // Enable temperature notifications on 3A0FF003 (await CCC callback).
+    func enableTemperatureNotifications() async throws {
         guard let peripheral = peripheral,
               let characteristic = commandCharacteristic else {
-            Logger.shared.warning("[OralableDevice] ⚠️ Command characteristic not found for temperature")
-            return
+            throw DeviceError.characteristicNotFound("Temperature characteristic not found")
+        }
+        guard temperatureNotificationContinuation == nil else {
+            throw DeviceError.deviceBusy
         }
 
         Logger.shared.info("[OralableDevice] 🔔 Enabling notifications on temperature characteristic (3A0FF003)...")
-        setNotifyValue(true, for: characteristic, on: peripheral)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.temperatureNotificationContinuation = continuation
+            self.setNotifyValue(true, for: characteristic, on: peripheral)
+        }
         Logger.shared.info("[OralableDevice] ✅ Temperature notifications enabled")
     }
 

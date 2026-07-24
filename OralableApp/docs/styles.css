@@ -1096,6 +1096,31 @@ button[type="submit"]:hover {
     color: var(--color-text-secondary);
 }
 
+.timeline-features {
+    margin: 0 0 8px 0;
+    padding-left: 1.25rem;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.timeline-features li {
+    margin-bottom: 4px;
+}
+
+.timeline-features em {
+    font-style: italic;
+    color: var(--color-text-tertiary, #86868b);
+}
+
+.timeline-hw {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+
 @media (max-width: 600px) {
     .timeline-item {
         flex-direction: column;

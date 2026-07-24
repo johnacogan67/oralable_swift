@@ -60,8 +60,11 @@ extension DeviceManager {
         }
 
         let offBody = !status.worn
+        let onCharger = status.onDock || FeatureFlags.shared.devicePlacementMode == .onCharger
         backgroundWorker.setDeviceOffBody(offBody, for: peripheralId)
-        device.setOffBodyLinkKeepaliveActive(offBody)
+        backgroundWorker.setOffBodyChargerReconnectActive(offBody && onCharger)
+        backgroundWorker.recordDataReceived(from: peripheralId)
+        device.setOffBodyLinkKeepaliveActive(offBody, onDock: onCharger)
         automaticRecordingSession?.updateFirmwareWornState(status.worn)
     }
 

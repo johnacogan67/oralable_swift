@@ -100,7 +100,25 @@ struct OralableApp: App {
                 Logger.shared.info("[OralableApp] Stopping BLE scan while backgrounded")
                 deviceManager.stopScanning()
             }
-            deviceManager.cancelAllReconnections()
+            let recordingActive = deviceManager.automaticRecordingSession?.isSessionActive == true
+            let connectInFlight = deviceManager.isConnecting
+                || deviceManager.deviceReadiness.values.contains { readiness in
+                    switch readiness {
+                    case .connecting, .connected, .discoveringServices, .servicesDiscovered,
+                         .discoveringCharacteristics, .characteristicsDiscovered, .enablingNotifications:
+                        return true
+                    default:
+                        return false
+                    }
+                }
+            let keepPilotReconnect = deviceManager.shouldKeepBackgroundReconnect
+            if recordingActive || connectInFlight || keepPilotReconnect {
+                Logger.shared.info(
+                    "[OralableApp] Keeping BLE active in background (recording=\(recordingActive) connectInFlight=\(connectInFlight) pilotReconnect=\(keepPilotReconnect))"
+                )
+            } else {
+                deviceManager.cancelAllReconnections()
+            }
             // Note: Automatic recording continues in background
             // Events are auto-saved every 3 minutes and on disconnect
             // Sync data when app goes to background
@@ -116,6 +134,10 @@ struct OralableApp: App {
 
         case .active:
             Logger.shared.info("[OralableApp] App becoming active")
+            deviceManager.backgroundWorker.handleAppEnteredForeground()
+            if deviceManager.primaryDeviceReadiness != .ready {
+                deviceManager.attemptAutoReconnect()
+            }
 
         @unknown default:
             break

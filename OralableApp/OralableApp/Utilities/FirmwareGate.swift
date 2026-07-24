@@ -8,11 +8,42 @@
 import Foundation
 
 enum FirmwareGate {
-    /// Minimum semantic version for nrfConnect-aligned worn-gated streaming (1.0.36+).
-    static let minRequiredVersion = "1.0.36"
+    /// Phase 0 vitals pilot hard minimum: LED policy 1.0.63, connect probe off, opcode 0x0A.
+    /// Kept below recommended so shipped 1.0.66 kits still connect.
+    static let minRequiredVersion = "1.0.63"
 
     /// Alias for UI copy and existing call sites.
     static let minimumOralableSemanticVersion = minRequiredVersion
+
+    /// Latest Gen1 workspace target (LTC4124 STAT blink = charging / on_dock).
+    static let recommendedOralableSemanticVersion = "1.0.70"
+
+    /// Firmware with explicit user device mode opcode (`00B` 0x09).
+    static let minimumPlacementModeVersion = "1.0.62"
+
+    /// Firmware that interprets CHRSTS as LTC4124 STAT activity (blink / taper / undock).
+    static let minimumChrstsStatActivityVersion = "1.0.70"
+
+    static func supportsPlacementMode(_ reported: String) -> Bool {
+        !compare(reported, isLessThan: minimumPlacementModeVersion)
+    }
+
+    /// Automatic on-dock via STAT blink/taper (FW ≥ 1.0.70). Older kits should use manual placement.
+    static func supportsAutomaticDockDetect(_ reported: String?) -> Bool {
+        guard let reported, !reported.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        return !compare(reported, isLessThan: minimumChrstsStatActivityVersion)
+    }
+
+    /// Soft upgrade hint: connect allowed, but below recommended Gen1 build.
+    static func isBelowRecommendedOralableVersion(_ reported: String?) -> Bool {
+        guard let reported, !reported.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        if isOralableVersionOutdated(reported) { return false }
+        return compare(reported, isLessThan: recommendedOralableSemanticVersion)
+    }
 
     /// `true` iff `reported` is **strictly less than** `minRequiredVersion`.
     static func isOralableVersionOutdated(_ reported: String) -> Bool {

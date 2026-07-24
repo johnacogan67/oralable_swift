@@ -62,6 +62,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var heartRate: Int = 0
     @Published var spO2: Int = 0
     @Published var heartRateQuality: Double = 0.0
+    @Published var spO2Quality: Double = 0.0
     @Published var temperature: Double = 0.0
     @Published var batteryLevel: Double = 0.0
     @Published var accelX: Double = 0.0
@@ -172,6 +173,14 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                     let tfi = result.tfiPercent
                     await MainActor.run { [weak self] in
                         guard let self else { return }
+                        if result.heartRate > 0 {
+                            self.heartRate = result.heartRate
+                            self.heartRateQuality = result.heartRateQuality
+                        }
+                        if result.spo2 > 0 {
+                            self.spO2 = Int(result.spo2.rounded())
+                            self.spO2Quality = result.spo2Quality
+                        }
                         let spo2Percent = self.spO2 > 0 ? Double(self.spO2) : nil
                         self.temporalisFatigueIndexPercent = tfi
                         self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)

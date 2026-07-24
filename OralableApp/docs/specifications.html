@@ -45,7 +45,43 @@
     <section class="section">
         <div class="container-narrow">
             <h1 class="section-title">Specifications</h1>
-            <p class="section-subtitle">Technical details for Oralable PCB REV10</p>
+            <p class="section-subtitle">Oralable Gen1 shipping kits — PCB00003 · PCB REV10 · BOM REV8 · Kaga ES2832AA2</p>
+
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 24px;">Hardware identity</h2>
+            <table class="specs-table">
+                <tr>
+                    <td>Hardware generation</td>
+                    <td><strong>Gen1</strong> (pilot / shipping)</td>
+                </tr>
+                <tr>
+                    <td>BOM</td>
+                    <td>PCB00003-TGM-<strong>BOM-REV8</strong></td>
+                </tr>
+                <tr>
+                    <td>PCB production / assembly</td>
+                    <td><strong>REV10</strong> pilot (REV8 production data family)</td>
+                </tr>
+                <tr>
+                    <td>Board target (firmware)</td>
+                    <td><code>pcb00003</code> · nRF52832</td>
+                </tr>
+                <tr>
+                    <td>BLE module (U5)</td>
+                    <td>Kaga <strong>ES2832AA2</strong></td>
+                </tr>
+                <tr>
+                    <td>Battery</td>
+                    <td>CG-320B ~15&nbsp;mAh (typical Gen1 build)</td>
+                </tr>
+                <tr>
+                    <td>Firmware (pilot ship)</td>
+                    <td><strong>1.0.70</strong> (minimum 1.0.63)</td>
+                </tr>
+                <tr>
+                    <td>Software phase (now)</td>
+                    <td>Vitals Phase 0 (temple HR &amp; SpO₂)</td>
+                </tr>
+            </table>
 
             <!-- Sensors -->
             <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Sensors</h2>
@@ -105,12 +141,16 @@
                     <td>nRF52832 (Nordic Semiconductor)</td>
                 </tr>
                 <tr>
-                    <td>Module</td>
-                    <td>EYSHSNZWZ (Taiyo Yuden)</td>
+                    <td>BLE module (U5)</td>
+                    <td>Kaga ES2832AA2 (nRF52832)</td>
                 </tr>
                 <tr>
                     <td>Range</td>
                     <td>~10 meters (typical indoor)</td>
+                </tr>
+                <tr>
+                    <td>Firmware (Gen1 pilot)</td>
+                    <td>1.0.70 (minimum 1.0.63)</td>
                 </tr>
             </table>
 
@@ -119,19 +159,19 @@
             <table class="specs-table">
                 <tr>
                     <td>Battery</td>
-                    <td>LiPo rechargeable</td>
+                    <td>LiPo rechargeable (~15 mAh typical Gen1 build)</td>
                 </tr>
                 <tr>
                     <td>Runtime</td>
-                    <td>6-8 hours continuous</td>
+                    <td>6-8 hours continuous (typical)</td>
                 </tr>
                 <tr>
                     <td>Charging</td>
-                    <td>Wireless (Qi compatible) or USB</td>
+                    <td>Oralable magnetic charging case (USB-C powered); clip charges inductively in the case</td>
                 </tr>
                 <tr>
                     <td>Charge Time</td>
-                    <td>~2 hours</td>
+                    <td>~2 hours (typical)</td>
                 </tr>
             </table>
 
@@ -156,28 +196,20 @@
                 </tr>
             </table>
 
-            <!-- Event Detection -->
-            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Event Detection</h2>
+            <!-- Placement & vitals -->
+            <h2 style="font-size: 21px; font-weight: 600; margin-top: 60px; margin-bottom: 24px;">Placement &amp; Vitals Phase</h2>
             <table class="specs-table">
                 <tr>
-                    <td>Detection Method</td>
-                    <td>Normalized threshold with debounce</td>
+                    <td>Primary site (pilot)</td>
+                    <td>Temple / temporalis (Vitals Phase 0 — HR &amp; SpO₂)</td>
                 </tr>
                 <tr>
-                    <td>Calibration Time</td>
-                    <td>15 seconds</td>
+                    <td>Worn / dock sensing</td>
+                    <td>Die temperature + status characteristic (manual placement mode on Gen1 pilot)</td>
                 </tr>
                 <tr>
-                    <td>Minimum Event Duration</td>
-                    <td>1 second</td>
-                </tr>
-                <tr>
-                    <td>State Change Debounce</td>
-                    <td>1 second</td>
-                </tr>
-                <tr>
-                    <td>Positioning Detection</td>
-                    <td>Temperature + optical verification</td>
+                    <td>Muscle-event algorithms</td>
+                    <td>Phase 1+ after vitals gates (clench / IR-DC occlusion research)</td>
                 </tr>
             </table>
 
@@ -194,9 +226,47 @@
                 </tr>
                 <tr>
                     <td>App</td>
-                    <td>Free on App Store</td>
+                    <td>Free on App Store (Oralable)</td>
+                </tr>
+                <tr>
+                    <td>OTA updates</td>
+                    <td>MCUboot / mcumgr via Nordic Device Manager (BLE)</td>
                 </tr>
             </table>
+
+            <div style="margin-top: 40px; color: var(--color-text-secondary); font-size: 14px;">
+                <p style="margin-bottom: 8px;"><strong>Gen2 (upcoming — not shipping):</strong> new hardware generation — see <a href="about.html">About · Hardware ↔ BOM map</a>.</p>
+                <table class="specs-table" style="margin-top: 12px;">
+                    <tr>
+                        <td>Hardware generation</td>
+                        <td><strong>Gen2</strong></td>
+                    </tr>
+                    <tr>
+                        <td>BOM</td>
+                        <td>PCB00003-TGM-<strong>BOM-REV9</strong></td>
+                    </tr>
+                    <tr>
+                        <td>PCB</td>
+                        <td><strong>REV11</strong></td>
+                    </tr>
+                    <tr>
+                        <td>BLE module (U5)</td>
+                        <td>Kaga <strong>ES4L15BA1</strong> (nRF54L15)</td>
+                    </tr>
+                    <tr>
+                        <td>Battery</td>
+                        <td>LP260820 ~30&nbsp;mAh</td>
+                    </tr>
+                    <tr>
+                        <td>Firmware (target)</td>
+                        <td><strong>2.0.x-gen2</strong> (not in pilot kits)</td>
+                    </tr>
+                    <tr>
+                        <td>App / GATT</td>
+                        <td>Same 50&nbsp;Hz TGM stream as Gen1</td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </section>
 

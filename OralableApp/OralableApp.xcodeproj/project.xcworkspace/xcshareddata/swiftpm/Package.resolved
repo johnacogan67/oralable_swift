@@ -1,5 +1,5 @@
 {
-  "originHash" : "076829e83eb092469f94f5f0ae0e459d58ae7dacc11faaf3f1e04f635cf2255c",
+  "originHash" : "b23358e677bd11a694265a20b459239c34e984153ac0add1bc25c6b137a9055a",
   "pins" : [
     {
       "identity" : "asyncbluetooth",

@@ -39,12 +39,17 @@ struct LaunchCoordinator: View {
             // IMPORTANT: Check authentication BEFORE first launch
             // Once authenticated, show first-fit onboarding until Temporalis calibration completes.
             if authenticationManager.isAuthenticated {
-                // Main app unlocks only after SetupSuccessView → “Go to dashboard” → markFirstFitCompleted()
                 if firstLaunchManager.hasCompletedFirstFit,
                    firstLaunchManager.hasPairedOralablePrimary {
                     MainTabView()
                         .onAppear {
                             Logger.shared.info("🟢 LaunchCoordinator: Showing MainTabView (authenticated, setup complete)")
+                        }
+                } else if FeatureFlags.shared.vitalsPhaseEnabled,
+                          firstLaunchManager.hasPairedOralablePrimary {
+                    MainTabView()
+                        .onAppear {
+                            Logger.shared.info("🟢 LaunchCoordinator: MainTabView (vitals phase, paired)")
                         }
                 } else if firstLaunchManager.isTrialSetupMode {
                     TrialSetupDashboardView(firstLaunchManager: firstLaunchManager)
@@ -71,6 +76,12 @@ struct LaunchCoordinator: View {
         }
         .onAppear {
             Logger.shared.info("🔵 LaunchCoordinator appeared - isAuthenticated: \(authenticationManager.isAuthenticated), isFirstLaunch: \(authenticationManager.isFirstLaunch)")
+            if authenticationManager.isAuthenticated,
+               FeatureFlags.shared.vitalsPhaseEnabled,
+               firstLaunchManager.hasPairedOralablePrimary,
+               !firstLaunchManager.hasCompletedFirstFit {
+                firstLaunchManager.markFirstFitCompleted()
+            }
             if authenticationManager.isAuthenticated,
                firstLaunchManager.hasCompletedFirstFit,
                !firstLaunchManager.hasPairedOralablePrimary {

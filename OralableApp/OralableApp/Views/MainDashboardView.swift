@@ -161,9 +161,17 @@ struct MainDashboardView: View {
             .environmentObject(firstLaunchManager)
         }
         .alert("Overnight session", isPresented: $showOvernightNotice) {
-            Button("OK", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
+            Button("Start (worn mode)") {
+                startOvernightWithWornPlacement()
+            }
         } message: {
-            Text("Overnight capture hooks to your existing automatic recording session when this flag is wired to Product. Calibration for this REV10 is on file.")
+            Text("Sets device placement to Worn on cheek on the clip and keeps automatic recording while BLE stays connected. Lock the phone with the clip on your cheek.")
         }
+    }
+
+    private func startOvernightWithWornPlacement() {
+        deviceManager.applyWornPlacementForBodySession()
+        Logger.shared.info("[MainDashboardView] Overnight started — placement set to Worn on cheek")
     }
 }

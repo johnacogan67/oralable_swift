@@ -33,6 +33,10 @@ final class FirstLaunchManager: ObservableObject {
         UserDefaults.standard.set(false, forKey: Self.trialKey)
         isTrialSetupMode = false
         Logger.shared.info("[FirstLaunchManager] Oralable primary paired (onboarding)")
+        if FeatureFlags.shared.vitalsPhaseEnabled {
+            markFirstFitCompleted()
+            Logger.shared.info("[FirstLaunchManager] Vitals phase — skipped Temporalis fit/calibration gate")
+        }
     }
 
     /// User closed pairing without connecting; limited trial dashboard.

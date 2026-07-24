@@ -113,6 +113,22 @@
         .timeline-milestone.future {
             color: #86868b;
         }
+        .timeline-features {
+            margin: 0 0 8px 0;
+            padding-left: 1.25rem;
+            color: #86868b;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .timeline-features li {
+            margin-bottom: 4px;
+        }
+        .timeline-hw {
+            margin: 0 0 8px;
+            font-size: 12px;
+            font-family: ui-monospace, Menlo, monospace;
+            color: #86868b;
+        }
         .highlight-box {
             background: #f5f5f7;
             padding: 25px;
@@ -202,53 +218,112 @@
         <p>Oralable is developing an accessible muscle activity monitor that helps people become aware of their jaw muscle patterns. Our goal is to create a simple, affordable biofeedback tool &mdash; like a fitness tracker for your facial muscles.</p>
 
         <h2>Roadmap</h2>
+        <p style="color: #86868b; margin-bottom: 16px; font-size: 15px;">
+            <strong>Gen1 / Gen2</strong> are hardware generations (Kaga module + BOM). <strong>Phase 0 / Phase 1+</strong> are software phases — they run on Gen1 today and carry forward to Gen2.
+            Product path: <strong>Stage A wellness wearable first</strong>, then <strong>Stage B medical device</strong> later (new US patent embodiment — not claimed as a medical device today).
+        </p>
+        <div class="highlight-box" style="margin-bottom: 28px;">
+            <h3>Hardware ↔ BOM map</h3>
+            <table style="width:100%; font-size: 13px; border-collapse: collapse;">
+                <tr style="text-align:left; border-bottom:1px solid #e8e8ed;">
+                    <th style="padding:6px;">Generation</th>
+                    <th style="padding:6px;">BOM</th>
+                    <th style="padding:6px;">PCB</th>
+                    <th style="padding:6px;">Module</th>
+                    <th style="padding:6px;">Firmware</th>
+                </tr>
+                <tr>
+                    <td style="padding:6px;"><strong>Gen1</strong></td>
+                    <td style="padding:6px;">BOM-REV8</td>
+                    <td style="padding:6px;">REV10 pilot</td>
+                    <td style="padding:6px;">ES2832AA2</td>
+                    <td style="padding:6px;">1.0.70</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px;"><strong>Gen2</strong></td>
+                    <td style="padding:6px;">BOM-REV9</td>
+                    <td style="padding:6px;">REV11</td>
+                    <td style="padding:6px;">ES4L15BA1</td>
+                    <td style="padding:6px;">2.0.x target</td>
+                </tr>
+            </table>
+            <p style="margin:10px 0 0; font-size:13px; color:#86868b;">Phases do not change the BOM. Gen1 battery ~15&nbsp;mAh · Gen2 ~30&nbsp;mAh.</p>
+        </div>
 
         <div class="timeline">
             <div class="timeline-item">
-                <div class="timeline-year">2024</div>
-                <div class="timeline-content">
-                    <p class="timeline-milestone done">Technology development</p>
-                    <p class="timeline-milestone done">Patent protection</p>
-                </div>
-            </div>
-
-            <div class="timeline-item">
                 <div class="timeline-year">2025</div>
+                <div class="timeline-content">
+                    <p class="timeline-milestone done"><strong>Gen1 platform</strong></p>
+                    <p class="timeline-hw">Gen1 · BOM REV8 · PCB00003 · ES2832AA2</p>
+                    <ul class="timeline-features">
+                        <li>PCB00003 + magnetic case · MAXM86161 · LIS2DTW12</li>
+                        <li>iOS BLE TGM 50&nbsp;Hz stream</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-year">H1 2026</div>
+                <div class="timeline-content">
+                    <p class="timeline-milestone done"><strong>Gen1 kits in field</strong></p>
+                    <p class="timeline-hw">Gen1 · BOM REV8 · PCB REV10 · FW 1.0.6x</p>
+                    <ul class="timeline-features">
+                        <li>REV10 assemblies on BOM REV8</li>
+                        <li>Device state + LED matrix · OTA DFU</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-year">Mid 2026</div>
                 <div class="timeline-content current">
-                    <p class="timeline-milestone done">Hardware manufacturing</p>
-                    <p class="timeline-milestone done">iOS app development</p>
-                    <p class="timeline-milestone current"><strong>Pre-launch release (You are here)</strong></p>
+                    <p class="timeline-milestone current"><strong>Vitals Phase 0 — Gen1</strong></p>
+                    <p class="timeline-hw">Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW <strong>1.0.70</strong></p>
+                    <ul class="timeline-features">
+                        <li>Temple HR &amp; SpO₂ · quality gating · LED mirror</li>
+                        <li>Manual placement (Gen1 chrsts) · Beacon program</li>
+                        <li><em>Not yet:</em> clench/grind / Protocol B</li>
+                    </ul>
                 </div>
             </div>
-
             <div class="timeline-item">
-                <div class="timeline-year">January 2026</div>
+                <div class="timeline-year">Late 2026+</div>
                 <div class="timeline-content">
-                    <p class="timeline-milestone future">Muscle Activity Monitor launch</p>
-                    <p class="timeline-milestone future">App Store release</p>
+                    <p class="timeline-milestone future"><strong>Muscle Phase 1+ — Gen1 software</strong></p>
+                    <p class="timeline-hw">Same Gen1 hardware (BOM REV8 / REV10)</p>
+                    <ul class="timeline-features">
+                        <li>IR-DC · TFI · SASHB · actigraphy · Protocol B</li>
+                        <li>Professionals / research exports</li>
+                    </ul>
                 </div>
             </div>
-
             <div class="timeline-item">
-                <div class="timeline-year">Q2 2026</div>
+                <div class="timeline-year">2026–2027</div>
                 <div class="timeline-content">
-                    <p class="timeline-milestone future">Oralable for Research</p>
-                    <p class="timeline-milestone future">ANR device comparison support</p>
-                    <p class="timeline-milestone future">University partnerships</p>
+                    <p class="timeline-milestone future"><strong>Gen2 — new BOM</strong></p>
+                    <p class="timeline-hw">Gen2 · BOM REV9 · PCB REV11 · ES4L15BA1 · FW 2.0.x</p>
+                    <ul class="timeline-features">
+                        <li>nRF54L15 · ~30&nbsp;mAh · same GATT stream</li>
+                        <li>chrsts / SOC / status LED / thermistor targets</li>
+                    </ul>
                 </div>
             </div>
-
             <div class="timeline-item">
                 <div class="timeline-year">2027+</div>
                 <div class="timeline-content">
-                    <p class="timeline-milestone future">Clinical validation studies</p>
-                    <p class="timeline-milestone future">Medical device pathway (future)</p>
+                    <p class="timeline-milestone future"><strong>Stage B — medical device path (later)</strong></p>
+                    <p class="timeline-hw">Primary on Gen2 (BOM REV9 / REV11); Gen1 sunset after parity</p>
+                    <ul class="timeline-features">
+                        <li>Stage A first: patent-implementing wellness wearable</li>
+                        <li>Working embodiment of the new US patent submission</li>
+                        <li>Expanded clinical validation → future 510(k) / CE exploration</li>
+                        <li>Academic / hospital partnerships · Gen1 sunset after Gen2 parity</li>
+                    </ul>
                 </div>
             </div>
         </div>
 
         <h2>What We're Building</h2>
-        <p>Oralable is a personal wellness tool that provides biofeedback about jaw muscle activity. It's designed for people curious about their patterns &mdash; whether during sleep, work, or daily activities.</p>
+        <p>Oralable is a personal wellness tool for overnight temple vitals today, with jaw-muscle biofeedback as Phase 1+ lands — for people curious about their patterns during sleep, work, or daily activities.</p>
 
         <div class="highlight-box">
             <h3>What Oralable Is</h3>

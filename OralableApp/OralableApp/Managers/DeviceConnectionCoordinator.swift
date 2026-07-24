@@ -152,7 +152,26 @@ extension DeviceManager {
                 }
                 oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
 
-                oralableDevice.enableDeferredDiscoverySubscriptions()
+                // Apply placement before streaming CCCs so bench connects stay in connect-probe / off-body policy.
+                do {
+                    try resolvePilotPlacementOnConnect(oralable: oralableDevice)
+                    Logger.shared.info(
+                        "[DeviceManager][BLETrace \(traceId)] Pre-notify placement: \(FeatureFlags.shared.devicePlacementMode.title)"
+                    )
+                } catch {
+                    Logger.shared.warning(
+                        "[DeviceManager][BLETrace \(traceId)] ⚠️ Pre-notify placement skipped: \(error.localizedDescription)"
+                    )
+                }
+
+                do {
+                    try await withTimeout(seconds: 10) {
+                        try await oralableDevice.enableDeferredDiscoverySubscriptions()
+                    }
+                } catch {
+                    oralableDevice.cancelPendingContinuations()
+                    throw error
+                }
             }
 
             // Step 4: nRF Connect–aligned staggered notifications (battery already enabled).
@@ -161,8 +180,13 @@ extension DeviceManager {
             updateDeviceReadiness(peripheral.identifier, to: .enablingNotifications)
 
             if let oralableDevice = device as? OralableDevice {
-                try await withTimeout(seconds: 30) {
-                    try await oralableDevice.enableNRFAlignedStreamingNotifications()
+                do {
+                    try await withTimeout(seconds: 30) {
+                        try await oralableDevice.enableNRFAlignedStreamingNotifications()
+                    }
+                } catch {
+                    oralableDevice.cancelPendingContinuations()
+                    throw error
                 }
             } else {
                 try await withTimeout(seconds: 10) {
@@ -172,12 +196,7 @@ extension DeviceManager {
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 notifications done in \(Int(Date().timeIntervalSince(notifyStart) * 1000))ms")
 
             if let oralableDevice = device as? OralableDevice {
-                do {
-                    try oralableDevice.requestFirmwareConnParamUpdate()
-                    Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Requested firmware conn param update (10s supervision)")
-                } catch {
-                    Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Conn param update skipped: \(error.localizedDescription)")
-                }
+                scheduleDeferredConnParamUpdate(for: oralableDevice, traceId: traceId)
             }
 
             guard peripheral.state == .connected else {
@@ -270,7 +289,30 @@ extension DeviceManager {
         Logger.shared.debug("[DeviceManager] Cancelled all reconnection attempts via background worker")
     }
 
+    /// Vitals pilot: keep auto-reconnect alive in background when an Oralable clip is remembered.
+    var shouldKeepBackgroundReconnect: Bool {
+        guard FeatureFlags.shared.vitalsPhaseEnabled else { return false }
+        return persistenceManager.getRememberedDevices().contains {
+            $0.name.lowercased().contains("oralable")
+        }
+    }
+
     // MARK: - Connection Actions
+
+    /// Poll until a peripheral reaches `.ready` / `.failed` or times out.
+    func waitForDeviceReadiness(_ peripheralId: UUID, timeoutSeconds: TimeInterval) async -> ConnectionReadiness {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            let readiness = deviceReadiness[peripheralId] ?? .disconnected
+            switch readiness {
+            case .ready, .failed:
+                return readiness
+            default:
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+        }
+        return deviceReadiness[peripheralId] ?? .disconnected
+    }
 
     // CORRECTED METHOD - Using peripheralIdentifier as dictionary key
     func connect(to deviceInfo: DeviceInfo) async throws {
@@ -336,8 +378,14 @@ extension DeviceManager {
         }
 
         if peripheral.state == .connecting {
-            Logger.shared.info("[DeviceManager] Connection already in progress for \(deviceInfo.name) — ignoring duplicate connect")
-            return
+            Logger.shared.warning(
+                "[DeviceManager] Stale CoreBluetooth connecting state for \(deviceInfo.name) — cancelling and retrying"
+            )
+            if let central = bleService as? BLECentralManager {
+                central.clearPendingConnection(for: peripheralId)
+            }
+            bleService?.disconnect(from: peripheral)
+            try await Task.sleep(nanoseconds: 400_000_000)
         }
 
         isConnecting = true
@@ -452,6 +500,28 @@ extension DeviceManager {
             }
             group.cancelAll()
             return result
+        }
+    }
+
+    /// Request 10s supervision after the link is stable (immediate update during CCC setup can drop iOS).
+    func scheduleDeferredConnParamUpdate(for oralable: OralableDevice, traceId: String) {
+        Task { [weak oralable] in
+            do {
+                try await Task.sleep(nanoseconds: 8_000_000_000)
+            } catch {
+                return
+            }
+            guard let oralable,
+                  let peripheral = oralable.peripheral,
+                  peripheral.state == .connected else {
+                return
+            }
+            do {
+                try oralable.requestFirmwareConnParamUpdate()
+                Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Deferred conn param update (8s post-ready)")
+            } catch {
+                Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Deferred conn param update skipped: \(error.localizedDescription)")
+            }
         }
     }
 }

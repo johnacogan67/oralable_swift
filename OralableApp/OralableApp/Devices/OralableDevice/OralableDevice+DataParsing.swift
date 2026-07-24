@@ -272,7 +272,7 @@ extension OralableDevice {
             batteryLevel = Int(status.batteryPercent)
         }
 
-        Logger.shared.info("[OralableDevice] 📟 Status: worn=\(status.worn) charging=\(status.charging) state=\(status.deviceState) bat=\(status.batteryPercent)%")
+        Logger.shared.info("[OralableDevice] 📟 Status: worn=\(status.worn) on_dock=\(status.onDock) charge_active=\(status.chargeActive) state=\(status.deviceState) bat=\(status.batteryPercent)%")
     }
 
     // MARK: - Battery Data Parsing
@@ -281,8 +281,12 @@ extension OralableDevice {
     func parseBatteryData(_ data: Data) {
         // Prefer OralableCore parsing (expects 4-byte millivolts, validated range).
         var percentage: Int?
+        var millivolts: Int32?
 
-        if let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) {
+        if let mv = OralableCore.BLEDataParser.parseBatteryMillivolts(data) {
+            millivolts = mv
+            percentage = BatteryConversion.voltageToPercentageInt(millivolts: mv)
+        } else if let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) {
             percentage = batteryData.percentage
         } else if data.count >= 4 {
             // Fallback: handle endianness / relaxed voltage validation.
@@ -310,8 +314,9 @@ extension OralableDevice {
 
             let candidates = [Int(rawLE), Int(rawBE)]
             if percentage == nil, let mv = candidates.first(where: { $0 >= 2000 && $0 <= 5000 }) {
-                // Convert to percentage (simple linear mapping): 3.0V = 0%, 4.2V = 100%
-                percentage = Int(min(100, max(0, (mv - 3000) * 100 / 1200)))
+                millivolts = Int32(mv)
+                // Oralable remapped gauge (FW >= 1.0.68): 3.61V = 0%, 4.35V = 100%
+                percentage = BatteryConversion.voltageToPercentageInt(millivolts: Int32(mv))
             } else if percentage == nil {
                 let now = Date()
                 if lastBatteryParseFailureLogAt == nil || now.timeIntervalSince(lastBatteryParseFailureLogAt!) > 30 {
@@ -332,13 +337,21 @@ extension OralableDevice {
 
         guard let percentage else { return }
 
-        Logger.shared.debug("[OralableDevice] 🔋 Battery: \(percentage)%")
-
-        // Log warnings for low battery
-        if BatteryConversion.needsCharging(percentage: Double(percentage)) {
+        if let mv = millivolts {
+            let chem = BatteryConversion.chemistryPercentageInt(millivolts: mv)
+            Logger.shared.info("[OralableDevice] 🔋 Battery: \(mv)mV gauge=\(percentage)% chem=\(chem)%")
+            if percentage == 0 && chem > 0 {
+                Logger.shared.warning("[OralableDevice] ⚠️ Soft floor (gauge 0%): chem=\(chem)% — charge on Oralable case")
+            } else if BatteryConversion.isCritical(percentage: BatteryConversion.chemistryPercentage(millivolts: mv)) {
+                Logger.shared.warning("[OralableDevice] ⚠️ BATTERY CRITICAL: chem=\(chem)% (\(mv)mV)")
+            } else if BatteryConversion.needsCharging(percentage: Double(percentage)) {
+                Logger.shared.warning("[OralableDevice] ⚠️ Battery low: gauge=\(percentage)% chem=\(chem)%")
+            }
+        } else {
+            Logger.shared.info("[OralableDevice] 🔋 Battery: gauge=\(percentage)%")
             if BatteryConversion.isCritical(percentage: Double(percentage)) {
                 Logger.shared.warning("[OralableDevice] ⚠️ BATTERY CRITICAL: \(percentage)%")
-            } else {
+            } else if BatteryConversion.needsCharging(percentage: Double(percentage)) {
                 Logger.shared.warning("[OralableDevice] ⚠️ Battery low: \(percentage)%")
             }
         }

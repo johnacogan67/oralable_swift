@@ -86,9 +86,9 @@ struct DashboardView: View {
                             message: error.recoverySuggestion ?? "Please try again.",
                             isRecoverable: error.isRecoverable,
                             retryAction: error.isRecoverable ? {
-                                if let firstDevice = deviceManager.discoveredDevices.first {
-                                    Task {
-                                        try? await deviceManager.connect(to: firstDevice)
+                                Task {
+                                    if let target = deviceManager.preferredOralableReconnectTarget() {
+                                        try? await deviceManager.connect(to: target)
                                     }
                                 }
                                 dismissedErrorDescription = error.errorDescription
@@ -141,8 +141,19 @@ struct DashboardView: View {
                     // Dual device connection status indicator (now includes Movement)
                     deviceStatusIndicator(viewModel: viewModel)
 
+                    if featureFlags.vitalsPhaseEnabled && viewModel.oralableConnected {
+                        VitalsDeviceStatusCard(
+                            heartRate: viewModel.heartRate,
+                            heartRateQuality: deviceManagerAdapter.heartRateQuality,
+                            spo2: viewModel.spO2,
+                            spo2Quality: deviceManagerAdapter.spO2Quality,
+                            placementMode: featureFlags.devicePlacementMode,
+                            rssi: viewModel.bleRSSI
+                        )
+                    }
+
                     // Recording State Indicator (automatic recording)
-                    if viewModel.isConnected {
+                    if viewModel.isConnected && !featureFlags.vitalsPhaseEnabled {
                         RecordingStateIndicator(
                             state: viewModel.currentRecordingState,
                             isCalibrated: viewModel.isCalibrated,
@@ -153,7 +164,7 @@ struct DashboardView: View {
                         .padding(.vertical, designSystem.spacing.sm)
                     }
 
-                    if showClinicalOralable && !suppressTemporalisSummary {
+                    if showClinicalOralable && !suppressTemporalisSummary && !featureFlags.vitalsPhaseEnabled {
                         TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
                         let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
                         let chartModel = TemporalisAnalysisChart.build(

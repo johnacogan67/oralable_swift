@@ -50,6 +50,10 @@ class FeatureFlags: ObservableObject {
         static let showCloudKitShare = "feature.share.showCloudKitShare"
         static let demoModeEnabled = "feature.demo.enabled"
         static let showPilotStudy = "feature.pilot.showStudy"
+        static let devicePlacementMode = "feature.device.placementMode"
+        static let enableFirmwareLogNotify = "feature.ble.enableFirmwareLogNotify"
+        static let vitalsPhaseEnabled = "feature.pilot.vitalsPhaseEnabled"
+        static let debugRebootIntervalMinutes = "feature.pilot.debugRebootIntervalMinutes"
     }
 
     // MARK: - Default Configuration
@@ -78,6 +82,50 @@ class FeatureFlags: ObservableObject {
 
         // Pilot Study
         static let showPilotStudy = false
+
+        /// Manual placement until chrsts GPIO is repaired (0=auto).
+        static let devicePlacementMode: UInt8 = 2
+
+        /// `3A0FF00A` fw-log notify — off by default (can destabilize link on pilot builds).
+        static let enableFirmwareLogNotify = false
+
+        /// Phase 0 pilot: HR + SpO2 first; hide Protocol B / muscle calibration.
+        static let vitalsPhaseEnabled = true
+
+        /// Bench-only firmware warm reboot interval (minutes). 0 = off.
+        static let debugRebootIntervalMinutes: UInt16 = 0
+    }
+
+    /// Explicit device placement for firmware status / `00B` 0x09 (manual override of auto dock).
+    enum DevicePlacementMode: UInt8, CaseIterable, Identifiable {
+        case auto = 0
+        case onCharger = 1
+        case offDockIdle = 2
+        case worn = 3
+
+        var id: UInt8 { rawValue }
+
+        var title: String {
+            switch self {
+            case .auto: return "Automatic"
+            case .onCharger: return "On wireless charger"
+            case .offDockIdle: return "Off charger (not worn)"
+            case .worn: return "Worn on temple"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .auto:
+                return "FW 1.0.70+: LTC4124 STAT blink = charging / on case; steady STAT = charge taper. Prefer on Oralable case. Pre-1.0.70: use manual modes."
+            case .onCharger:
+                return "Oralable case only. Red LED: flash while charging (STAT blink), solid on taper. No body streaming."
+            case .offDockIdle:
+                return "On table or off case — green flash/solid by battery level."
+            case .worn:
+                return "On temple only — red/IR glow is PPG sensing (not the charger LED). Use Off charger when the clip is on a table."
+            }
+        }
     }
 
     // MARK: - Dashboard Features
@@ -141,6 +189,33 @@ class FeatureFlags: ObservableObject {
         didSet { defaults.set(showPilotStudy, forKey: Keys.showPilotStudy) }
     }
 
+    @Published var devicePlacementMode: DevicePlacementMode {
+        didSet { defaults.set(devicePlacementMode.rawValue, forKey: Keys.devicePlacementMode) }
+    }
+
+    /// Enables `3A0FF00A` notify during connect (developer / bench only).
+    @Published var enableFirmwareLogNotify: Bool {
+        didSet { defaults.set(enableFirmwareLogNotify, forKey: Keys.enableFirmwareLogNotify) }
+    }
+
+    /// Phase 0 vitals pilot: HR/SpO2 focus, manual placement, no Protocol B.
+    @Published var vitalsPhaseEnabled: Bool {
+        didSet {
+            defaults.set(vitalsPhaseEnabled, forKey: Keys.vitalsPhaseEnabled)
+            if vitalsPhaseEnabled {
+                applyVitalsPhaseConfig()
+            }
+        }
+    }
+
+    /// Optional bench firmware reboot (opcode 0x0A). 0 = disabled.
+    @Published var debugRebootIntervalMinutes: UInt16 {
+        didSet { defaults.set(debugRebootIntervalMinutes, forKey: Keys.debugRebootIntervalMinutes) }
+    }
+
+    /// Set by Share → Prepare Protocol B session; promotes off-dock → worn on next connect.
+    @Published var protocolBSessionPrepared: Bool = false
+
     // MARK: - Post-Launch Features (v1.1)
     // TODO: Enable these when implementations are complete
 
@@ -164,11 +239,34 @@ class FeatureFlags: ObservableObject {
         self.showCloudKitShare = defaults.object(forKey: Keys.showCloudKitShare) as? Bool ?? Defaults.showCloudKitShare
         self.demoModeEnabled = defaults.object(forKey: Keys.demoModeEnabled) as? Bool ?? Defaults.demoModeEnabled
         self.showPilotStudy = defaults.object(forKey: Keys.showPilotStudy) as? Bool ?? Defaults.showPilotStudy
+        let modeRaw = defaults.object(forKey: Keys.devicePlacementMode) as? UInt8 ?? Defaults.devicePlacementMode
+        self.devicePlacementMode = DevicePlacementMode(rawValue: modeRaw) ?? .offDockIdle
+        self.enableFirmwareLogNotify = defaults.object(forKey: Keys.enableFirmwareLogNotify) as? Bool ?? Defaults.enableFirmwareLogNotify
+        self.vitalsPhaseEnabled = defaults.object(forKey: Keys.vitalsPhaseEnabled) as? Bool ?? Defaults.vitalsPhaseEnabled
+        self.debugRebootIntervalMinutes = defaults.object(forKey: Keys.debugRebootIntervalMinutes) as? UInt16 ?? Defaults.debugRebootIntervalMinutes
+
+        if vitalsPhaseEnabled {
+            applyVitalsPhaseConfig()
+        }
 
         Logger.shared.info("[FeatureFlags] Initialized with pre-launch configuration")
     }
 
     // MARK: - Presets
+
+    /// Phase 0 vitals pilot — HR, SpO₂, battery, device status; no muscle / Protocol B.
+    func applyVitalsPhaseConfig() {
+        showEMGCard = false
+        showMovementCard = false
+        showTemperatureCard = false
+        showHeartRateCard = true
+        showSpO2Card = true
+        showBatteryCard = true
+        showAdvancedMetrics = false
+        showPilotStudy = false
+        showDetectionSettings = false
+        Logger.shared.info("[FeatureFlags] Applied vitals phase config (HR + SpO2)")
+    }
 
     /// Pre-launch configuration (PPG IR only)
     func applyPreLaunchConfig() {
@@ -269,6 +367,7 @@ class FeatureFlags: ObservableObject {
     func resetToDefaults() {
         applyPreLaunchConfig()
         demoModeEnabled = false
+        devicePlacementMode = .offDockIdle
     }
 
     // MARK: - Debug Description

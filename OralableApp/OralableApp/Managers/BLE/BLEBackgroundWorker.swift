@@ -16,7 +16,7 @@ import Combine
 /// Configuration for BLEBackgroundWorker behavior
 struct BLEBackgroundWorkerConfig {
     /// Maximum number of reconnection attempts before giving up
-    var maxReconnectionAttempts: Int = 3
+    var maxReconnectionAttempts: Int = 8
 
     /// Base delay for exponential backoff (in seconds)
     var baseReconnectionDelay: TimeInterval = 2.0
@@ -31,7 +31,7 @@ struct BLEBackgroundWorkerConfig {
     var connectionTimeout: TimeInterval = 15.0
 
     /// Interval for RSSI polling (in seconds)
-    var rssiPollingInterval: TimeInterval = 5.0
+    var rssiPollingInterval: TimeInterval = 3.0
 
     /// Interval for connection health checks (in seconds)
     var healthCheckInterval: TimeInterval = 10.0
@@ -47,6 +47,8 @@ struct BLEBackgroundWorkerConfig {
 
     /// Max attempts while a recording session is active (effectively unlimited).
     static let recordingSessionMaxAttempts = 999
+    /// Max attempts while off-body on charger (Qi soak / background reconnect).
+    static let offBodyChargerMaxAttempts = 15
 
     /// Default configuration
     static let `default` = BLEBackgroundWorkerConfig()
@@ -178,6 +180,7 @@ final class BLEBackgroundWorker: ObservableObject {
     private var lastDataReceived: [UUID: Date] = [:]
     private var deviceOffBody: [UUID: Bool] = [:]
     private var unlimitedReconnectActive: Bool = false
+    private var offBodyChargerReconnectActive: Bool = false
     private var bleServiceEventCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
     private let eventSubject = PassthroughSubject<BLEBackgroundWorkerEvent, Never>()
@@ -266,10 +269,25 @@ final class BLEBackgroundWorker: ObservableObject {
         }
     }
 
+    /// Extended retry budget for off-body sessions on the charger (pilot Qi soak).
+    func setOffBodyChargerReconnectActive(_ active: Bool) {
+        offBodyChargerReconnectActive = active
+        Logger.shared.info("[BLEBackgroundWorker] Off-body charger reconnect \(active ? "enabled" : "disabled")")
+    }
+
+    /// True when a reconnect is scheduled, in progress, or deferred (BT off).
+    var hasActiveOrPendingReconnection: Bool {
+        !activeReconnections.isEmpty || !pendingReconnectionPeripherals.isEmpty
+    }
+
     private func effectiveMaxReconnectionAttempts() -> Int {
-        unlimitedReconnectActive
-            ? BLEBackgroundWorkerConfig.recordingSessionMaxAttempts
-            : config.maxReconnectionAttempts
+        if unlimitedReconnectActive {
+            return BLEBackgroundWorkerConfig.recordingSessionMaxAttempts
+        }
+        if offBodyChargerReconnectActive {
+            return BLEBackgroundWorkerConfig.offBodyChargerMaxAttempts
+        }
+        return config.maxReconnectionAttempts
     }
 
     // MARK: - Lifecycle
@@ -468,7 +486,10 @@ final class BLEBackgroundWorker: ObservableObject {
     private func handleReconnectionTimeout(for peripheralId: UUID, peripheral: CBPeripheral, attempt: Int) {
         let willRetry = (reconnectionStates[peripheralId]?.attemptCount ?? 0) < effectiveMaxReconnectionAttempts()
 
-        // Cancel the pending connection
+        // Cancel the pending connection and clear any stuck pending-connect flag.
+        if let central = bleService as? BLECentralManager {
+            central.clearPendingConnection(for: peripheralId)
+        }
         bleService?.disconnect(from: peripheral)
 
         // Create structured BLEError for timeout
@@ -677,6 +698,7 @@ final class BLEBackgroundWorker: ObservableObject {
                     connectionHealth[peripheralId] = .stale
                     eventSubject.send(.connectionStale(peripheralId: peripheralId))
                     Logger.shared.warning("[BLEBackgroundWorker] Connection stale for \(peripheralId) - no data for \(Int(elapsed))s")
+                    recoverStaleConnection(for: peripheralId)
                 }
             } else if elapsed > config.connectionStaleTimeout / 2 {
                 if connectionHealth[peripheralId] == .healthy {
@@ -689,6 +711,18 @@ final class BLEBackgroundWorker: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Drop a zombie GATT link so CoreBluetooth emits disconnect and auto-reconnect runs.
+    private func recoverStaleConnection(for peripheralId: UUID) {
+        guard let bleService,
+              let peripheral = bleService.retrievePeripherals(withIdentifiers: [peripheralId]).first,
+              peripheral.state == .connected else {
+            return
+        }
+
+        Logger.shared.warning("[BLEBackgroundWorker] Cancelling stale connected peripheral \(peripheralId) to trigger reconnect")
+        bleService.disconnect(from: peripheral)
     }
 
     // MARK: - Event Subscription
@@ -741,16 +775,23 @@ final class BLEBackgroundWorker: ObservableObject {
         // Handle specific error types that affect reconnection
         switch error {
         case .connectionFailed(let peripheralId, _):
-            // Mark reconnection as failed for this attempt
-            if reconnectionStates[peripheralId]?.isActive == true {
-                let attempt = reconnectionStates[peripheralId]?.attemptCount ?? 0
-                let willRetry = attempt < effectiveMaxReconnectionAttempts()
-                reconnectionDelegate?.reconnectionAttemptDidFail(
-                    for: peripheralId,
-                    attempt: attempt,
-                    error: error,
-                    willRetry: willRetry
-                )
+            connectionTimeoutTasks[peripheralId]?.cancel()
+            connectionTimeoutTasks.removeValue(forKey: peripheralId)
+
+            let attempt = reconnectionStates[peripheralId]?.attemptCount ?? 0
+            let willRetry = attempt < effectiveMaxReconnectionAttempts()
+            reconnectionDelegate?.reconnectionAttemptDidFail(
+                for: peripheralId,
+                attempt: attempt,
+                error: error,
+                willRetry: willRetry
+            )
+            eventSubject.send(.reconnectionFailed(peripheralId: peripheralId, error: error))
+
+            if reconnectionStates[peripheralId]?.isActive == true, willRetry,
+               let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
+                reconnectionStates[peripheralId]?.isActive = false
+                scheduleReconnection(for: peripheralId, peripheral: peripheral, immediate: false)
             }
 
         case .bluetoothNotReady, .bluetoothUnauthorized, .bluetoothUnsupported:
@@ -828,14 +869,18 @@ final class BLEBackgroundWorker: ObservableObject {
     /// BLE operations continue in background for connected devices
     func handleAppEnteredBackground() {
         Logger.shared.info("[BLEBackgroundWorker] App entered background - BLE operations continue")
-        // BLE operations continue in background for connected devices
-        // No action needed - CoreBluetooth maintains connections in background
     }
 
-    /// Handle app returning to foreground
+    /// Resume deferred reconnects after foreground (Bluetooth state handler may have missed a window).
     func handleAppEnteredForeground() {
         Logger.shared.info("[BLEBackgroundWorker] App entered foreground")
-        // No action needed - operations continue normally
+        guard isRunning, let bleService, bleService.isReady else { return }
+
+        let pending = pendingReconnectionPeripherals
+        pendingReconnectionPeripherals.removeAll()
+        for (peripheralId, peripheral) in pending {
+            scheduleReconnection(for: peripheralId, peripheral: peripheral, immediate: true)
+        }
     }
 
     /// Handle app about to suspend (low memory, system pressure)

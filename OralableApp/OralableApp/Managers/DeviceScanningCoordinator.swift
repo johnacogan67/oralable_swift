@@ -176,6 +176,14 @@ extension DeviceManager {
             return .oralable
         }
 
+        // Vitals pilot: Oralable-only — ignore research EMG peripherals in scan/connect UI.
+        if FeatureFlags.shared.vitalsPhaseEnabled {
+            if lowercaseName.contains("anr") || lowercaseName.contains("m40") {
+                Logger.shared.debug("[DeviceManager] Vitals phase: ignoring ANR device \(name)")
+                return nil
+            }
+        }
+
         // Check for ANR M40 device - STRICT matching
         if lowercaseName.contains("anr") || lowercaseName.contains("m40") {
             Logger.shared.info("[DeviceManager] ✅ Detected ANR device: \(name)")
@@ -190,6 +198,10 @@ extension DeviceManager {
             return .oralable
         }
         if serviceStrings.contains("FEAF") {
+            if FeatureFlags.shared.vitalsPhaseEnabled {
+                Logger.shared.debug("[DeviceManager] Vitals phase: ignoring ANR service FEAF for \(name)")
+                return nil
+            }
             Logger.shared.info("[DeviceManager] ✅ Detected ANR by service UUID FEAF: \(name)")
             return .anr
         }
@@ -222,11 +234,31 @@ extension DeviceManager {
         scanStartTime = Date()
         discoveryCount = 0
         rejectedDiscoveryLogSeenThisScan.removeAll()
-        discoveredDevices.removeAll()
-        deviceReadiness.removeAll()
+
+        let preservedOralableEntries: [DeviceInfo]
+        if FeatureFlags.shared.vitalsPhaseEnabled {
+            let rememberedOralableIds = Set(
+                persistenceManager.getRememberedDevices().compactMap { remembered -> UUID? in
+                    guard remembered.name.lowercased().contains("oralable"),
+                          let uuid = UUID(uuidString: remembered.id) else { return nil }
+                    return uuid
+                }
+            )
+            preservedOralableEntries = discoveredDevices.filter { device in
+                guard let id = device.peripheralIdentifier else { return false }
+                return rememberedOralableIds.contains(id) || device.type == .oralable
+            }
+            let preservedIds = Set(preservedOralableEntries.compactMap(\.peripheralIdentifier))
+            deviceReadiness = deviceReadiness.filter { preservedIds.contains($0.key) }
+        } else {
+            preservedOralableEntries = []
+            deviceReadiness.removeAll()
+        }
+
+        discoveredDevices = preservedOralableEntries
         isScanning = true
 
-        Logger.shared.info("[DeviceManager] ✅ Scan started - discoveredDevices cleared, isScanning = true")
+        Logger.shared.info("[DeviceManager] ✅ Scan started - preserved \(preservedOralableEntries.count) device(s), isScanning = true")
 
         bleService?.startScanning(services: nil)
 

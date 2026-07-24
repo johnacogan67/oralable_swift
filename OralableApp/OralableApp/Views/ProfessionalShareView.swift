@@ -159,8 +159,10 @@ private struct ActivityView: UIViewControllerRepresentable {
         let (prepared, tempURLs) = ShareActivityItems.preparingForShare([tmp])
         let vc = UIActivityViewController(activityItems: prepared, applicationActivities: nil)
         vc.completionWithItemsHandler = { _, _, _, _ in
-            for url in tempURLs {
-                try? FileManager.default.removeItem(at: url)
+            DispatchQueue.main.asyncAfter(deadline: .now() + ShareActivityItems.tempFileRetentionSeconds) {
+                for url in tempURLs {
+                    try? FileManager.default.removeItem(at: url)
+                }
             }
         }
         return vc

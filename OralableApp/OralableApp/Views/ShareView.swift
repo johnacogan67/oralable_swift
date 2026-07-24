@@ -54,8 +54,9 @@ struct ShareView: View {
     @State private var shareCode: String = ""
     @State private var isGeneratingCode = false
     @State private var showCopiedFeedback = false
-    @State private var showingShareSheet = false
-    @State private var shareItems: [Any] = []
+    @State private var showingFileExporter = false
+    @State private var exportDocument: CSVDocument?
+    @State private var exportFilename = "oralable_export.csv"
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isSharing = false
@@ -65,6 +66,10 @@ struct ShareView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !featureFlags.vitalsPhaseEnabled {
+                    protocolBValidationSection
+                }
+
                 // Share CSV section - ALWAYS SHOWN
                 shareCSVSection
 
@@ -79,10 +84,20 @@ struct ShareView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingShareSheet) {
-                if !shareItems.isEmpty {
-                    ShareSheet(items: shareItems)
+            .fileExporter(
+                isPresented: $showingFileExporter,
+                document: exportDocument,
+                contentType: .commaSeparatedText,
+                defaultFilename: exportFilename
+            ) { result in
+                switch result {
+                case .success(let url):
+                    Logger.shared.info("[ShareView] ✅ Saved to Files: \(url.lastPathComponent)")
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
+                    showError = true
                 }
+                exportDocument = nil
             }
             .alert("Error", isPresented: $showError) {
                 Button("OK", role: .cancel) { }
@@ -118,42 +133,21 @@ struct ShareView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: designSystem.spacing.sm, leading: 0, bottom: designSystem.spacing.sm, trailing: 0))
 
-            Button(action: shareCSV) {
-                HStack {
-                    if isSharing {
-                        ProgressView()
-                            .frame(width: designSystem.spacing.icon, height: designSystem.spacing.icon)
-                            .frame(width: designSystem.spacing.xl)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(designSystem.typography.headline)
-                            .foregroundColor(designSystem.colors.info)
-                            .frame(width: designSystem.spacing.xl)
-                    }
+            exportActionRow(
+                title: isSharing ? "Sharing..." : "Share Data as CSV",
+                subtitle: isSharing && !shareProgress.isEmpty ? shareProgress : "AirDrop, Mail, WhatsApp, etc.",
+                systemImage: "square.and.arrow.up",
+                isBusy: isSharing,
+                action: shareCSV
+            )
 
-                    VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
-                        Text(isSharing ? "Sharing..." : "Share Data as CSV")
-                            .font(designSystem.typography.body)
-                            .foregroundColor(designSystem.colors.textPrimary)
-
-                        if isSharing && !shareProgress.isEmpty {
-                            Text(shareProgress)
-                                .font(designSystem.typography.footnote)
-                                .foregroundColor(designSystem.colors.textSecondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    if !isSharing {
-                        Image(systemName: "chevron.right")
-                            .font(designSystem.typography.buttonSmall)
-                            .foregroundColor(designSystem.colors.textTertiary)
-                    }
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .disabled(isSharing)
+            exportActionRow(
+                title: "Save CSV to Files",
+                subtitle: "Pick iCloud Drive or On My iPhone folder",
+                systemImage: "folder",
+                isBusy: isSharing,
+                action: saveCSVToFiles
+            )
         } header: {
             Text("Share")
         } footer: {
@@ -168,7 +162,167 @@ struct ShareView: View {
             return Text("Export \(eventCount) detected events (fast, small file)")
         case .continuous:
             let recordCount = sensorDataProcessor.sensorDataHistory.count
-            return Text("Export \(recordCount) sensor samples (may take longer)")
+            return Text("Export \(recordCount) in-memory samples (~3 min at 50 Hz). For Protocol B validation use the BLE log export above.")
+        }
+    }
+
+    // MARK: - Protocol B validation log (pilot / self_validate.py)
+    private var protocolBValidationSection: some View {
+        Section {
+            Button(action: prepareProtocolBSession) {
+                HStack {
+                    Image(systemName: "figure.walk.motion")
+                        .foregroundColor(designSystem.colors.success)
+                        .frame(width: designSystem.spacing.xl)
+                    VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
+                        Text("Prepare Protocol B session")
+                            .font(designSystem.typography.body)
+                            .foregroundColor(designSystem.colors.textPrimary)
+                        Text("Sets Worn on cheek — mount clip, then connect")
+                            .font(designSystem.typography.footnote)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+                    Spacer()
+                    if featureFlags.protocolBSessionPrepared {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(designSystem.colors.success)
+                    }
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            HStack {
+                Text("BLE log lines")
+                    .foregroundColor(designSystem.colors.textSecondary)
+                Spacer()
+                Text("\(NRFConnectBLELogger.shared.lineCount())")
+                    .font(.system(.body, design: .monospaced))
+            }
+
+            exportActionRow(
+                title: isSharing ? "Preparing…" : "Share Protocol B validation log",
+                subtitle: "AirDrop, Mail, WhatsApp, etc.",
+                systemImage: "square.and.arrow.up",
+                isBusy: isSharing,
+                action: exportProtocolBValidationLog
+            )
+
+            exportActionRow(
+                title: "Save Protocol B log to Files",
+                subtitle: "Pick iCloud Drive or On My iPhone folder",
+                systemImage: "folder",
+                isBusy: isSharing,
+                action: saveProtocolBValidationLogToFiles
+            )
+        } header: {
+            Text("Protocol B validation")
+        } footer: {
+            Text("Tap Prepare before each structured session. Do not tap Scan on Devices during recording — it can erase the BLE log. If Share fails, use Save to Files. Exports also remain in the app Documents folder (Files → On My iPhone → Oralable).")
+        }
+    }
+
+    private func exportActionRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isBusy: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                if isBusy {
+                    ProgressView()
+                        .frame(width: designSystem.spacing.icon, height: designSystem.spacing.icon)
+                        .frame(width: designSystem.spacing.xl)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(designSystem.typography.headline)
+                        .foregroundColor(designSystem.colors.info)
+                        .frame(width: designSystem.spacing.xl)
+                }
+
+                VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
+                    Text(title)
+                        .font(designSystem.typography.body)
+                        .foregroundColor(designSystem.colors.textPrimary)
+                    Text(subtitle)
+                        .font(designSystem.typography.footnote)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                }
+
+                Spacer()
+
+                if !isBusy {
+                    Image(systemName: "chevron.right")
+                        .font(designSystem.typography.buttonSmall)
+                        .foregroundColor(designSystem.colors.textTertiary)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isBusy)
+    }
+
+    private func prepareProtocolBSession() {
+        deviceManager.prepareProtocolBSession()
+    }
+
+    private func exportProtocolBValidationLog() {
+        Task {
+            await presentProtocolBExport { url in
+                SharePresentationSupport.presentShareSheet(items: [url])
+            }
+        }
+    }
+
+    private func saveProtocolBValidationLogToFiles() {
+        Task {
+            await presentProtocolBExport { url in
+                presentSaveToFiles(url)
+            }
+        }
+    }
+
+    private func presentProtocolBExport(present: @escaping (URL) -> Void) async {
+        await MainActor.run {
+            isSharing = true
+            shareProgress = "Writing validation log…"
+        }
+        defer {
+            Task { @MainActor in
+                isSharing = false
+                shareProgress = ""
+            }
+        }
+        do {
+            let url = try ValidationLogExporter.exportNRFConnectLog(
+                filename: ValidationLogExporter.pilotFilename()
+            )
+            await MainActor.run {
+                Logger.shared.info("[ShareView] ✅ Protocol B validation log: \(url.lastPathComponent)")
+                present(url)
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+    }
+
+    @MainActor
+    private func presentSaveToFiles(_ url: URL) {
+        // Primary: system file exporter (folder picker). Fallback: document picker from root VC.
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+            exportFilename = url.lastPathComponent
+            exportDocument = CSVDocument(csvContent: content)
+            DispatchQueue.main.async {
+                showingFileExporter = true
+            }
+        } catch {
+            Logger.shared.warning("[ShareView] fileExporter prep failed, using document picker: \(error.localizedDescription)")
+            SharePresentationSupport.presentSaveToFiles(urls: [url])
         }
     }
 
@@ -224,8 +378,8 @@ struct ShareView: View {
             if let name = dependencies.sessionHistoryStore.temporalisSleepCalibration?.rawCalibrationCSVFileName {
                 calURL = try? SessionHistoryStore.researchCalibrationURL(fileName: name)
             }
-            shareItems = try ClinicalReportGenerator.writeResearchShareItems(payload: payload, calibrationRawCSV: calURL)
-            showingShareSheet = true
+            let items = try ClinicalReportGenerator.writeResearchShareItems(payload: payload, calibrationRawCSV: calURL)
+            SharePresentationSupport.presentShareSheet(items: items)
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -365,34 +519,40 @@ struct ShareView: View {
     // MARK: - Share CSV (Optimized)
     private func shareCSV() {
         Task {
-            await MainActor.run {
-                isSharing = true
-                shareProgress = "Preparing..."
+            await exportCSV { url in
+                SharePresentationSupport.presentShareSheet(items: [url])
             }
+        }
+    }
 
-            var url: URL? = nil
-
-            switch exportType {
-            case .events:
-                // Export cached events (fast, small file)
-                url = await generateEventCSVFile()
-            case .continuous:
-                // Legacy export (all samples)
-                url = await generateCSVFileOptimized()
+    private func saveCSVToFiles() {
+        Task {
+            await exportCSV { url in
+                presentSaveToFiles(url)
             }
+        }
+    }
 
-            if let url = url {
-                await MainActor.run {
-                    isSharing = false
-                    shareProgress = ""
-                    shareItems = [url]
-                    showingShareSheet = true
-                }
-            } else {
-                await MainActor.run {
-                    isSharing = false
-                    shareProgress = ""
-                }
+    private func exportCSV(present: @escaping (URL) -> Void) async {
+        await MainActor.run {
+            isSharing = true
+            shareProgress = "Preparing..."
+        }
+
+        var url: URL? = nil
+
+        switch exportType {
+        case .events:
+            url = await generateEventCSVFile()
+        case .continuous:
+            url = await generateCSVFileOptimized()
+        }
+
+        await MainActor.run {
+            isSharing = false
+            shareProgress = ""
+            if let url {
+                present(url)
             }
         }
     }
@@ -409,8 +569,8 @@ struct ShareView: View {
 
                 let csvContent = StateEventCSVExporter.exportToCSV(events: events)
                 let fileManager = FileManager.default
-                let cacheDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
-                let exportDirectory = cacheDirectory.appendingPathComponent("Exports", isDirectory: true)
+                let exportDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent("Exports", isDirectory: true)
                 if !fileManager.fileExists(atPath: exportDirectory.path) {
                     try? fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
                 }

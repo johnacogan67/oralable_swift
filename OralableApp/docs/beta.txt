@@ -227,7 +227,7 @@
     <section class="hero">
         <h1>Join Early Access</h1>
         <p>Be among the first to experience Oralable, a new way to monitor your jaw muscle activity.</p>
-        <p class="launch-date">Launching January 2026</p>
+        <p class="launch-date">Vitals Phase 0 pilot · Mid 2026</p>
     </section>
 
     <div class="container">

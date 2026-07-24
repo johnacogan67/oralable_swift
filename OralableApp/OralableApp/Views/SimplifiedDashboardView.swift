@@ -19,7 +19,9 @@ import OralableCore
 struct SimplifiedDashboardView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
+    @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var appStateManager: AppStateManager
+    @ObservedObject private var featureFlags = FeatureFlags.shared
     @ObservedObject var viewModel: DashboardViewModel
 
     // Computed positioning state
@@ -49,23 +51,33 @@ struct SimplifiedDashboardView: View {
                         }
 
                         // PPG Status Card
-                        PPGStatusCard(
-                            state: positioningState,
-                            temperature: viewModel.temperature,
-                            isConnected: viewModel.isConnected,
-                            isCalibrating: viewModel.isCalibrating,
-                            calibrationProgress: viewModel.calibrationProgress
-                        )
+                        if featureFlags.vitalsPhaseEnabled && viewModel.oralableConnected {
+                            VitalsDeviceStatusCard(
+                                heartRate: viewModel.heartRate,
+                                heartRateQuality: deviceManagerAdapter.heartRateQuality,
+                                spo2: viewModel.spO2,
+                                spo2Quality: deviceManagerAdapter.spO2Quality,
+                                placementMode: featureFlags.devicePlacementMode,
+                                rssi: viewModel.bleRSSI
+                            )
+                        } else {
+                            PPGStatusCard(
+                                state: positioningState,
+                                temperature: viewModel.temperature,
+                                isConnected: viewModel.isConnected,
+                                isCalibrating: viewModel.isCalibrating,
+                                calibrationProgress: viewModel.calibrationProgress
+                            )
+                        }
 
-                        if appStateManager.showsOralableClinicalMetrics {
+                        if appStateManager.showsOralableClinicalMetrics && !featureFlags.vitalsPhaseEnabled {
                             TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
                         }
 
-                        // Event summary
-                        eventSummary
-
-                        // Recording state indicator (automatic recording)
-                        recordingStateIndicator
+                        if !featureFlags.vitalsPhaseEnabled {
+                            eventSummary
+                            recordingStateIndicator
+                        }
                     }
                     .padding(designSystem.spacing.screenPadding)
                 }

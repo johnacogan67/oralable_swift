@@ -204,9 +204,8 @@ public struct BLEDataParser {
         // Validate range (2500-4500 mV typical for LiPo)
         guard millivolts >= 2500 && millivolts <= 4500 else { return nil }
 
-        // Convert to percentage (simple linear mapping)
-        // 3.0V = 0%, 4.2V = 100%
-        let percentage = Int(min(100, max(0, (millivolts - 3000) * 100 / 1200)))
+        // Oralable remapped gauge (FW >= 1.0.68): 3.61V = 0%, 4.35V = 100%
+        let percentage = Int(min(100, max(0, (millivolts - 3610) * 100 / 740)))
 
         return BatteryData(
             percentage: percentage,

@@ -11,6 +11,7 @@ import OralableCore
 struct DeviceDiscoveryView: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var designSystem: DesignSystem
+    @ObservedObject private var featureFlags = FeatureFlags.shared
     @Environment(\.dismiss) private var dismiss
 
     /// When set (e.g. first-launch onboarding), invoked once when Oralable REV10 primary is fully ready (PPG streaming).
@@ -31,6 +32,12 @@ struct DeviceDiscoveryView: View {
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if featureFlags.vitalsPhaseEnabled {
+                        VitalsPlacementPickerSection(showWornOption: false, compact: true)
+                            .environmentObject(designSystem)
+                            .environmentObject(deviceManager)
+                    }
 
                     if deviceManager.isScanning {
                         HStack {
@@ -135,6 +142,13 @@ struct DeviceDiscoveryView: View {
                 if blockedOralableFirmware {
                     firmwareUpdateRequiredCard(found: found)
                 } else {
+                    if product.coreDeviceType == .oralable,
+                       FirmwareGate.isBelowRecommendedOralableVersion(found.firmwareVersion) {
+                        Text("Firmware \(found.firmwareVersion ?? "?") works, but \(FirmwareGate.recommendedOralableSemanticVersion)+ adds Automatic dock (STAT blink). Manual placement still OK.")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Button {
                         DeviceManagerFactory.performHandshake(for: product, deviceManager: deviceManager)
                         Task {

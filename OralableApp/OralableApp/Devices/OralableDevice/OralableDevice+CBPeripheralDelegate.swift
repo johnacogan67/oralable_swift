@@ -182,6 +182,12 @@ extension OralableDevice: CBPeripheralDelegate {
             } else if characteristic.uuid == statusCharUUID {
                 statusNotificationContinuation?.resume(throwing: error)
                 statusNotificationContinuation = nil
+            } else if characteristic.uuid == tgmBatteryCharUUID {
+                batteryNotificationContinuation?.resume(throwing: error)
+                batteryNotificationContinuation = nil
+            } else if characteristic.uuid == commandCharUUID {
+                temperatureNotificationContinuation?.resume(throwing: error)
+                temperatureNotificationContinuation = nil
             }
             return
         }
@@ -206,6 +212,8 @@ extension OralableDevice: CBPeripheralDelegate {
             case commandCharUUID:
                 notificationReadiness.insert(.temperature)
                 Logger.shared.info("[OralableDevice] 📡 Temperature notifications confirmed ready")
+                temperatureNotificationContinuation?.resume()
+                temperatureNotificationContinuation = nil
 
             case statusCharUUID:
                 notificationReadiness.insert(.status)
@@ -216,6 +224,8 @@ extension OralableDevice: CBPeripheralDelegate {
             case tgmBatteryCharUUID:
                 notificationReadiness.insert(.battery)
                 Logger.shared.info("[OralableDevice] 📡 Battery notifications confirmed ready")
+                batteryNotificationContinuation?.resume()
+                batteryNotificationContinuation = nil
 
             default:
                 Logger.shared.debug("[OralableDevice] 📡 Unknown characteristic notifications enabled: \(charName)")
@@ -232,17 +242,30 @@ extension OralableDevice: CBPeripheralDelegate {
                 }
             }
         } else {
+            let disableError = DeviceError.connectionFailed(
+                "Notifications disabled for \(characteristic.uuid.uuidString.prefix(12))"
+            )
             switch characteristic.uuid {
             case sensorDataCharUUID:
                 notificationReadiness.remove(.ppgData)
+                notificationEnableContinuation?.resume(throwing: disableError)
+                notificationEnableContinuation = nil
             case accelerometerCharUUID:
                 notificationReadiness.remove(.accelerometer)
+                accelerometerNotificationContinuation?.resume(throwing: disableError)
+                accelerometerNotificationContinuation = nil
             case commandCharUUID:
                 notificationReadiness.remove(.temperature)
+                temperatureNotificationContinuation?.resume(throwing: disableError)
+                temperatureNotificationContinuation = nil
             case statusCharUUID:
                 notificationReadiness.remove(.status)
+                statusNotificationContinuation?.resume(throwing: disableError)
+                statusNotificationContinuation = nil
             case tgmBatteryCharUUID:
                 notificationReadiness.remove(.battery)
+                batteryNotificationContinuation?.resume(throwing: disableError)
+                batteryNotificationContinuation = nil
             default:
                 break
             }

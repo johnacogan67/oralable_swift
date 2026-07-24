@@ -260,14 +260,17 @@ class DeviceManager: ObservableObject {
     /// Setup automatic recording session for state-based event recording
     private func setupAutomaticRecordingSession() {
         let session = AutomaticRecordingSession()
+        session.skipCalibration = FeatureFlags.shared.vitalsPhaseEnabled
 
         session.onSessionStarted = { [weak self] in
             Logger.shared.info("[DeviceManager] Automatic recording session started")
+            NRFConnectBLELogger.shared.throttleHighRateNotifications = false
             self?.backgroundWorker.setUnlimitedReconnectActive(true)
         }
 
         session.onSessionStopped = { [weak self] eventCount in
             Logger.shared.info("[DeviceManager] Automatic recording session stopped with \(eventCount) events")
+            NRFConnectBLELogger.shared.throttleHighRateNotifications = true
             self?.backgroundWorker.setUnlimitedReconnectActive(false)
         }
 
@@ -334,6 +337,9 @@ class DeviceManager: ObservableObject {
             centralManager.onDeviceConnected = nil
             centralManager.onDeviceDisconnected = nil
             centralManager.onBluetoothStateChanged = nil
+            centralManager.shouldPreserveValidationLog = { [weak self] in
+                self?.automaticRecordingSession?.isSessionActive == true
+            }
         }
 
         Logger.shared.info("[DeviceManager] BLE callbacks configured successfully")
@@ -592,6 +598,140 @@ class DeviceManager: ObservableObject {
         return devices[pid]
     }
 
+    /// Minimum battery % before worn placement / PPG streaming (pilot test plan: charge >50%).
+    static let wornPlacementMinimumBatteryPercent = 50
+
+    /// Best available battery for the primary Oralable clip (status notify, then GATT battery).
+    func primaryBatteryPercent() -> Int? {
+        if let status = primaryFirmwareDeviceStatus {
+            return Int(status.batteryPercent)
+        }
+        if let oralable = primaryBLEDevice as? OralableDevice, let level = oralable.batteryLevel {
+            return level
+        }
+        if let level = primaryDevice?.batteryLevel {
+            return level
+        }
+        return nil
+    }
+
+    /// Reported firmware string for the primary Oralable clip (GATT `3A0FF006`), if known.
+    func primaryFirmwareVersion() -> String? {
+        if let v = (primaryBLEDevice as? OralableDevice)?.firmwareVersion?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
+            return v
+        }
+        if let v = primaryDevice?.firmwareVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !v.isEmpty {
+            return v
+        }
+        return nil
+    }
+
+    /// Placement mode last written to firmware on the active primary clip (nil if unknown / disconnected).
+    func appliedFirmwarePlacementMode() -> FeatureFlags.DevicePlacementMode? {
+        (primaryBLEDevice as? OralableDevice)?.lastAppliedPlacementMode
+    }
+
+    /// Apply explicit firmware placement (`00B` 0x09). Requires FW ≥ 1.0.62.
+    /// Gen1 pcb00003: mid-session writes while streaming often drop BLE — use `force: true` only during connect setup.
+    func applyFirmwarePlacementMode(_ mode: FeatureFlags.DevicePlacementMode, force: Bool = false) {
+        guard let oralable = primaryBLEDevice as? OralableDevice else { return }
+
+        if !force,
+           FeatureFlags.shared.vitalsPhaseEnabled,
+           primaryDeviceReadiness.isConnected,
+           oralable.isConnectionReady,
+           oralable.lastAppliedPlacementMode != mode {
+            Logger.shared.info(
+                "[DeviceManager] Deferred placement \(mode.title) — will apply on next connect (avoid mid-session BLE drop)"
+            )
+            return
+        }
+
+        if mode == .worn, FeatureFlags.shared.vitalsPhaseEnabled,
+           let pct = primaryBatteryPercent(), pct < Self.wornPlacementMinimumBatteryPercent {
+            Logger.shared.warning(
+                "[DeviceManager] Blocked worn placement at \(pct)% (need ≥ \(Self.wornPlacementMinimumBatteryPercent)%)"
+            )
+            lastError = .connectionFailed(
+                "Battery too low for temple mode (\(pct)%). Charge on the Qi pad to at least \(Self.wornPlacementMinimumBatteryPercent)% first."
+            )
+            return
+        }
+
+        do {
+            try oralable.setFirmwareUserDeviceMode(mode)
+            Logger.shared.info("[DeviceManager] Applied firmware placement mode: \(mode.title)")
+        } catch {
+            Logger.shared.warning("[DeviceManager] Firmware placement apply failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Worn on cheek for on-body capture (overnight or structured session).
+    func applyWornPlacementForBodySession() {
+        FeatureFlags.shared.devicePlacementMode = .worn
+        applyFirmwarePlacementMode(.worn)
+    }
+
+    /// Before Protocol B: set worn + arm connect hook (promotes forgotten off-dock connects).
+    func prepareProtocolBSession() {
+        applyWornPlacementForBodySession()
+        FeatureFlags.shared.protocolBSessionPrepared = true
+        Logger.shared.info("[DeviceManager] Protocol B session prepared (worn placement armed)")
+    }
+
+    /// Resolves placement for pilot connect.
+    /// FW ≥ 1.0.70: keep Automatic (STAT blink dock). Older Gen1: remap Automatic → Off charger.
+    func resolvePilotPlacementOnConnect(oralable: OralableDevice) throws {
+        let flags = FeatureFlags.shared
+        var mode = flags.devicePlacementMode
+        let fw = oralable.firmwareVersion
+        let automaticDockOK = FirmwareGate.supportsAutomaticDockDetect(fw)
+
+        if mode == .auto {
+            if automaticDockOK {
+                Logger.shared.info(
+                    "[DeviceManager] Keeping Automatic placement (FW \(fw ?? "?") STAT dock)"
+                )
+            } else if flags.vitalsPhaseEnabled {
+                mode = .offDockIdle
+                Logger.shared.info(
+                    "[DeviceManager] Vitals phase: Automatic → Off charger (FW \(fw ?? "?") < \(FirmwareGate.recommendedOralableSemanticVersion))"
+                )
+            } else {
+                mode = flags.protocolBSessionPrepared ? .worn : .offDockIdle
+                Logger.shared.info(
+                    "[DeviceManager] Promoted placement Automatic → \(mode.title) (pre-1.0.70 chrsts policy)"
+                )
+            }
+        } else if flags.protocolBSessionPrepared && mode == .offDockIdle {
+            mode = .worn
+            Logger.shared.info("[DeviceManager] Promoted placement Off charger → Worn (Protocol B prepared)")
+        }
+
+        if mode != flags.devicePlacementMode {
+            flags.devicePlacementMode = mode
+        }
+
+        if flags.vitalsPhaseEnabled && mode == .worn {
+            if let pct = oralable.batteryLevel, pct < Self.wornPlacementMinimumBatteryPercent {
+                mode = .offDockIdle
+                flags.devicePlacementMode = mode
+                Logger.shared.warning(
+                    "[DeviceManager] Vitals: blocked worn on connect at \(pct)% — using Off charger (not worn)"
+                )
+            }
+        }
+
+        try oralable.setFirmwareUserDeviceMode(mode)
+
+        if flags.debugRebootIntervalMinutes > 0 {
+            let seconds = UInt16(flags.debugRebootIntervalMinutes) * 60
+            try? oralable.setFirmwareDebugRebootInterval(seconds: seconds)
+        }
+    }
+
     /// Append resampled / framed `SensorData` into the shared OralableCore buffer (50 Hz lane).
     func appendToUnifiedSensorStream(_ data: SensorData) {
         Task { await unifiedSensorDataBuffer.append(data) }
@@ -606,6 +746,95 @@ class DeviceManager: ObservableObject {
     }
 
     // MARK: - Auto-Reconnect to Remembered Devices
+
+    /// Preferred Oralable target for error-banner retry and vitals reconnect (not arbitrary scan order).
+    func preferredOralableReconnectTarget() -> DeviceInfo? {
+        let remembered = persistenceManager.getRememberedDevices()
+        let oralableRemembered = remembered.filter {
+            $0.name.lowercased().contains("oralable")
+        }
+
+        if let primaryId = primaryDevice?.peripheralIdentifier?.uuidString,
+           let match = oralableRemembered.first(where: { $0.id == primaryId }),
+           let uuid = UUID(uuidString: match.id) {
+            if let discovered = discoveredDevices.first(where: { $0.peripheralIdentifier == uuid }) {
+                return discovered
+            }
+            if let registry = devices[uuid] {
+                return DeviceInfo(
+                    type: .oralable,
+                    name: match.name,
+                    peripheralIdentifier: uuid,
+                    connectionState: registry.connectionState,
+                    signalStrength: discoveredDevices.first(where: { $0.peripheralIdentifier == uuid })?.signalStrength ?? -60
+                )
+            }
+        }
+
+        for remembered in oralableRemembered {
+            guard let uuid = UUID(uuidString: remembered.id) else { continue }
+            if let discovered = discoveredDevices.first(where: { $0.peripheralIdentifier == uuid }) {
+                return discovered
+            }
+            if devices[uuid] != nil {
+                return DeviceInfo(
+                    type: .oralable,
+                    name: remembered.name,
+                    peripheralIdentifier: uuid,
+                    connectionState: .disconnected,
+                    signalStrength: -60
+                )
+            }
+        }
+
+        if FeatureFlags.shared.vitalsPhaseEnabled {
+            return discoveredDevices.first(where: { $0.type == .oralable })
+        }
+
+        return discoveredDevices.first
+    }
+
+    /// Connect to a remembered device by UUID — uses CoreBluetooth retrieve when not in scan list.
+    func connectToRememberedDevice(id: String) async throws {
+        if let discovered = discoveredDevices.first(where: { $0.peripheralIdentifier?.uuidString == id }) {
+            try await connect(to: discovered)
+            return
+        }
+
+        guard let uuid = UUID(uuidString: id) else {
+            throw DeviceError.invalidPeripheral("Invalid device id")
+        }
+
+        if devices[uuid] == nil, let peripheral = bleService?.retrievePeripherals(withIdentifiers: [uuid]).first {
+            let name = persistenceManager.getRememberedDevices().first(where: { $0.id == id })?.name
+                ?? peripheral.name
+                ?? "Oralable"
+            handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: -60)
+        }
+
+        guard let device = devices[uuid] else {
+            Logger.shared.warning("[DeviceManager] Remembered device not in registry — starting scan")
+            await startScanning()
+            throw DeviceError.invalidPeripheral("Device not available — scan started")
+        }
+
+        let rememberedName = persistenceManager.getRememberedDevices().first(where: { $0.id == id })?.name
+            ?? device.name
+
+        let info = DeviceInfo(
+            type: device.deviceType,
+            name: rememberedName,
+            peripheralIdentifier: uuid,
+            connectionState: device.connectionState,
+            signalStrength: -60
+        )
+
+        if !discoveredDevices.contains(where: { $0.peripheralIdentifier == uuid }) {
+            discoveredDevices.append(info)
+        }
+
+        try await connect(to: info)
+    }
 
     /// Attempt to auto-reconnect to previously remembered devices
     /// This method waits for Bluetooth to be ready before attempting reconnection
@@ -623,23 +852,51 @@ class DeviceManager: ObservableObject {
             guard let self = self else { return }
 
             Task { @MainActor in
-                Logger.shared.info("[DeviceManager] ✅ Bluetooth ready - starting auto-reconnect scan")
+                Logger.shared.info("[DeviceManager] ✅ Bluetooth ready - starting auto-reconnect")
 
-                await self.startScanning()
-                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds to discover
+                let targets = rememberedDevices.filter { remembered in
+                    if FeatureFlags.shared.vitalsPhaseEnabled {
+                        return remembered.name.lowercased().contains("oralable")
+                    }
+                    return true
+                }
 
-                for remembered in rememberedDevices {
-                    if let discovered = self.discoveredDevices.first(where: { $0.peripheralIdentifier?.uuidString == remembered.id }) {
-                        do {
-                            try await self.connect(to: discovered)
+                for remembered in targets {
+                    guard let uuid = UUID(uuidString: remembered.id) else { continue }
+                    do {
+                        try await self.connectToRememberedDevice(id: remembered.id)
+                        let readiness = await self.waitForDeviceReadiness(uuid, timeoutSeconds: 20)
+                        if readiness == .ready {
                             Logger.shared.info("[DeviceManager] Auto-reconnected to \(remembered.name)")
-                            break // Successfully connected, stop trying
-                        } catch {
-                            Logger.shared.debug("[DeviceManager] Auto-reconnect failed for \(remembered.name): \(error.localizedDescription)")
+                            return
                         }
+                        Logger.shared.debug(
+                            "[DeviceManager] Auto-reconnect incomplete for \(remembered.name): \(readiness.displayText)"
+                        )
+                    } catch {
+                        Logger.shared.debug("[DeviceManager] Auto-reconnect failed for \(remembered.name): \(error.localizedDescription)")
                     }
                 }
 
+                if self.deviceReadiness.values.contains(.ready) {
+                    return
+                }
+
+                await self.startScanning()
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                for remembered in targets {
+                    guard let uuid = UUID(uuidString: remembered.id) else { continue }
+                    do {
+                        try await self.connectToRememberedDevice(id: remembered.id)
+                        let readiness = await self.waitForDeviceReadiness(uuid, timeoutSeconds: 20)
+                        if readiness == .ready {
+                            Logger.shared.info("[DeviceManager] Auto-reconnected after scan to \(remembered.name)")
+                            break
+                        }
+                    } catch {
+                        Logger.shared.debug("[DeviceManager] Post-scan auto-reconnect failed for \(remembered.name)")
+                    }
+                }
                 self.stopScanning()
             }
         }

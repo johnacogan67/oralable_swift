@@ -9,6 +9,7 @@ import SwiftUI
 
 struct FirstLaunchOnboardingView: View {
     @ObservedObject var firstLaunchManager: FirstLaunchManager
+    @ObservedObject private var featureFlags = FeatureFlags.shared
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
     @EnvironmentObject var deviceManager: DeviceManager
@@ -24,7 +25,128 @@ struct FirstLaunchOnboardingView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: designSystem.spacing.lg) {
+                if featureFlags.vitalsPhaseEnabled {
+                    vitalsSetupContent
+                } else {
+                    legacyTemporalisSetupContent
+                }
+            }
+            .background(designSystem.colors.backgroundSecondary)
+            .navigationTitle("Setup")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                syncProgressIndexFromState()
+                applyExistingCalibrationGateIfNeeded()
+            }
+            .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, paired in
+                syncProgressIndexFromState()
+            }
+            .onChange(of: sessionHistoryStore.temporalisSleepCalibration?.calibrationId) { _, _ in
+                applyExistingCalibrationGateIfNeeded()
+            }
+        }
+        .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
+            if !pairingJustCompletedSession,
+               !firstLaunchManager.hasPairedOralablePrimary {
+                firstLaunchManager.enterTrialSetupMode()
+            }
+            pairingJustCompletedSession = false
+        }) {
+            DeviceDiscoveryView(
+                onOralablePrimaryReady: {
+                    pairingJustCompletedSession = true
+                    firstLaunchManager.markOralablePaired()
+                    showDeviceDiscoverySheet = false
+                }
+            )
+            .environmentObject(deviceManager)
+            .environmentObject(designSystem)
+        }
+        .fullScreenCover(isPresented: $showFitGuide) {
+            TemporalisFitGuideView(
+                onExit: {
+                    showFitGuide = false
+                    syncProgressIndexFromState()
+                },
+                onCalibrationSucceeded: {
+                    firstLaunchManager.markFirstFitCompleted()
+                },
+                onBeginCalibration: {
+                    setupProgressIndex = 2
+                }
+            )
+            .environmentObject(designSystem)
+            .environmentObject(deviceManagerAdapter)
+            .environmentObject(deviceManager)
+            .environmentObject(sessionHistoryStore)
+            .environmentObject(sensorDataProcessor)
+            .environmentObject(firstLaunchManager)
+        }
+    }
+
+    // MARK: - Phase 0 vitals (no fit / calibration)
+
+    private var vitalsSetupContent: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.lg) {
+            Text("Connect your Oralable")
+                .font(designSystem.typography.h2)
+                .foregroundColor(designSystem.colors.textPrimary)
+
+            Text("Phase 0 vitals: heart rate and SpO₂ on the temple. No cheek calibration.")
+                .font(designSystem.typography.body)
+                .foregroundColor(designSystem.colors.textSecondary)
+
+            VitalsPlacementPickerSection()
+                .environmentObject(designSystem)
+                .environmentObject(deviceManager)
+
+            if firstLaunchManager.hasPairedOralablePrimary {
+                Label("Device paired — opening dashboard…", systemImage: "checkmark.circle.fill")
+                    .font(designSystem.typography.labelMedium)
+                    .foregroundColor(designSystem.colors.success)
+            }
+
+            Button {
+                showDeviceDiscoverySheet = true
+            } label: {
+                Label(
+                    firstLaunchManager.hasPairedOralablePrimary ? "Connect again" : "Connect Oralable",
+                    systemImage: "link.circle.fill"
+                )
+                .font(designSystem.typography.labelMedium)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(designSystem.colors.primaryBlack)
+                .foregroundColor(designSystem.colors.primaryWhite)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            vitalsPlacementReminderCard
+        }
+        .padding(designSystem.spacing.lg)
+    }
+
+    private var vitalsPlacementReminderCard: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+            Text("Placement modes")
+                .font(designSystem.typography.headline)
+            bullet("Automatic — FW \(FirmwareGate.recommendedOralableSemanticVersion)+ (STAT blink = on Oralable case)")
+            bullet("On wireless charger — red flash while charging, solid on taper")
+            bullet("Off charger (not worn) — green LED on table")
+            bullet("Worn on temple — HR / SpO₂ streaming")
+        }
+        .font(designSystem.typography.bodySmall)
+        .foregroundColor(designSystem.colors.textSecondary)
+        .padding(designSystem.spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(designSystem.colors.backgroundPrimary)
+        .clipShape(RoundedRectangle(cornerRadius: designSystem.spacing.sm, style: .continuous))
+    }
+
+    // MARK: - Legacy Temporalis setup
+
+    private var legacyTemporalisSetupContent: some View {
+        VStack(alignment: .leading, spacing: designSystem.spacing.lg) {
                     Text("Before your first night")
                         .font(designSystem.typography.h2)
                         .foregroundColor(designSystem.colors.textPrimary)
@@ -68,81 +190,8 @@ struct FirstLaunchOnboardingView: View {
 
                     videoPlaceholderCard
                     researcherOneSheetCard
-                }
-                .padding(designSystem.spacing.lg)
-            }
-            .background(designSystem.colors.backgroundSecondary)
-            .navigationTitle("Setup")
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                syncProgressIndexFromState()
-                applyExistingCalibrationGateIfNeeded()
-            }
-            .onChange(of: firstLaunchManager.hasPairedOralablePrimary) { _, paired in
-                syncProgressIndexFromState()
-            }
-            .onChange(of: sessionHistoryStore.temporalisSleepCalibration?.calibrationId) { _, _ in
-                applyExistingCalibrationGateIfNeeded()
-            }
-            .onChange(of: deviceManager.deviceReadiness) { _, _ in
-                guard firstLaunchManager.hasPairedOralablePrimary else { return }
-                guard !firstLaunchManager.hasCompletedFirstFit else { return }
-                guard !showFitGuide else { return }
-                guard !showDeviceDiscoverySheet else { return }
-                guard case .ready = deviceManager.primaryDeviceReadiness else { return }
-
-                setupProgressIndex1IfNeeded()
-                showFitGuide = true
-            }
         }
-        .sheet(isPresented: $showDeviceDiscoverySheet, onDismiss: {
-            if !pairingJustCompletedSession,
-               !firstLaunchManager.hasPairedOralablePrimary {
-                firstLaunchManager.enterTrialSetupMode()
-            }
-            pairingJustCompletedSession = false
-
-            // Manual pairing: BLE can reach `.ready` before `hasPairedOralablePrimary` flips, so
-            // `.onChange(deviceReadiness)` aborts; onDismiss runs after flags and sheet state align.
-            if firstLaunchManager.hasPairedOralablePrimary,
-               !firstLaunchManager.hasCompletedFirstFit,
-               !showFitGuide,
-               case .ready = deviceManager.primaryDeviceReadiness {
-
-                setupProgressIndex1IfNeeded()
-                showFitGuide = true
-            }
-        }) {
-            DeviceDiscoveryView(
-                onOralablePrimaryReady: {
-                    pairingJustCompletedSession = true
-                    firstLaunchManager.markOralablePaired()
-                    showDeviceDiscoverySheet = false
-                }
-            )
-            .environmentObject(deviceManager)
-            .environmentObject(designSystem)
-        }
-        .fullScreenCover(isPresented: $showFitGuide) {
-            TemporalisFitGuideView(
-                onExit: {
-                    showFitGuide = false
-                    syncProgressIndexFromState()
-                },
-                onCalibrationSucceeded: {
-                    firstLaunchManager.markFirstFitCompleted()
-                },
-                onBeginCalibration: {
-                    setupProgressIndex = 2
-                }
-            )
-            .environmentObject(designSystem)
-            .environmentObject(deviceManagerAdapter)
-            .environmentObject(deviceManager)
-            .environmentObject(sessionHistoryStore)
-            .environmentObject(sensorDataProcessor)
-            .environmentObject(firstLaunchManager)
-        }
+        .padding(designSystem.spacing.lg)
     }
 
     private var setupProgressIndicator: some View {

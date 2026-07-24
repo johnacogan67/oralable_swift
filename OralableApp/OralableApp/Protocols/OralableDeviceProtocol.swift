@@ -167,6 +167,7 @@ enum OralableClinicalMetricsGate {
     /// Dashboard "Clinical Metrics" (TFI, Temporalis chart, gated SpO2) — primary must be connected REV10.
     @MainActor
     static func shouldShowTemporalisClinicalDashboard(primaryBLE: BLEDeviceProtocol?) -> Bool {
+        guard !FeatureFlags.shared.vitalsPhaseEnabled else { return false }
         guard let p = primaryBLE, p.connectionState == .connected else { return false }
         return hardwareAdapter(from: p)?.supportsTemporalisClinicalDashboard ?? false
     }

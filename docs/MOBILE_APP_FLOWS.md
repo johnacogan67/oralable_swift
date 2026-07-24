@@ -3,9 +3,15 @@
 Canonical UX/navigation reference for **Oralable** (consumer) and **Oralable for Dentists** (professional).  
 There are **no Figma/Sketch wireframes** in the repos; this document plus **implemented SwiftUI** are the source of truth.
 
-**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md) · BLE stack summary in `cursor_oralable/docs/upload/02_IOS_BLE_STREAMING_SUMMARY.txt`
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md)
 
-**Last updated:** June 2026 · **Doc version:** 1.0.0
+**Last updated:** July 2026 · **Doc version:** 1.2.1 · FW **1.0.70** · app **4.3.3**
+
+**Phase note (July 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.70** · app **4.3.3** (STAT blink = dock/charge; Automatic OK).
+
+**Ed/Pedro:** ship **Oralable (patient) only**. Keep **Oralable for Dentists** and `showCloudKitShare` dark until Phase 1+ — see `cursor_oralable/docs/data_room/APPS_AND_REVENUE_EVAL.md`.
+
+**Strategy:** Stage A wellness wearable → Stage B medical (later) · new US patent embodiment. Planning costs/timeline: `COST_AND_TIMELINE.md`.
 
 ---
 
@@ -63,13 +69,22 @@ flowchart TD
 
 ### First-launch setup sequence
 
+**Phase 0 (current):** pair → placement (temple / case / bench) → vitals dashboard. Calibration wizard is **not** required.
+
 | Step | Screen | Purpose |
 |------|--------|---------|
-| 1 | `FirstLaunchOnboardingView` | Explain pair → fit → calibrate |
-| 2 | `DeviceDiscoveryView` | Scan/connect Oralable REV10 (TGM `3A0FF000`) |
-| 3 | `TemporalisFitGuideView` | Mirror camera + placement on temporalis peak |
-| 4 | `CalibrationWizardView` | IR-DC baseline / coupling check |
-| 5 | `SetupSuccessView` | Confirm; **only here** → `markFirstFitCompleted()` → `MainTabView` |
+| 1 | `FirstLaunchOnboardingView` | Explain pair → place on temple → vitals |
+| 2 | `DeviceDiscoveryView` | Scan/connect Oralable Gen1 REV10 (TGM `3A0FF000`) |
+| 3 | Placement picker / Vitals device status | Manual or Automatic (FW ≥ 1.0.70 STAT); Charge/Taper chips |
+| 4 | Dashboard | HR / SpO₂ with quality gating |
+
+**Phase 1+ / legacy (muscle path — deferred):**
+
+| Step | Screen | Purpose |
+|------|--------|---------|
+| 3′ | `TemporalisFitGuideView` | Mirror camera + placement on temporalis peak |
+| 4′ | `CalibrationWizardView` | IR-DC baseline / coupling check |
+| 5′ | `SetupSuccessView` | Confirm; **only here** → `markFirstFitCompleted()` → `MainTabView` |
 
 **Trial path:** User can skip pairing → `TrialSetupDashboardView` (limited dashboard without full gold-standard setup).
 
@@ -205,8 +220,8 @@ Technical flow (not screen flow). See also `cursor_oralable/docs/upload/02_IOS_B
 
 ```
 Oralable REV10 (TGM GATT 3A0FF000)
-  → BLECentralManager
-    → DeviceConnectionCoordinator (discover → FW ≥ 1.0.36 gate → staggered CCC + fw log)
+  → BLECentralManager (NotifyOnDisconnection)
+    → DeviceConnectionCoordinator (discover → FW gate → placement → awaited staggered CCC)
       → OralableDevice + BLEDataParser (OralableCore)
         → DeviceManagerAdapter (50 Hz alignment)
           ├→ SensorDataProcessor → history, auto-flush CSV
@@ -215,7 +230,9 @@ Oralable REV10 (TGM GATT 3A0FF000)
           └→ DashboardViewModel → DashboardView UI
 ```
 
-**Connect readiness states:** `disconnected` → `connecting` → … → `enablingNotifications` → `ready` (`DeviceManager.primaryDeviceReadiness`).
+**Connect readiness:** `disconnected` → `connecting` → … → `enablingNotifications` → `ready` when PPG + ACC + **status + battery** CCC confirms are set (`OralableDevice.NotificationReadiness.allRequired`).
+
+**CCC order (await each `didUpdateNotificationState`):** battery `004` → status `009` → PPG `001` → ACC `002` → temp `003`. Battery CCC and streaming CCC blocks use **timeouts**; on failure the coordinator calls `cancelPendingContinuations()` so waiters do not hang. Disable/`isNotifying == false` also resumes waiters with error.
 
 ---
 
@@ -250,7 +267,7 @@ Hidden: Settings → About → tap version **7×** → **Developer Settings**.
 | **Apply firmware settings** | Write `3A0FF00B` TLV | LED PA, intervals, stream mask (bench) |
 | **Export nRF-style CSV** | — | Full session log for side-by-side with nRF Connect |
 
-iOS `FirmwareGate` minimum remains **1.0.36**; shipping firmware **1.0.37-nrfconnect** adds optional `00A`–`00C`.
+iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recommendedOralableSemanticVersion`) for Automatic dock via LTC4124 STAT blink/taper. Older than **1.0.70** still connect with manual placement. Bench matrix: [ORALABLE_SYSTEM_ARCHITECTURE.md](../../cursor_oralable/docs/ORALABLE_SYSTEM_ARCHITECTURE.md#3-validation-status-matrix-where-we-are).
 
 ---
 
@@ -262,7 +279,8 @@ iOS `FirmwareGate` minimum remains **1.0.36**; shipping firmware **1.0.37-nrfcon
 - Full launch graph (auth → onboarding → setup → tabs)
 - Real-time dashboard + historical charts + session history
 - Automatic recording with disconnect pause/resume
-- BLE nRF Connect–aligned connect (FW ≥ 1.0.36 gate; **1.0.37** fw-log diagnostics)
+- BLE nRF Connect–aligned connect (FW ≥ 1.0.36 gate; awaited CCC; fw-log `00A`–`00C` when FW ≥ 1.0.37)
+- **Vitals phase:** `VitalsDeviceStatusCard` + **Device LED mirror** (`DeviceStatusLEDView` / OralableCore `statusLED()`)
 - Share/export CSV paths, clinical PDF generator (server-side path in app)
 - StoreKit 2 code (6 IAP products)
 - Design system + asset colors (both apps)
@@ -295,16 +313,16 @@ iOS `FirmwareGate` minimum remains **1.0.36**; shipping firmware **1.0.37-nrfcon
 
 ## 10. Roadmap and timeline
 
-Assumes **June 2026** start. Aligns with [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) and [ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §12.
+Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md), [IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md), [COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md), [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md), and [ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §12.
 
-| Phase | Target | Deliverables |
-|-------|--------|--------------|
-| **P0 — Launch infra** | Jun 2026 (1–2 weeks) | CloudKit prod deploy; IAP in App Store Connect; privacy/terms live; TestFlight |
-| **P1 — App Store launch** | Jul 2026 | Consumer + dentist apps live (wellness Path A/B); screenshots = simplified dashboard |
-| **P2 — Feature lift** | Aug–Sep 2026 | Turn on HR/SpO₂/movement flags after field validation; enable `showCloudKitShare` in prod |
-| **P3 — Unified overnight report** | Q3–Q4 2026 | **Design wireframes** + implement consumer + dentist night summary (TFI + SASHB + events) |
-| **P4 — Android MVP** | Q3–Q4 2026 | Kotlin BLE + local CSV; share via export (Landscape §10) |
-| **P5 — Regulated UI** | 12–24 months | SaMD-locked labeling, IFU-aligned flows, 510(k) monitoring claims (Path C) |
+| Phase | Target | Hardware | Deliverables |
+|-------|--------|----------|--------------|
+| **Phase 0 — Vitals** | Mid 2026 (**now**) | Gen1 BOM REV8 / REV10 / FW **1.0.70** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; hide Protocol B / calibration by default |
+| **Phase 1+ — Muscle** | Late 2026+ | **Same Gen1** hardware | IR-DC / TFI / SASHB UI; fit + calibration flows; Protocol B export |
+| **Gen2 hardware** | 2026–2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |
+| **P3 — Unified overnight report** | Q3–Q4 2026+ | Gen1 → Gen2 | Consumer + dentist night summary (TFI + SASHB + events) |
+| **P4 — Android MVP** | Q3–Q4 2026+ | Gen1 stream | Kotlin BLE + local CSV |
+| **P5 — Regulated UI** | 12–24 months | Gen2 primary | SaMD-locked labeling, 510(k) monitoring claims |
 
 ### Unified overnight report (P3 wireframe scope)
 

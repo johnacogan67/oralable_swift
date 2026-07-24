@@ -71,6 +71,9 @@ final class BLECentralManager: NSObject, BLEService {
     private let discoveryLogCooldownSeconds: TimeInterval = 10.0
     private let discoveryLogEveryNEvents: Int = 25
 
+    /// When true, scanning must not wipe the in-memory Protocol B BLE log.
+    var shouldPreserveValidationLog: () -> Bool = { false }
+
     // MARK: - Init
 
     override init() {
@@ -114,7 +117,13 @@ final class BLECentralManager: NSObject, BLEService {
     func startScanning(services: [CBUUID]? = nil) {
         serviceFilter = services
         discoveryLogState.removeAll()
-        NRFConnectBLELogger.shared.clear()
+        if shouldPreserveValidationLog() {
+            Task { @MainActor in
+                Logger.shared.info("[BLECentralManager] Preserving Protocol B BLE log during active recording (skip clear on scan)")
+            }
+        } else {
+            NRFConnectBLELogger.shared.clear()
+        }
 
         Task { @MainActor in
             let serviceNames = services?.map { $0.uuidString } ?? ["all"]
@@ -170,17 +179,39 @@ final class BLECentralManager: NSObject, BLEService {
             return
         }
         if pendingConnections.contains(peripheral.identifier) {
-            Task { @MainActor in
-                Logger.shared.debug("[BLECentralManager] Connection already pending for \(peripheral.name ?? "Unknown") — skipping duplicate connect")
+            // CoreBluetooth can leave a connect attempt hanging without didConnect/didFailToConnect
+            // (e.g. supervision timeout while peripheral stopped advertising). Allow retry when idle.
+            if peripheral.state == .disconnected {
+                Task { @MainActor in
+                    Logger.shared.warning(
+                        "[BLECentralManager] Clearing stale pending connect for \(peripheral.name ?? "Unknown") — retrying"
+                    )
+                }
+                pendingConnections.remove(peripheral.identifier)
+            } else {
+                Task { @MainActor in
+                    Logger.shared.debug(
+                        "[BLECentralManager] Connection already pending for \(peripheral.name ?? "Unknown") — skipping duplicate connect"
+                    )
+                }
+                return
             }
-            return
         }
         pendingConnections.insert(peripheral.identifier)
-        central.connect(peripheral, options: nil)
+        // Apple: request disconnect wakeups so the app can restart reconnect promptly.
+        central.connect(peripheral, options: [
+            CBConnectPeripheralOptionNotifyOnDisconnectionKey: true as NSNumber
+        ])
     }
 
     func disconnect(from peripheral: CBPeripheral) {
+        pendingConnections.remove(peripheral.identifier)
         central.cancelPeripheralConnection(peripheral)
+    }
+
+    /// Drop a stuck pending-connect flag without cancelling an active link.
+    func clearPendingConnection(for peripheralId: UUID) {
+        pendingConnections.remove(peripheralId)
     }
 
     func disconnectAll() {
@@ -450,6 +481,7 @@ extension BLECentralManager: CBCentralManagerDelegate {
         error: Error?
     ) {
         connectedPeripherals.remove(peripheral.identifier)
+        pendingConnections.remove(peripheral.identifier)
 
         if let error = error {
             // Unexpected disconnection - convert for logging only. Do not also emit `.error`:

@@ -50,9 +50,21 @@ struct DeveloperSettingsView: View {
                 Toggle("Subscription UI", isOn: $featureFlags.showSubscription)
             }
 
-            // Other Features Section
             Section("Other Features") {
                 Toggle("Detection Settings", isOn: $featureFlags.showDetectionSettings)
+                Toggle("Vitals phase (HR + SpO₂)", isOn: $featureFlags.vitalsPhaseEnabled)
+            }
+
+            Section("Bench recovery (Gen1)") {
+                Stepper(value: Binding(
+                    get: { Int(featureFlags.debugRebootIntervalMinutes) },
+                    set: { featureFlags.debugRebootIntervalMinutes = UInt16(max(0, $0)) }
+                ), in: 0...60) {
+                    Text("FW reboot interval: \(featureFlags.debugRebootIntervalMinutes) min (0=off)")
+                }
+                Text("Sends opcode 0x0A on connect. Use only when BLE advertising hangs.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
             }
 
             // Reset Section
@@ -67,6 +79,8 @@ struct DeveloperSettingsView: View {
                 Text("CSV format: Timestamp,Source,Level,Line — matches nRF Connect exports for side-by-side comparison.")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textSecondary)
+
+                Toggle("Enable fw-log notify (00A) on connect", isOn: $featureFlags.enableFirmwareLogNotify)
 
                 Text("Lines captured: \(NRFConnectBLELogger.shared.lineCount())")
                     .font(designSystem.typography.bodySmall)

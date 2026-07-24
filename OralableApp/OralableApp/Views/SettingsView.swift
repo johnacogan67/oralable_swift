@@ -32,6 +32,11 @@ struct SettingsView: View {
     @State private var showSubscriptionInfo = false
     @State private var developerTapCount = 0
     @State private var showDeveloperSettings = false
+    @State private var showWornPlacementConfirm = false
+    @State private var showLowBatteryForWornAlert = false
+    @State private var showPlacementDeferredAlert = false
+    @State private var lowBatteryPercentForAlert = 0
+    @State private var placementModeBeforeWornPrompt: FeatureFlags.DevicePlacementMode = .offDockIdle
 
     /// Toggle between standard and simplified dashboard
     @AppStorage("useSimplifiedDashboard") private var useSimplifiedDashboard: Bool = false
@@ -60,6 +65,94 @@ struct SettingsView: View {
                         eventSettingsRow
                     } header: {
                         Text("Detection Settings")
+                    }
+                }
+
+                Section {
+                    Picker("Placement", selection: $featureFlags.devicePlacementMode) {
+                        ForEach(FeatureFlags.DevicePlacementMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .onChange(of: featureFlags.devicePlacementMode) { oldMode, newMode in
+                        guard oldMode != newMode else { return }
+                        if newMode == .worn && featureFlags.vitalsPhaseEnabled {
+                            if let pct = dependencies.deviceManager.primaryBatteryPercent(),
+                               pct < DeviceManager.wornPlacementMinimumBatteryPercent {
+                                featureFlags.devicePlacementMode = oldMode
+                                lowBatteryPercentForAlert = pct
+                                showLowBatteryForWornAlert = true
+                                return
+                            }
+                            placementModeBeforeWornPrompt = oldMode
+                            showWornPlacementConfirm = true
+                        } else if dependencies.deviceManager.primaryDeviceReadiness.isConnected {
+                            if dependencies.deviceManager.appliedFirmwarePlacementMode() == newMode {
+                                return
+                            }
+                            showPlacementDeferredAlert = true
+                        } else {
+                            applyDevicePlacementMode(newMode)
+                        }
+                    }
+
+                    if let battery = dependencies.deviceManager.primaryBatteryPercent(),
+                       dependencies.deviceManager.primaryDeviceReadiness == .ready {
+                        HStack {
+                            Image(systemName: battery < DeviceManager.wornPlacementMinimumBatteryPercent ? "battery.25" : "battery.100")
+                                .foregroundColor(battery < DeviceManager.wornPlacementMinimumBatteryPercent
+                                                 ? designSystem.colors.warning
+                                                 : designSystem.colors.success)
+                            Text("Clip battery: \(battery)%")
+                                .font(designSystem.typography.bodySmall)
+                                .foregroundColor(designSystem.colors.textSecondary)
+                        }
+                    }
+
+                    Text(featureFlags.devicePlacementMode.detail)
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
+
+                    if let fw = dependencies.deviceManager.primaryFirmwareVersion() {
+                        Text(
+                            FirmwareGate.supportsAutomaticDockDetect(fw)
+                                ? "Firmware \(fw): Automatic uses LTC4124 STAT (blink = charging)."
+                                : "Firmware \(fw): prefer manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."
+                        )
+                        .font(designSystem.typography.captionSmall)
+                        .foregroundColor(
+                            FirmwareGate.supportsAutomaticDockDetect(fw)
+                                ? designSystem.colors.textSecondary
+                                : designSystem.colors.warning
+                        )
+                    }
+
+                    if featureFlags.devicePlacementMode == .offDockIdle {
+                        Text("On the Oralable case you should see green — firmware thinks off charger. Select On wireless charger (or Automatic on 1.0.70+), then disconnect and reconnect.")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.warning)
+                    }
+
+                    if dependencies.deviceManager.primaryDeviceReadiness.isConnected,
+                       let applied = dependencies.deviceManager.appliedFirmwarePlacementMode(),
+                       applied != featureFlags.devicePlacementMode {
+                        Text("Pending: \(featureFlags.devicePlacementMode.title) — disconnect and reconnect to apply (do not change while connected).")
+                            .font(designSystem.typography.captionSmall)
+                            .foregroundColor(designSystem.colors.warning)
+                    }
+                } header: {
+                    Text("Device placement")
+                } footer: {
+                    Text("Gen1 pcb00003: FW \(FirmwareGate.recommendedOralableSemanticVersion)+ can use Automatic (STAT blink). Older kits: set placement manually. Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. At low battery, worn mode drops BLE within seconds.")
+                }
+
+                if featureFlags.vitalsPhaseEnabled {
+                    Section {
+                        Text("Phase 0 vitals mode is active: heart rate and SpO₂ only. No cheek calibration or Protocol B.")
+                            .font(designSystem.typography.bodySmall)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    } header: {
+                        Text("Vitals pilot")
                     }
                 }
 
@@ -112,6 +205,7 @@ struct SettingsView: View {
                     Text("Enable sync to authorize Health access. Session-average SpO₂ is saved from the Temporalis HOI export action. Use clinician sharing to generate a secure code and export package for Oralable for Professionals.")
                 }
 
+                if !featureFlags.vitalsPhaseEnabled {
                 Section {
                     NavigationLink {
                         MainDashboardView()
@@ -122,6 +216,7 @@ struct SettingsView: View {
                     Text("Sleep study")
                 } footer: {
                     Text("Temporalis mirror fit, IR-DC placement check, and 10-minute calibration gate before overnight recording.")
+                }
                 }
 
                 // About Section - ALWAYS SHOWN (with hidden developer access)
@@ -148,6 +243,30 @@ struct SettingsView: View {
                             }
                         }
                 }
+            }
+            .alert("Confirm temple placement", isPresented: $showWornPlacementConfirm) {
+                Button("Cancel", role: .cancel) {
+                    featureFlags.devicePlacementMode = placementModeBeforeWornPrompt
+                }
+                Button("On temple") {
+                    if dependencies.deviceManager.primaryDeviceReadiness.isConnected {
+                        showPlacementDeferredAlert = true
+                    } else {
+                        applyDevicePlacementMode(.worn)
+                    }
+                }
+            } message: {
+                Text("Worn mode turns on the red PPG LED for vitals sensing. Only confirm when the clip is on your temple and battery is at least \(DeviceManager.wornPlacementMinimumBatteryPercent)%. On a table, use Off charger (not worn) for a green status LED.")
+            }
+            .alert("Charge before temple mode", isPresented: $showLowBatteryForWornAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Battery is \(lowBatteryPercentForAlert)%. Place the clip on the Oralable magnetic case until at least \(DeviceManager.wornPlacementMinimumBatteryPercent)% before selecting Worn on temple — low battery causes immediate disconnects.")
+            }
+            .alert("Placement saved", isPresented: $showPlacementDeferredAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Gen1 clips drop BLE if placement is pushed while connected. Your choice is saved — disconnect (or kill the session), set placement before you connect, then reconnect once. On the Oralable case use On wireless charger (or Automatic on FW 1.0.70+) before connecting.")
             }
         }
     }
@@ -307,6 +426,10 @@ struct SettingsView: View {
         }
         .tint(designSystem.colors.info)
         .padding(.vertical, designSystem.spacing.xs)
+    }
+
+    private func applyDevicePlacementMode(_ mode: FeatureFlags.DevicePlacementMode) {
+        dependencies.deviceManager.applyFirmwarePlacementMode(mode)
     }
 }
 
