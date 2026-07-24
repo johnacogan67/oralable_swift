@@ -183,15 +183,19 @@ final class SessionHistoryStore: ObservableObject {
         resetHourBucket()
     }
 
-    /// Clears in-memory segment state when the device disconnects.
-    func resetForDisconnect() {
+    /// Clears session anchors when the device disconnects outside an active recording.
+    /// Active automatic/manual sessions keep rollups across brief disconnect pauses.
+    /// When clearing, finalize the in-progress hour first so clinician exports are not emptied.
+    func resetForDisconnect(at date: Date = Date()) {
+        guard !isRecordingContextActive else { return }
+        flushCurrentHour(at: date)
+        pushToRecordingSession()
         sessionAnchor = nil
         activeSessionId = nil
         autoSessionUUID = nil
         currentHourIndex = 0
         resetHourBucket()
         lastSpO2Timestamp = nil
-        segmentByHour = [:]
     }
 
     func recordTemporalis(_ probabilities: TemporalisProbabilities, at date: Date) {
@@ -286,14 +290,25 @@ final class SessionHistoryStore: ObservableObject {
         }
     }
 
-    private func flushCurrentHour(at date: Date) {
-        guard let anchor = sessionAnchor else { return }
-        guard hourProbCount > 0 || hourSashbAccumulator > 0 || hourRescueEvents > 0 || hourTfiCount > 0 else { return }
+    /// Completed hours plus a non-destructive snapshot of the in-progress hour bucket.
+    func hourlySegmentsIncludingInProgress(at date: Date = Date()) -> [HourlyTemporalisSegment] {
+        var byHour = segmentByHour
+        if let current = makeCurrentHourSegment(at: date) {
+            byHour[current.hourIndex] = current
+        }
+        return byHour.keys.sorted().compactMap { byHour[$0] }
+    }
+
+    private func makeCurrentHourSegment(at date: Date) -> HourlyTemporalisSegment? {
+        guard let anchor = sessionAnchor else { return nil }
+        guard hourProbCount > 0 || hourSashbAccumulator > 0 || hourRescueEvents > 0 || hourTfiCount > 0 else {
+            return nil
+        }
         let start = anchor.addingTimeInterval(Double(currentHourIndex) * 3600)
         let end = min(date, anchor.addingTimeInterval(Double(currentHourIndex + 1) * 3600))
         let n = max(1, hourProbCount)
         let tfiHourly: Double = hourTfiCount > 0 ? hourTfiSum / Double(hourTfiCount) : 0
-        let seg = HourlyTemporalisSegment(
+        return HourlyTemporalisSegment(
             hourIndex: currentHourIndex,
             segmentStart: start,
             segmentEnd: end,
@@ -305,7 +320,11 @@ final class SessionHistoryStore: ObservableObject {
             rescueEventCount: hourRescueEvents,
             tfiPercent: tfiHourly
         )
-        segmentByHour[currentHourIndex] = seg
+    }
+
+    private func flushCurrentHour(at date: Date) {
+        guard let seg = makeCurrentHourSegment(at: date) else { return }
+        segmentByHour[seg.hourIndex] = seg
         resetHourBucket()
         pushToRecordingSession()
     }
@@ -339,11 +358,15 @@ final class SessionHistoryStore: ObservableObject {
     /// JSON suitable for OralableForProfessionals (hourly TFI + SASHB + `SharedSessionData`).
     func encodeProfessionalHandshakeExportJSON(
         linkUUID: UUID,
-        sensorHistory: [SensorData]
+        sensorHistory: [SensorData],
+        at date: Date = Date()
     ) throws -> Data {
         let displayCode = ClinicianLinkCodeFormatter.sixCharacterCode(linkUUID: linkUUID)
         let sharedSession = SharedSessionData(from: sensorHistory)
-        let hourlySorted = segmentByHour.keys.sorted().compactMap { segmentByHour[$0] }
+        // Include the in-progress hour: counters are only committed to `segmentByHour` on
+        // rollover or endSession, so mid-session clinician exports would otherwise omit
+        // the entire first hour (or the final partial hour of overnight studies).
+        let hourlySorted = hourlySegmentsIncludingInProgress(at: date)
         let rollups: [ProfessionalHourlyRollupExport] = hourlySorted.map { seg in
             ProfessionalHourlyRollupExport(
                 hourIndex: seg.hourIndex,

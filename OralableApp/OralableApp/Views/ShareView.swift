@@ -200,7 +200,7 @@ struct ShareView: View {
     }
 
     private func exportClinicalTemporalisPDF() {
-        let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
+        let hourly = dependencies.sessionHistoryStore.hourlySegmentsIncludingInProgress()
         let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
         let studyDate: Date = {
             if let t = dependencies.recordingSessionManager.currentSession?.startTime { return t }

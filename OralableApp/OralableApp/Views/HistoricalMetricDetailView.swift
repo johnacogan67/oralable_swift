@@ -17,7 +17,7 @@ struct HistoricalMetricDetailView: View {
     @State private var showExportAlert = false
 
     var body: some View {
-        let hourlySorted = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
+        let hourlySorted = dependencies.sessionHistoryStore.hourlySegmentsIncludingInProgress()
         let model = TemporalisAnalysisChart.build(
             from: dependencies.sensorDataProcessor.sensorDataHistory,
             hourlyRescue: hourlySorted,
