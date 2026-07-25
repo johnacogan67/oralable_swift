@@ -190,7 +190,7 @@ class FeatureFlags: ObservableObject {
     }
 
     @Published var devicePlacementMode: DevicePlacementMode {
-        didSet { defaults.set(devicePlacementMode.rawValue, forKey: Keys.devicePlacementMode) }
+        didSet { Self.storeUInt(devicePlacementMode.rawValue, forKey: Keys.devicePlacementMode, in: defaults) }
     }
 
     /// Enables `3A0FF00A` notify during connect (developer / bench only).
@@ -210,7 +210,7 @@ class FeatureFlags: ObservableObject {
 
     /// Optional bench firmware reboot (opcode 0x0A). 0 = disabled.
     @Published var debugRebootIntervalMinutes: UInt16 {
-        didSet { defaults.set(debugRebootIntervalMinutes, forKey: Keys.debugRebootIntervalMinutes) }
+        didSet { Self.storeUInt(debugRebootIntervalMinutes, forKey: Keys.debugRebootIntervalMinutes, in: defaults) }
     }
 
     /// Set by Share → Prepare Protocol B session; promotes off-dock → worn on next connect.
@@ -239,17 +239,41 @@ class FeatureFlags: ObservableObject {
         self.showCloudKitShare = defaults.object(forKey: Keys.showCloudKitShare) as? Bool ?? Defaults.showCloudKitShare
         self.demoModeEnabled = defaults.object(forKey: Keys.demoModeEnabled) as? Bool ?? Defaults.demoModeEnabled
         self.showPilotStudy = defaults.object(forKey: Keys.showPilotStudy) as? Bool ?? Defaults.showPilotStudy
-        let modeRaw = defaults.object(forKey: Keys.devicePlacementMode) as? UInt8 ?? Defaults.devicePlacementMode
+        // UserDefaults boxes integers as NSNumber — `object as? UInt8` / `as? UInt16` always fails.
+        let modeRaw = Self.loadUInt(
+            forKey: Keys.devicePlacementMode,
+            default: Defaults.devicePlacementMode,
+            from: defaults
+        )
         self.devicePlacementMode = DevicePlacementMode(rawValue: modeRaw) ?? .offDockIdle
         self.enableFirmwareLogNotify = defaults.object(forKey: Keys.enableFirmwareLogNotify) as? Bool ?? Defaults.enableFirmwareLogNotify
         self.vitalsPhaseEnabled = defaults.object(forKey: Keys.vitalsPhaseEnabled) as? Bool ?? Defaults.vitalsPhaseEnabled
-        self.debugRebootIntervalMinutes = defaults.object(forKey: Keys.debugRebootIntervalMinutes) as? UInt16 ?? Defaults.debugRebootIntervalMinutes
+        self.debugRebootIntervalMinutes = Self.loadUInt(
+            forKey: Keys.debugRebootIntervalMinutes,
+            default: Defaults.debugRebootIntervalMinutes,
+            from: defaults
+        )
 
         if vitalsPhaseEnabled {
             applyVitalsPhaseConfig()
         }
 
         Logger.shared.info("[FeatureFlags] Initialized with pre-launch configuration")
+    }
+
+    /// Persist integer-backed flags via `Int` so relaunch can read them with `integer(forKey:)`.
+    static func storeUInt<T: BinaryInteger>(_ value: T, forKey key: String, in defaults: UserDefaults) {
+        defaults.set(Int(value), forKey: key)
+    }
+
+    /// Read integer-backed flags. `object(forKey:) as? UInt8` is always nil for NSNumber values.
+    static func loadUInt<T: FixedWidthInteger>(
+        forKey key: String,
+        default defaultValue: T,
+        from defaults: UserDefaults
+    ) -> T {
+        guard defaults.object(forKey: key) != nil else { return defaultValue }
+        return T(clamping: defaults.integer(forKey: key))
     }
 
     // MARK: - Presets
