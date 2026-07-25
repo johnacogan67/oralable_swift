@@ -268,7 +268,14 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         }
         try await enableNotifications()
         try await enableAccelerometerNotifications()
-        try await enableTemperatureNotifications()
+        // Temperature is optional (not in `allRequired`); never block streaming on CCC failure.
+        do {
+            try await enableTemperatureNotifications()
+        } catch {
+            Logger.shared.warning(
+                "[OralableDevice] ⚠️ Temperature notifications failed (non-fatal): \(error.localizedDescription)"
+            )
+        }
     }
 
     func stopDataStream() async {
@@ -540,6 +547,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = tgmBatteryCharacteristic else {
             throw DeviceError.characteristicNotFound("Battery characteristic not found")
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.battery)
+            Logger.shared.info("[OralableDevice] 🔔 Battery notifications already enabled — marking ready")
+            return
+        }
         guard batteryNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
         }
@@ -564,7 +576,14 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
         try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
-        try await enableTemperatureNotifications()
+        // Temperature is optional UI/telemetry — do not fail readiness when CCC is unavailable.
+        do {
+            try await enableTemperatureNotifications()
+        } catch {
+            Logger.shared.warning(
+                "[OralableDevice] ⚠️ Temperature notifications failed (non-fatal): \(error.localizedDescription)"
+            )
+        }
     }
 
     /// Reads `3A0FF006` firmware string (must run after characteristic discovery).
@@ -604,6 +623,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = statusCharacteristic else {
             throw DeviceError.characteristicNotFound("Status characteristic not found")
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.status)
+            Logger.shared.info("[OralableDevice] 🔔 Status notifications already enabled — marking ready")
+            return
+        }
         guard statusNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
         }
@@ -621,6 +645,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let characteristic = sensorDataCharacteristic else {
             throw DeviceError.characteristicNotFound("Sensor data characteristic not found")
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.ppgData)
+            Logger.shared.info("[OralableDevice] 🔔 PPG notifications already enabled — marking ready")
+            return
         }
         guard notificationEnableContinuation == nil else {
             Logger.shared.warning("[OralableDevice] ⚠️ enableNotifications called while a previous request is still pending")
@@ -641,6 +670,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
               let characteristic = accelerometerCharacteristic else {
             throw DeviceError.characteristicNotFound("Accelerometer characteristic not found")
         }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.accelerometer)
+            Logger.shared.info("[OralableDevice] 🔔 Accelerometer notifications already enabled — marking ready")
+            return
+        }
         guard accelerometerNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
         }
@@ -659,6 +693,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         guard let peripheral = peripheral,
               let characteristic = commandCharacteristic else {
             throw DeviceError.characteristicNotFound("Temperature characteristic not found")
+        }
+        if characteristic.isNotifying {
+            notificationReadiness.insert(.temperature)
+            Logger.shared.info("[OralableDevice] 🔔 Temperature notifications already enabled — marking ready")
+            return
         }
         guard temperatureNotificationContinuation == nil else {
             throw DeviceError.deviceBusy
