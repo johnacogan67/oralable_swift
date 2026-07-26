@@ -5,7 +5,7 @@ There are **no Figma/Sketch wireframes** in the repos; this document plus **impl
 
 **Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md)
 
-**Last updated:** July 2026 · **Doc version:** 1.2.1 · FW **1.0.70** · app **4.3.3**
+**Last updated:** 26 Jul 2026 · **Doc version:** 1.2.2 · FW **1.0.70** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
 
 **Phase note (July 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.70** · app **4.3.3** (STAT blink = dock/charge; Automatic OK).
 
@@ -295,12 +295,18 @@ iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recomm
 | App Store Connect IAP live | `APP_STORE_CONNECT_IAP_SETUP.md` |
 | Metadata + screenshots + submission | `APP_STORE_METADATA.md`, `DENTIST_APP_STORE_METADATA.md` |
 
+### ✅ Shipped (export path) — morning card still open
+
+| Item | Spec reference | Notes |
+|------|----------------|-------|
+| **Overnight clinical PDF** | [OVERNIGHT_NIGHT_REPORT.md](../../cursor_oralable/docs/OVERNIGHT_NIGHT_REPORT.md) · FTS APP-10 | Share → Clinical Temporalis Report — hypnogram-first, hourly stack, dual-rail, event CSV. **In-app morning card / Figma still open.** |
+
 ### 🔲 Product UX not designed or built
 
 | Item | Spec reference | Notes |
 |------|----------------|-------|
 | **Wireframes / screen map (visual)** | — | **This doc** replaces until Figma exists |
-| **Unified overnight report** | Landscape §15, §992 | One page: TFI timeline + SASHB + rescue events + HR strip |
+| **Overnight morning card (in-app)** | OVERNIGHT_NIGHT_REPORT · APP-10 remainder | Band chips + hypnogram on dashboard/history — PDF path already shipped |
 | **App Store screenshot designs** | Launch checklist | 7 per app — copy exists, art not in repo |
 | PDF export from `HistoricalDetailView` | Launch checklist known issues | Stub at line ~73 |
 | HealthKit export from historical | Launch checklist | Stub |
@@ -317,35 +323,43 @@ Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md),
 
 | Phase | Target | Hardware | Deliverables |
 |-------|--------|----------|--------------|
-| **Phase 0 — Vitals** | Mid 2026 (**now**) | Gen1 BOM REV8 / REV10 / FW **1.0.70** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; hide Protocol B / calibration by default |
-| **Phase 1+ — Muscle** | Late 2026+ | **Same Gen1** hardware | IR-DC / TFI / SASHB UI; fit + calibration flows; Protocol B export |
-| **Gen2 hardware** | 2026–2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |
-| **P3 — Unified overnight report** | Q3–Q4 2026+ | Gen1 → Gen2 | Consumer + dentist night summary (TFI + SASHB + events) |
+| **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.70** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
+| **Eng overnight PDF** | **Shipped 24 Jul 2026** | Same Gen1 | Share clinical PDF + Mac night pack (hypnogram-first) — early eng, not Phase 1+ complete |
+| **Phase 1+ — Muscle** | Q4 2026 – Q1 2027 | **Same Gen1** hardware | IR-DC / TFI / SASHB live UX; Protocol B; ≥6 h overnight eval; morning card |
+| **Gen2 hardware** | Q4 2026 – H2 2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |
 | **P4 — Android MVP** | Q3–Q4 2026+ | Gen1 stream | Kotlin BLE + local CSV |
-| **P5 — Regulated UI** | 12–24 months | Gen2 primary | SaMD-locked labeling, 510(k) monitoring claims |
+| **P5 — Regulated UI** | H2 2027 – 2028 | Gen2 primary | SaMD-locked labeling, 510(k) monitoring claims |
 
-### Unified overnight report (P3 wireframe scope)
+Canonical calendar: [PRODUCT_ROADMAP.md §3](../../cursor_oralable/docs/PRODUCT_ROADMAP.md#3-timeline-calendar--canonical).
 
-Proposed single-night layout (to be wireframed in Figma, then built):
+### Unified overnight report (status)
+
+**Canonical direction:** [`OVERNIGHT_NIGHT_REPORT.md`](../../cursor_oralable/docs/OVERNIGHT_NIGHT_REPORT.md)
+
+- **Evaluable overnight:** **≥ 6 hours** worn (goal **8 h**). Under 6 h → Insufficient data (no bands).
+- **Scoring:** blood-pressure-style **Low / Moderate / High** on TFI, SASHB/h, rescue/h, tonic min/h — **not** sleep-score-first; cohort percentiles later; personal trends first.
+- **Primary graphic:** **state hypnogram** (most useful overnight view). Hourly stack and dual-rail support dentist detail; 3D is appendix.
+
+**Shipped (Share PDF):** `ClinicalReportGenerator` + `OvernightStateClassifier` + `NightReportSampleLoader`  
+Pages: KPIs → **bout hypnogram (lead)** → hourly stack + SASHB → smoking-gun IR-DC/SpO₂ → event table; plus `Oralable_Night_Events_*.csv`.  
+Samples from `sensorDataHistory` + memory-flush CSVs + session `dataFilePath`.
+
+**Still open (UI):** morning card with **three band chips + hypnogram**:
 
 ```
 ┌─────────────────────────────────────────┐
-│  Night of Jun 6, 2026 · 7h 12m worn     │
+│  Night · ≥6h · Jaw load | O2 | Rescue   │  ← Low / Moderate / High chips
 ├─────────────────────────────────────────┤
-│  TFI by hour (bar or line)              │
+│  State hypnogram (primary)              │
 ├─────────────────────────────────────────┤
-│  SASHB / SpO₂ desat bands (timeline)    │
-├─────────────────────────────────────────┤
-│  Event lane: clench / rescue markers    │
-├─────────────────────────────────────────┤
-│  HR strip (secondary)                   │
+│  Hourly stack + SASHB (secondary)       │
 ├─────────────────────────────────────────┤
 │  [Share PDF] [Send to dentist]          │
 └─────────────────────────────────────────┘
 ```
 
-Consumer: `HistoricalDetailView` or new `OvernightReportView`.  
-Dentist: `PatientHistoricalView` night selector → same report component in OralableCore.
+Consumer: Share clinical PDF today; later `OvernightReportView`.  
+Dentist: same bands + hypnogram language; handshake hourly rollups.
 
 ---
 

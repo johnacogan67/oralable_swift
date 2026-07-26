@@ -338,7 +338,7 @@ struct ShareView: View {
                         Text("Export PDF — Oralable MAM: Clinical Temporalis Report")
                             .font(designSystem.typography.body)
                             .foregroundColor(designSystem.colors.textPrimary)
-                        Text("Patient metadata, smoking gun correlation, TFI")
+                        Text("Bout hypnogram, smoking-gun dual rail, event CSV, TFI / SASHB")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.textSecondary)
                     }
@@ -356,30 +356,63 @@ struct ShareView: View {
     private func exportClinicalTemporalisPDF() {
         let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
         let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
-        let studyDate: Date = {
-            if let t = dependencies.recordingSessionManager.currentSession?.startTime { return t }
+
+        let currentSession = dependencies.recordingSessionManager.currentSession
+        let sessionStart: Date = {
+            if let t = currentSession?.startTime { return t }
             if let t = dependencies.deviceManager.automaticRecordingSession?.sessionStartTime { return t }
             let sessions = dependencies.recordingSessionManager.sessions
             if let last = sessions.max(by: { $0.startTime < $1.startTime }) { return last.startTime }
+            if let first = sensorDataProcessor.sensorDataHistory.first?.timestamp { return first }
             return Calendar.current.startOfDay(for: Date())
         }()
+        let sessionEnd: Date = {
+            if let end = currentSession?.endTime { return end }
+            if let last = sensorDataProcessor.sensorDataHistory.last?.timestamp { return max(last, Date()) }
+            return Date()
+        }()
+        let sessionFile = currentSession?.dataFilePath
+            ?? dependencies.recordingSessionManager.sessions
+                .filter { $0.dataFilePath != nil }
+                .max(by: { $0.startTime < $1.startTime })?
+                .dataFilePath
+
+        let samples = NightReportSampleLoader.load(
+            sessionStart: sessionStart.addingTimeInterval(-2),
+            sessionEnd: sessionEnd.addingTimeInterval(2),
+            liveHistory: sensorDataProcessor.sensorDataHistory,
+            sessionFileURL: sessionFile
+        )
+        let analysis = OvernightStateClassifier.analyze(samples)
+
         let sync = shareCode.trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = ClinicalReportPayload(
             patient: .loadFromUserDefaults(),
             patientName: dependencies.authenticationManager.displayName,
-            dateOfStudy: studyDate,
+            dateOfStudy: sessionStart,
             clinicianSyncCode: sync,
             spO2ClenchCorrelation: r,
             tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
-            generatedAt: Date()
+            generatedAt: Date(),
+            hourlySegments: hourly,
+            nightAnalysis: analysis
         )
         do {
             var calURL: URL?
             if let name = dependencies.sessionHistoryStore.temporalisSleepCalibration?.rawCalibrationCSVFileName {
                 calURL = try? SessionHistoryStore.researchCalibrationURL(fileName: name)
             }
-            let items = try ClinicalReportGenerator.writeResearchShareItems(payload: payload, calibrationRawCSV: calURL)
+            let items = try ClinicalReportGenerator.writeResearchShareItems(
+                payload: payload,
+                calibrationRawCSV: calURL,
+                includeEventCSV: analysis != nil
+            )
             SharePresentationSupport.presentShareSheet(items: items)
+            if analysis == nil {
+                errorMessage =
+                    "PDF exported with hourly rollups only. No sample stream found for bout-level charts — keep recording longer, or ensure memory-flush / session CSV data is present."
+                showError = true
+            }
         } catch {
             errorMessage = error.localizedDescription
             showError = true
