@@ -219,6 +219,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         // Reset state
         notificationReadiness = []
         firmwareDeviceStatus = nil
+        // Drop cached gauge so reconnect placement gating cannot use a stale %.
+        batteryLevel = nil
         deviceIdValue = nil
         lastPPGFrameCounter = nil
         lastAccelFrameCounter = nil
@@ -549,6 +551,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             self.batteryNotificationContinuation = continuation
             self.setNotifyValue(true, for: characteristic, on: peripheral)
         }
+        // Prompt an immediate gauge read so worn-placement gating has a fresh % before 00B 0x09.
+        peripheral.readValue(for: characteristic)
     }
 
     /// nRF Connect–aligned staggered CCC enable: battery → status → PPG → ACC → temp.
