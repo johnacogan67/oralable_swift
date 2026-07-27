@@ -149,6 +149,9 @@ a:hover {
 }
 
 .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-size: 21px;
     font-weight: 600;
     color: var(--color-black);
@@ -158,6 +161,39 @@ a:hover {
 
 .nav-logo:hover {
     text-decoration: none;
+}
+
+.nav-logo-mark {
+    height: 32px;
+    width: auto;
+    display: block;
+}
+
+.nav-logo-tagline {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-gray, #666);
+    border-left: 1px solid var(--color-border, #ddd);
+    padding-left: 12px;
+    letter-spacing: 0.04em;
+}
+
+.tm {
+    font-size: 0.65em;
+    vertical-align: super;
+    line-height: 0;
+}
+
+.footer-tm {
+    font-size: 0.8rem;
+    color: var(--color-gray, #888);
+    margin: 0 0 8px;
+    max-width: 420px;
+    line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+    .nav-logo-tagline { display: none; }
 }
 
 .nav-links {

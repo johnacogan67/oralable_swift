@@ -129,6 +129,49 @@ header .container {
     text-decoration: none;
 }
 
+.logo-mark {
+    height: 36px;
+    width: auto;
+    display: block;
+}
+
+.logo .logo-tagline {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-gray);
+    border-left: 1px solid var(--color-border);
+    padding-left: var(--spacing-sm);
+    margin-left: 2px;
+}
+
+.tm {
+    font-size: 0.65em;
+    vertical-align: super;
+    line-height: 0;
+}
+
+.hero-brand .hero-logo {
+    height: 56px;
+    width: auto;
+    display: block;
+    margin-bottom: var(--spacing-sm);
+}
+
+.footer-brand .logo-mark-footer {
+    height: 32px;
+    width: auto;
+    filter: brightness(0) invert(1);
+}
+
+.footer-tm {
+    font-size: 0.8rem;
+    color: var(--color-gray);
+    margin: var(--spacing-xs) 0 var(--spacing-sm);
+    max-width: 320px;
+    line-height: 1.4;
+}
+
+
 .logo-text {
     display: flex;
     align-items: center;
@@ -994,6 +1037,10 @@ footer a:hover {
 
     .footer-brand {
         grid-column: 1;
+    }
+
+    .logo .logo-tagline {
+        display: none;
     }
 
     .footer-bottom {

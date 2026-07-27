@@ -2,6 +2,8 @@
 
 **Live site source:** this `docs/` folder (`CNAME` → `oralable.com`). Deploy via GitHub Pages (or Netlify publish `.` from this folder).
 
+**Brand (public):** Official lockup `images/oralable_logo_lockup.png` · **Oralable®** · **Word of Mouth™** · footer trademark line (JAC Dental Solutions Limited). Mirror the same in `../oralable-website/`. Do not spray ® on every body mention.
+
 **Alternate trees (keep facts in sync if still used):**
 - `../oralable-website/` — Netlify-style marketing draft
 - `../docs-v2/` — alternate layout draft

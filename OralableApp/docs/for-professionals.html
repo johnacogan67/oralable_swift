@@ -11,8 +11,8 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oralable for Professionals - View Participant Wellness Data</title>
-    <meta name="description" content="Oralable for Professionals - View participant clenching and grinding data. Track progress. Enhance care.">
+    <title>Oralable® for Professionals - View Participant Wellness Data</title>
+    <meta name="description" content="Oralable® for Professionals - View participant clenching and grinding data. Track progress. Enhance care.">
     <link rel="icon" type="image/png" href="images/oralable-icon.png">
     <link rel="apple-touch-icon" href="images/oralable-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -48,10 +48,12 @@
         nav {
             display: flex;
             justify-content: center;
+            align-items: center;
             gap: 30px;
             padding: 20px;
             background: #fff;
             border-bottom: 1px solid #e8e8ed;
+            flex-wrap: wrap;
         }
         nav a {
             color: #1d1d1f;
@@ -62,6 +64,21 @@
         nav a:hover {
             color: #007AFF;
         }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 12px;
+        }
+        .nav-brand img { height: 28px; width: auto; }
+        .nav-brand .tag {
+            font-size: 12px;
+            font-weight: 500;
+            color: #86868b;
+            border-left: 1px solid #e8e8ed;
+            padding-left: 10px;
+        }
+        .tm { font-size: 0.65em; vertical-align: super; }
         .hero {
             background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
             color: white;
@@ -256,6 +273,10 @@
     </div>
 
     <nav>
+        <a href="index.html" class="nav-brand">
+            <img src="images/oralable_logo_lockup.png" alt="Oralable®" />
+            <span class="tag">Word of Mouth<span class="tm">™</span></span>
+        </a>
         <a href="index.html">Home</a>
         <a href="product.html">Product</a>
         <a href="for-researchers.html">For Researchers</a>
@@ -383,6 +404,7 @@
     </div>
 
     <footer>
+        <p style="margin-bottom: 8px; font-size: 12px; color: #86868b;">Oralable® and Word of Mouth™ are trademarks of JAC Dental Solutions Limited.</p>
         <p style="margin-bottom: 16px; font-size: 13px; color: #86868b;">© 2026 JAC Dental Solutions Limited (Amstrow). All rights reserved.</p>
         <a href="privacy.html">Privacy</a>
         <a href="terms.html">Terms</a>
