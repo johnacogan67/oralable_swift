@@ -1,0 +1,60 @@
+# oralable.com — publish the live marketing docs tree
+# Netlify: leave Base directory empty (repo root); this file sets publish.
+# Alternate: set Base directory to `OralableApp/docs` and use that folder's netlify.toml (publish = ".").
+
+[build]
+  publish = "OralableApp/docs"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[redirects]]
+  from = "https://www.oralable.com/*"
+  to = "https://oralable.com/:splat"
+  status = 301
+  force = true
+
+# Pretty URLs (match common Netlify clean-URL behaviour)
+[[redirects]]
+  from = "/overview"
+  to = "/overview.html"
+  status = 200
+
+[[redirects]]
+  from = "/specifications"
+  to = "/specifications.html"
+  status = 200
+
+[[redirects]]
+  from = "/user-guide"
+  to = "/user-guide.html"
+  status = 200
+
+[[redirects]]
+  from = "/support"
+  to = "/support.html"
+  status = 200
+
+[[redirects]]
+  from = "/about"
+  to = "/about.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/terms.html"
+  status = 200

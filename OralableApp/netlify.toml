@@ -1,3 +1,5 @@
+# Use only if Netlify Base directory = `OralableApp`
+# Prefer repo-root `netlify.toml` (publish = OralableApp/docs) when Base directory is empty.
 [build]
   publish = "docs"
   command = ""

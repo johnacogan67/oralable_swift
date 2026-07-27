@@ -1,6 +1,16 @@
 # oralable.com source
 
-**Live site source:** this `docs/` folder (`CNAME` → `oralable.com`). Deploy via GitHub Pages (or Netlify publish `.` from this folder).
+**Live site source:** this `docs/` folder (`CNAME` → `oralable.com`).
+
+**Netlify (oralable.com):**
+1. Site settings → Build & deploy → Build settings  
+2. **Base directory:** leave **empty** (repo root)  
+3. **Publish directory:** `OralableApp/docs` (set by root [`netlify.toml`](../../netlify.toml))  
+4. Clear build command (or leave blank)  
+5. Trigger **Deploy site** (Deploys → Trigger deploy → Deploy site)  
+6. Confirm `https://oralable.com/images/oralable_logo_lockup.png` returns **200** and the nav shows the lockup + Word of Mouth™  
+
+If Base directory is instead `OralableApp/docs`, use this folder’s `netlify.toml` (`publish = "."`).
 
 **Brand (public):** Official lockup `images/oralable_logo_lockup.png` · **Oralable®** · **Word of Mouth™** · footer trademark line (JAC Dental Solutions Limited). Mirror the same in `../oralable-website/`. Do not spray ® on every body mention.
 
