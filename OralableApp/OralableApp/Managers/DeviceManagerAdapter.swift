@@ -145,6 +145,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                             from: flat,
                             heartRate: self.heartRate,
                             heartRateQuality: self.heartRateQuality,
+                            spo2: self.spO2,
+                            spo2Quality: self.spO2Quality,
                             temperature: self.temperature,
                             batteryLevel: self.batteryLevel
                         )
@@ -472,6 +474,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         from readings: [SensorReading],
         heartRate: Int,
         heartRateQuality: Double,
+        spo2: Int,
+        spo2Quality: Double,
         temperature: Double,
         batteryLevel: Double
     ) -> [SensorData] {
@@ -498,6 +502,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             let hrData: HeartRateData? = heartRate > 0
                 ? HeartRateData(bpm: Double(heartRate), quality: heartRateQuality, timestamp: ts)
                 : nil
+            let spo2Data: SpO2Data? = spo2 > 0
+                ? SpO2Data(percentage: Double(spo2), quality: spo2Quality, timestamp: ts)
+                : nil
 
             let row = SensorData(
                 timestamp: ts,
@@ -511,7 +518,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 temperature: TemperatureData(celsius: temperature, timestamp: ts),
                 battery: BatteryData(percentage: Int(batteryLevel), timestamp: ts),
                 heartRate: hrData,
-                spo2: nil,
+                spo2: spo2Data,
                 deviceType: .oralable
             )
             out.append(row)
