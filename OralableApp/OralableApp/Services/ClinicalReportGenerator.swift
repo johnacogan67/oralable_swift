@@ -536,24 +536,36 @@ enum ClinicalReportGenerator {
             .font: UIFont.systemFont(ofSize: 8, weight: .semibold)
         ])
 
-        // SpO2 rail
+        // SpO2 rail (70–100% scale; skip missing/NaN — never invent healthy values)
+        let spo2Floor: Double = 70
+        let spo2Span: Double = 30
+        func spo2Y(_ pct: Double, in r: CGRect) -> CGFloat {
+            let clamped = min(100, max(spo2Floor, pct))
+            return r.maxY - CGFloat((clamped - spo2Floor) / spo2Span) * r.height
+        }
         let spo2Path = UIBezierPath()
-        for (i, p) in timeline.enumerated() {
+        var spo2Started = false
+        for p in timeline where p.spo2.isFinite {
             let px = x(p.elapsedS, in: bot)
-            let py = bot.maxY - CGFloat((min(100, max(84, p.spo2)) - 84) / 16.0) * bot.height
-            if i == 0 { spo2Path.move(to: CGPoint(x: px, y: py)) }
-            else { spo2Path.addLine(to: CGPoint(x: px, y: py)) }
+            let py = spo2Y(p.spo2, in: bot)
+            if !spo2Started {
+                spo2Path.move(to: CGPoint(x: px, y: py))
+                spo2Started = true
+            } else {
+                spo2Path.addLine(to: CGPoint(x: px, y: py))
+            }
         }
         // Shade SASHB zone
         for i in 1..<timeline.count {
             let a = timeline[i - 1]
             let b = timeline[i]
+            guard a.spo2.isFinite, b.spo2.isFinite else { continue }
             if a.spo2 < 90 || b.spo2 < 90 {
                 let x0 = x(a.elapsedS, in: bot)
                 let x1 = x(b.elapsedS, in: bot)
-                let y90 = bot.maxY - CGFloat((90 - 84) / 16.0) * bot.height
-                let ya = bot.maxY - CGFloat((min(100, max(84, a.spo2)) - 84) / 16.0) * bot.height
-                let yb = bot.maxY - CGFloat((min(100, max(84, b.spo2)) - 84) / 16.0) * bot.height
+                let y90 = spo2Y(90, in: bot)
+                let ya = spo2Y(a.spo2, in: bot)
+                let yb = spo2Y(b.spo2, in: bot)
                 colorSASHB.withAlphaComponent(0.25).setFill()
                 let path = UIBezierPath()
                 path.move(to: CGPoint(x: x0, y: y90))
