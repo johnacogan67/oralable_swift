@@ -329,7 +329,9 @@ struct ShareView: View {
     // MARK: - Clinical Temporalis PDF
     private var clinicalTemporalisPDFSection: some View {
         Section {
-            Button(action: exportClinicalTemporalisPDF) {
+            Button(action: {
+                Task { await exportClinicalTemporalisPDF() }
+            }) {
                 HStack {
                     Image(systemName: "doc.richtext")
                         .foregroundColor(designSystem.colors.info)
@@ -353,7 +355,8 @@ struct ShareView: View {
         }
     }
 
-    private func exportClinicalTemporalisPDF() {
+    @MainActor
+    private func exportClinicalTemporalisPDF() async {
         let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
         let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
 
@@ -366,21 +369,30 @@ struct ShareView: View {
             if let first = sensorDataProcessor.sensorDataHistory.first?.timestamp { return first }
             return Calendar.current.startOfDay(for: Date())
         }()
+        // Prefer wall-clock / session end over trimmed processor history (10k ring ≈ 200s).
         let sessionEnd: Date = {
             if let end = currentSession?.endTime { return end }
-            if let last = sensorDataProcessor.sensorDataHistory.last?.timestamp { return max(last, Date()) }
             return Date()
         }()
+        let windowStart = sessionStart.addingTimeInterval(-2)
+        let windowEnd = sessionEnd.addingTimeInterval(2)
         let sessionFile = currentSession?.dataFilePath
             ?? dependencies.recordingSessionManager.sessions
                 .filter { $0.dataFilePath != nil }
                 .max(by: { $0.startTime < $1.startTime })?
                 .dataFilePath
 
+        // Processor history trims at 10k while AutoFlush is hourly; unified buffer holds the unflushed window.
+        let unifiedSnapshot = await dependencies.deviceManager.snapshotUnifiedSensorData(
+            from: windowStart,
+            to: windowEnd
+        )
+        let liveHistory = sensorDataProcessor.sensorDataHistory + unifiedSnapshot
+
         let samples = NightReportSampleLoader.load(
-            sessionStart: sessionStart.addingTimeInterval(-2),
-            sessionEnd: sessionEnd.addingTimeInterval(2),
-            liveHistory: sensorDataProcessor.sensorDataHistory,
+            sessionStart: windowStart,
+            sessionEnd: windowEnd,
+            liveHistory: liveHistory,
             sessionFileURL: sessionFile
         )
         let analysis = OvernightStateClassifier.analyze(samples)

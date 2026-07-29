@@ -181,6 +181,9 @@ final class BLEBackgroundWorker: ObservableObject {
     private var deviceOffBody: [UUID: Bool] = [:]
     private var unlimitedReconnectActive: Bool = false
     private var offBodyChargerReconnectActive: Bool = false
+    /// `cancelPeripheralConnection` delivers `didDisconnect` with `error == nil`, which would
+    /// otherwise skip auto-reconnect. Track intentional stale cancels so recovery still reconnects.
+    private var staleRecoveryReconnectIDs: Set<UUID> = []
     private var bleServiceEventCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
     private let eventSubject = PassthroughSubject<BLEBackgroundWorkerEvent, Never>()
@@ -540,6 +543,7 @@ final class BLEBackgroundWorker: ObservableObject {
         }
         reconnectionStates.removeAll()
         activeReconnections.removeAll()
+        staleRecoveryReconnectIDs.removeAll()
 
         // Cancel all timeout tasks
         for (_, task) in connectionTimeoutTasks {
@@ -577,13 +581,15 @@ final class BLEBackgroundWorker: ObservableObject {
         connectionHealth[peripheralId] = .disconnected
         lastDataReceived.removeValue(forKey: peripheralId)
 
-        if wasUnexpected && config.autoReconnectEnabled {
+        // Stale recovery uses cancelPeripheralConnection (nil error / "intentional"), but must reconnect.
+        let staleRecovery = staleRecoveryReconnectIDs.remove(peripheralId) != nil
+        if (wasUnexpected || staleRecovery) && config.autoReconnectEnabled {
             // Supervision / link-loss timeouts recover better with a short radio backoff than instant reconnect storms.
             let isLinkSupervisionTimeout = (error as? CBError)?.code == .connectionTimeout
             scheduleReconnection(
                 for: peripheralId,
                 peripheral: peripheral,
-                immediate: !isLinkSupervisionTimeout
+                immediate: staleRecovery ? false : !isLinkSupervisionTimeout
             )
         } else {
             reconnectionStates[peripheralId]?.reset()
@@ -722,7 +728,14 @@ final class BLEBackgroundWorker: ObservableObject {
         }
 
         Logger.shared.warning("[BLEBackgroundWorker] Cancelling stale connected peripheral \(peripheralId) to trigger reconnect")
+        // Mark before cancel: CoreBluetooth reports intentional disconnect with error == nil.
+        staleRecoveryReconnectIDs.insert(peripheralId)
         bleService.disconnect(from: peripheral)
+    }
+
+    /// Test seam: mark a peripheral as a stale-recovery cancel (nil-error disconnect must reconnect).
+    func markStaleRecoveryReconnectForTesting(_ peripheralId: UUID) {
+        staleRecoveryReconnectIDs.insert(peripheralId)
     }
 
     // MARK: - Event Subscription

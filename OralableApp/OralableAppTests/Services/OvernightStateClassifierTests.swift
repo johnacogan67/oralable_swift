@@ -150,4 +150,112 @@ final class OvernightStateClassifierTests: XCTestCase {
         XCTAssertEqual(samples.count, 20)
         XCTAssertNotNil(OvernightStateClassifier.analyze(samples))
     }
+
+    func testDeepDesaturationPreservedForSASHB() {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_200)
+        var samples: [NightReportSample] = []
+        for i in 0..<100 {
+            let t = t0.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: 180_000,
+                    accelX: 0,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: i < 50 ? 98 : 78
+                )
+            )
+        }
+        guard let analysis = OvernightStateClassifier.analyze(samples, classifyHz: 10, timelineHz: 2) else {
+            XCTFail("Expected analysis")
+            return
+        }
+        // 78% must not be clamped to 85 — SASHB uses ∫(90 − SpO₂)dt below 90.
+        XCTAssertLessThan(analysis.kpis.spo2Min, 85, "Deep desats must survive classifier input")
+        XCTAssertEqual(analysis.kpis.spo2Min, 78, accuracy: 0.5)
+        XCTAssertGreaterThan(analysis.kpis.sashb, (90 - 85) * 4.0, "SASHB must reflect SpO2 below the old 85 floor")
+        XCTAssertTrue(analysis.timeline.contains(where: { $0.spo2 < 85 }))
+    }
+
+    func testMissingSpO2DoesNotInventHealthyNinetySeven() {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_300)
+        var samples: [NightReportSample] = []
+        for i in 0..<80 {
+            let t = t0.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: i < 40 ? 200_000 : 90_000,
+                    accelX: 0,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: .nan
+                )
+            )
+        }
+        guard let analysis = OvernightStateClassifier.analyze(samples, classifyHz: 10, timelineHz: 2) else {
+            XCTFail("Expected analysis")
+            return
+        }
+        XCTAssertEqual(analysis.kpis.rescueCount, 0, "Missing SpO2 must not fabricate rescue")
+        XCTAssertEqual(analysis.kpis.sashb, 0, accuracy: 1e-9, "Missing SpO2 must not invent SASHB")
+        XCTAssertTrue(analysis.kpis.spo2Mean.isNaN || analysis.kpis.spo2Mean == 0)
+        XCTAssertFalse(analysis.timeline.contains(where: { $0.spo2 == 97 }), "Must not invent SpO2=97")
+        // IR drop with missing SpO2 should still allow tonic (spo2Ok when non-finite).
+        XCTAssertTrue(analysis.kpis.tonicMin > 0 || analysis.timeline.contains(where: { $0.state == .tonic }))
+    }
+
+    func testLoaderMergesProcessorHistoryWithUnifiedSnapshot() {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_400)
+        // Simulate trimmed processor ring (recent only) + older unified-buffer snapshot.
+        let processor = (80..<100).map { i -> SensorData in
+            let ts = t0.addingTimeInterval(Double(i) * 0.1)
+            return SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: 1000, ir: 180_000, green: 800, timestamp: ts),
+                accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: ts),
+                temperature: TemperatureData(celsius: 36.5, timestamp: ts),
+                battery: BatteryData(percentage: 90, timestamp: ts),
+                heartRate: nil,
+                spo2: SpO2Data(percentage: 96, quality: 0.9, timestamp: ts),
+                deviceType: .oralable
+            )
+        }
+        let unified = (0..<80).map { i -> SensorData in
+            let ts = t0.addingTimeInterval(Double(i) * 0.1)
+            return SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: 1000, ir: 190_000, green: 800, timestamp: ts),
+                accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: ts),
+                temperature: TemperatureData(celsius: 36.5, timestamp: ts),
+                battery: BatteryData(percentage: 90, timestamp: ts),
+                heartRate: nil,
+                spo2: SpO2Data(percentage: 95, quality: 0.9, timestamp: ts),
+                deviceType: .oralable
+            )
+        }
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("night_loader_unified_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let samples = NightReportSampleLoader.load(
+            sessionStart: t0.addingTimeInterval(-1),
+            sessionEnd: t0.addingTimeInterval(12),
+            liveHistory: processor + unified,
+            sessionFileURL: nil,
+            flushDirectory: tmp
+        )
+        XCTAssertEqual(samples.count, 100, "Unified snapshot must fill the trimmed processor gap")
+        XCTAssertEqual(
+            samples.first?.timestamp.timeIntervalSince1970 ?? -1,
+            t0.timeIntervalSince1970,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            samples.last?.timestamp.timeIntervalSince1970 ?? -1,
+            t0.addingTimeInterval(9.9).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
 }

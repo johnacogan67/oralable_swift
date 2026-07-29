@@ -133,7 +133,8 @@ enum OvernightStateClassifier {
             let s = sorted[src]
             elapsed[k] = elapsedAll[src]
             ir[k] = s.ir
-            spo2[k] = s.spo2.isFinite && s.spo2 > 0 ? min(100, max(85, s.spo2)) : 97.0
+            // Keep missing SpO2 as NaN (do not invent 97%). Floor is 0 — BioMetricCalculator allows down to 70%.
+            spo2[k] = s.spo2.isFinite && s.spo2 > 0 ? min(100, s.spo2) : .nan
             ax[k] = s.accelX
             ay[k] = s.accelY
             az[k] = s.accelZ
@@ -313,8 +314,10 @@ enum OvernightStateClassifier {
             let drop = dropPct[i] > irDcDropThresholdPct
             let stable = motionPower[i] <= phasicThresh
             let high = motionPower[i] > phasicThresh
-            let spo2Ok = spo2Pct[i] >= rescueSpo2Threshold
-            if drop && spo2Pct[i] < rescueSpo2Threshold {
+            let spo2Finite = spo2Pct[i].isFinite
+            // Missing SpO2: allow IR/motion tonic+phasic; never invent rescue from NaN.
+            let spo2Ok = !spo2Finite || spo2Pct[i] >= rescueSpo2Threshold
+            if drop && spo2Finite && spo2Pct[i] < rescueSpo2Threshold {
                 out[i] = .rescue
             } else if high && spo2Ok {
                 out[i] = .phasic

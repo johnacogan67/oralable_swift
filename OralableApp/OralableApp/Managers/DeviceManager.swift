@@ -559,6 +559,11 @@ class DeviceManager: ObservableObject {
             Logger.shared.warning("[DeviceManager] Unified buffer flush failed: \(error.localizedDescription)")
         }
     }
+
+    /// Non-destructive snapshot of unified stream samples in `[start, end]` (overnight clinical PDF).
+    func snapshotUnifiedSensorData(from start: Date, to end: Date) async -> [SensorData] {
+        await unifiedSensorDataBuffer.data(from: start, to: end)
+    }
     
     // MARK: - Device Info Access
     
