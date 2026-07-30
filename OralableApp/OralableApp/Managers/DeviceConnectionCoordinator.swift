@@ -266,6 +266,9 @@ extension DeviceManager {
         discoveryFlowTasks[peripheral.identifier] = nil
         if let device = devices[peripheral.identifier] as? OralableDevice {
             device.cancelPendingContinuations()
+            // Unexpected disconnect / auto-reconnect never calls OralableDevice.disconnect().
+            // Clear per-link placement + battery caches so the next connect re-applies 00B.
+            device.resetConnectionScopedState()
         }
 
         // Update device states

@@ -358,19 +358,36 @@ struct ShareView: View {
         let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
 
         let currentSession = dependencies.recordingSessionManager.currentSession
-        let sessionStart: Date = {
+        let preferredStart: Date = {
             if let t = currentSession?.startTime { return t }
             if let t = dependencies.deviceManager.automaticRecordingSession?.sessionStartTime { return t }
+            if let t = dependencies.deviceManager.lastCompletedAutomaticSessionStart { return t }
             let sessions = dependencies.recordingSessionManager.sessions
             if let last = sessions.max(by: { $0.startTime < $1.startTime }) { return last.startTime }
             if let first = sensorDataProcessor.sensorDataHistory.first?.timestamp { return first }
             return Calendar.current.startOfDay(for: Date())
         }()
-        let sessionEnd: Date = {
+        // Prefer wall-clock / completed-session end over trimmed processor history (10k ≈ 200s).
+        let preferredEnd: Date = {
             if let end = currentSession?.endTime { return end }
-            if let last = sensorDataProcessor.sensorDataHistory.last?.timestamp { return max(last, Date()) }
+            if let end = dependencies.deviceManager.lastCompletedAutomaticSessionEnd,
+               dependencies.deviceManager.automaticRecordingSession?.sessionStartTime == nil {
+                return end
+            }
             return Date()
         }()
+        let flushBounds = NightReportSampleLoader.sampleTimeBounds()
+        let resolved = NightReportSampleLoader.resolveClinicalExportWindow(
+            preferredStart: preferredStart,
+            preferredEnd: preferredEnd,
+            lastCompletedAutoStart: dependencies.deviceManager.lastCompletedAutomaticSessionStart,
+            lastCompletedAutoEnd: dependencies.deviceManager.lastCompletedAutomaticSessionEnd,
+            flushBounds: flushBounds
+        )
+        let sessionStart = resolved.start
+        let sessionEnd = resolved.end
+        let windowStart = sessionStart.addingTimeInterval(-2)
+        let windowEnd = sessionEnd.addingTimeInterval(2)
         let sessionFile = currentSession?.dataFilePath
             ?? dependencies.recordingSessionManager.sessions
                 .filter { $0.dataFilePath != nil }
@@ -378,8 +395,8 @@ struct ShareView: View {
                 .dataFilePath
 
         let samples = NightReportSampleLoader.load(
-            sessionStart: sessionStart.addingTimeInterval(-2),
-            sessionEnd: sessionEnd.addingTimeInterval(2),
+            sessionStart: windowStart,
+            sessionEnd: windowEnd,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionFileURL: sessionFile
         )

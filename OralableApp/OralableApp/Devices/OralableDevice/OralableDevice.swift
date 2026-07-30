@@ -216,9 +216,20 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             continuation.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         }
 
-        // Reset state
+        resetConnectionScopedState()
+    }
+
+    /// Clears caches scoped to a single BLE link.
+    ///
+    /// CoreBluetooth disconnect / reconnect reuses the same `OralableDevice` instance and often
+    /// never calls `disconnect()` — only `cancelPendingContinuations()`. Without this reset,
+    /// `lastAppliedPlacementMode` skips the next `00B` 0x09 write and a stale `batteryLevel`
+    /// can gate Worn placement incorrectly.
+    func resetConnectionScopedState() {
+        setOffBodyLinkKeepaliveActive(false)
         notificationReadiness = []
         firmwareDeviceStatus = nil
+        batteryLevel = nil
         deviceIdValue = nil
         lastPPGFrameCounter = nil
         lastAccelFrameCounter = nil
