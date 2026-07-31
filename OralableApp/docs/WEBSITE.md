@@ -1,10 +1,13 @@
 # oralable.com source
 
+**App working diagrams:** [MOBILE_APP_FLOWS.md §2](../../docs/MOBILE_APP_FLOWS.md#2-how-the-patient-app-works--phase-0)
+
 **Canonical website repo:** [johnacogan67/oralable-web](https://github.com/johnacogan67/oralable-web) → Netlify → **https://oralable.com**
 
 This `docs/` folder in `oralable_swift` is a **frozen / local copy** for app-doc cross-links. **Do not** point Netlify at `oralable_swift` for the live site. Edit and deploy from **`oralable-web`**.
 
-**Brand (public):** Official lockup `images/oralable_logo_lockup.png` · **Oralable®** · **Word of Mouth™** · footer trademark line (JAC Dental Solutions Limited). Do not spray ® on every body mention.
+**Brand (public):** Official lockup `images/oralable_logo_lockup.png` · **Oralable®** · **Word of Mouth™** · footer trademark line (JAC Dental Solutions Limited). Do not spray ® on every body mention.  
+**App/docs figures:** [../../docs/FIGURES.md](../../docs/FIGURES.md) · master [cursor_oralable/docs/FIGURES.md](../../../cursor_oralable/docs/FIGURES.md)
 
 ## Netlify (oralable-web)
 

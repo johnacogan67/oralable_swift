@@ -21,8 +21,10 @@ struct SimplifiedDashboardView: View {
     @EnvironmentObject var deviceManagerAdapter: DeviceManagerAdapter
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var appStateManager: AppStateManager
+    @EnvironmentObject var dependencies: AppDependencies
     @ObservedObject private var featureFlags = FeatureFlags.shared
     @ObservedObject var viewModel: DashboardViewModel
+    @State private var overnightReport: OvernightNightReportBuilder.Result?
 
     // Computed positioning state
     private var positioningState: PositioningState {
@@ -70,6 +72,10 @@ struct SimplifiedDashboardView: View {
                             )
                         }
 
+                        if featureFlags.showOvernightHypnogram {
+                            OvernightMorningCardView(result: overnightReport)
+                        }
+
                         if appStateManager.showsOralableClinicalMetrics && !featureFlags.vitalsPhaseEnabled {
                             TFIFatigueGaugeView(valuePercent: deviceManagerAdapter.temporalisFatigueIndexPercent)
                         }
@@ -84,7 +90,22 @@ struct SimplifiedDashboardView: View {
                 .background(designSystem.colors.backgroundPrimary)
             }
             .navigationBarHidden(true)
+            .onAppear { refreshOvernightReport() }
         }
+    }
+
+    private func refreshOvernightReport() {
+        guard featureFlags.showOvernightHypnogram else {
+            overnightReport = nil
+            return
+        }
+        overnightReport = OvernightNightReportBuilder.build(
+            recordingSessionManager: dependencies.recordingSessionManager,
+            automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
+            liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
+            sessionHistoryStore: dependencies.sessionHistoryStore,
+            tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent
+        )
     }
 
     // MARK: - Top Bar

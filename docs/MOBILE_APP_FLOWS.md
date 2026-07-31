@@ -3,9 +3,9 @@
 Canonical UX/navigation reference for **Oralable** (consumer) and **Oralable for Dentists** (professional).  
 There are **no Figma/Sketch wireframes** in the repos; this document plus **implemented SwiftUI** are the source of truth.
 
-**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md)
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md) · **Figures:** [FIGURES.md](./FIGURES.md) · master [cursor_oralable/docs/FIGURES.md](../../cursor_oralable/docs/FIGURES.md)
 
-**Last updated:** 26 Jul 2026 · **Doc version:** 1.2.2 · FW **1.0.70** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
+**Last updated:** 31 Jul 2026 · **Doc version:** 1.2.3 · FW **1.0.70** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
 
 **Phase note (July 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.70** · app **4.3.3** (STAT blink = dock/charge; Automatic OK).
 
@@ -18,16 +18,17 @@ There are **no Figma/Sketch wireframes** in the repos; this document plus **impl
 ## Table of contents
 
 1. [Apps and bundles](#1-apps-and-bundles)
-2. [Consumer app — launch and navigation](#2-consumer-app--launch-and-navigation)
-3. [Consumer app — screen inventory](#3-consumer-app--screen-inventory)
-4. [Professional app — navigation](#4-professional-app--navigation)
-5. [Professional app — screen inventory](#5-professional-app--screen-inventory)
-6. [Patient → dentist data flow](#6-patient--dentist-data-flow)
-7. [BLE → UI data path](#7-ble--ui-data-path)
-8. [Pre-launch UI (feature flags)](#8-pre-launch-ui-feature-flags)
-9. [Done vs remaining](#9-done-vs-remaining)
-10. [Roadmap and timeline](#10-roadmap-and-timeline)
-11. [Source files (navigation)](#11-source-files-navigation)
+2. [How the patient app works — Phase 0](#2-how-the-patient-app-works--phase-0)
+3. [Consumer app — launch and navigation](#3-consumer-app--launch-and-navigation)
+4. [Consumer app — screen inventory](#4-consumer-app--screen-inventory)
+5. [Professional app — navigation](#5-professional-app--navigation)
+6. [Professional app — screen inventory](#6-professional-app--screen-inventory)
+7. [Patient → dentist data flow](#7-patient--dentist-data-flow)
+8. [BLE → UI data path](#8-ble--ui-data-path)
+9. [Pre-launch UI (feature flags)](#9-pre-launch-ui-feature-flags)
+10. [Done vs remaining](#10-done-vs-remaining)
+11. [Roadmap and timeline](#11-roadmap-and-timeline)
+12. [Source files (navigation)](#12-source-files-navigation)
 
 ---
 
@@ -40,9 +41,130 @@ There are **no Figma/Sketch wireframes** in the repos; this document plus **impl
 
 Shared: **OralableCore** (BLE parsing, algorithms, design tokens, `AutomaticRecordingSession`, CloudKit handshake export).
 
+![FIG-IOS-001 Vitals home](./figures/FIG-IOS-001-vitals-home-mock.svg)
+
+*Figure FIG-IOS-001 — Phase 0 Vitals home mock (placeholder).*
+
+![FIG-IOS-002 Placement picker](./figures/FIG-IOS-002-placement-picker.svg)
+
+*Figure FIG-IOS-002 — Placement picker UI (placeholder).*
+
 ---
 
-## 2. Consumer app — launch and navigation
+## 2. How the patient app works — Phase 0
+
+End-to-end working model for **Oralable 4.3.3** + FW **1.0.70** (Ed/Pedro kits). Wellness wording only — not a medical diagnosis.
+
+### 2.1 Night / day session lifecycle
+
+```mermaid
+flowchart LR
+  Charge[Charge on Oralable case] --> Pair[Pair or reconnect BLE]
+  Pair --> Place[Place on temple]
+  Place --> Stream[Worn-gated 50Hz stream]
+  Stream --> Vitals[Dashboard HR and SpO2]
+  Stream --> AutoRec[AutomaticRecordingSession]
+  AutoRec --> Flush[CSV flush and session history]
+  Flush --> Share[Share clinical PDF or CSV]
+  Share --> Recharge[Back on case]
+```
+
+![FIG-IOS-006 Phase 0 session lifecycle](./figures/FIG-IOS-006-phase0-session-lifecycle.svg)
+
+*Figure FIG-IOS-006 — Phase 0 vitals session lifecycle (placeholder).*
+
+| Step | What the user does | What the app does |
+|------|--------------------|-------------------|
+| Charge | Clip on Oralable magnetic case (USB-C) | Status LED mirror: blink = charging; solid = taper; `on_dock` / `charge_active` |
+| Pair | Open Devices / first-launch discovery | Scan TGM `3A0FF000` → FW gate (≥1.0.63, recommend 1.0.70) → CCC enable |
+| Place | Temple (default) | Placement picker: Manual or Automatic (STAT); quality-gated vitals |
+| Wear night | Leave app background-capable | Auto-record; pause on disconnect; resume on reconnect |
+| Morning | Share / history | Clinical Temporalis PDF + event CSV when samples exist |
+
+### 2.2 Main tab map (what each tab is for)
+
+```mermaid
+flowchart TB
+  Main[MainTabView]
+  Main --> Dash[Dashboard]
+  Main --> Dev[Devices]
+  Main --> Sh[Share]
+  Main --> Set[Settings]
+  Dash --> Live[Live HR SpO2 PPG]
+  Dash --> Hist[Historical and sessions]
+  Dev --> Scan[Scan pair detail]
+  Sh --> CSV[CSV export]
+  Sh --> PDF[Clinical night PDF]
+  Sh --> CK[CloudKit share gated off]
+  Set --> Flags[Developer flags 7-tap]
+```
+
+### 2.3 Placement and device state (Phase 0)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Disconnected
+  Disconnected --> Connecting: user selects device
+  Connecting --> FirmwareGate: GATT discovered
+  FirmwareGate --> Placement: version OK
+  FirmwareGate --> Blocked: below min 1.0.63
+  Placement --> OnCase: on_dock
+  Placement --> WornTemple: worn plus temple
+  OnCase --> Charging: STAT blink
+  OnCase --> ChargeTaper: STAT solid
+  WornTemple --> Streaming: PPG ACC CCC ready
+  Streaming --> Paused: disconnect
+  Paused --> Connecting: auto reconnect
+  Streaming --> Disconnected: user forgets device
+```
+
+**UI surfaces:** `VitalsDeviceStatusCard` · `DeviceStatusLEDView` · placement picker · worn indicator.
+
+### 2.4 Automatic recording (no Start button)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Recording: BLE ready and worn stream
+  Recording --> Paused: link drop
+  Paused --> Recording: reconnect
+  Recording --> Idle: session end or unpair
+  Recording --> Flushing: auto flush threshold
+  Flushing --> Recording: CSV written
+```
+
+![FIG-IOS-008 Automatic recording states](./figures/FIG-IOS-008-auto-recording-states.svg)
+
+*Figure FIG-IOS-008 — Automatic recording states (placeholder).*
+
+Recording is owned by `AutomaticRecordingSession` (OralableCore). Dashboard shows streaming / positioned / activity via `RecordingStateIndicator` — not a manual start/stop control.
+
+### 2.5 Live data → numbers on screen
+
+```mermaid
+flowchart TB
+  HW[Oralable Gen1 clip] -->|BLE notify| Central[BLECentralManager]
+  Central --> Coord[DeviceConnectionCoordinator]
+  Coord --> Device[OralableDevice plus BLEDataParser]
+  Device --> Adapter[DeviceManagerAdapter 50Hz]
+  Adapter --> Proc[SensorDataProcessor]
+  Adapter --> Bio[UnifiedBiometricProcessor]
+  Adapter --> Rec[AutomaticRecordingSession]
+  Bio --> VM[DashboardViewModel]
+  Proc --> Hist[History and flush CSV]
+  Rec --> Hist
+  VM --> UI[DashboardView vitals cards]
+```
+
+![FIG-IOS-007 BLE to UI stack](./figures/FIG-IOS-007-ble-to-ui-stack.svg)
+
+*Figure FIG-IOS-007 — BLE to UI processing stack (placeholder).*
+
+Detail (CCC order, readiness): [§8 BLE → UI data path](#8-ble--ui-data-path).
+
+---
+
+## 3. Consumer app — launch and navigation
 
 **Controller:** `OralableApp/Views/LaunchCoordinator.swift`
 
@@ -115,7 +237,15 @@ flowchart LR
 
 ---
 
-## 3. Consumer app — screen inventory
+![FIG-IOS-004 BLE connect](./figures/FIG-IOS-004-ble-connect-flow.svg)
+
+*Figure FIG-IOS-004 — BLE connect flow screenshot (placeholder).*
+
+![FIG-IOS-003 iOS night report](./figures/FIG-IOS-003-night-report-ios.svg)
+
+*Figure FIG-IOS-003 — iOS night report / hypnogram (adapts [FIG-CO-025](../../cursor_oralable/docs/figures/FIG-CO-025-state-hypnogram-exemplar.png); `StateHypnogramView`).*
+
+## 4. Consumer app — screen inventory
 
 | Screen | File | Status | Notes |
 |--------|------|--------|-------|
@@ -152,7 +282,11 @@ flowchart LR
 
 ---
 
-## 4. Professional app — navigation
+![FIG-IOS-005 Dentist app deferred](./figures/FIG-IOS-005-dentist-app-dark.svg)
+
+*Figure FIG-IOS-005 — Dentist app dark / deferred (placeholder; Phase 1+).*
+
+## 5. Professional app — navigation
 
 **Controller:** `ProfessionalRootView` in `OralableForProfessionals.swift`
 
@@ -173,7 +307,7 @@ flowchart TD
 
 ---
 
-## 5. Professional app — screen inventory
+## 6. Professional app — screen inventory
 
 | Screen | File | Status | Notes |
 |--------|------|--------|-------|
@@ -190,7 +324,7 @@ flowchart TD
 
 ---
 
-## 6. Patient → dentist data flow
+## 7. Patient → dentist data flow
 
 ```mermaid
 sequenceDiagram
@@ -214,29 +348,42 @@ sequenceDiagram
 
 ---
 
-## 7. BLE → UI data path
+## 8. BLE → UI data path
 
-Technical flow (not screen flow). See also `cursor_oralable/docs/upload/02_IOS_BLE_STREAMING_SUMMARY.txt`.
+Technical flow (not screen flow). See also `cursor_oralable/docs/upload/02_IOS_BLE_STREAMING_SUMMARY.txt` and [§2.5](#25-live-data--numbers-on-screen).
 
+```mermaid
+flowchart TB
+  Clip[Oralable REV10 TGM 3A0FF000] --> Central[BLECentralManager]
+  Central --> Coord[DeviceConnectionCoordinator]
+  Coord --> Parse[OralableDevice plus BLEDataParser]
+  Parse --> Align[DeviceManagerAdapter 50Hz]
+  Align --> Sens[SensorDataProcessor]
+  Align --> Bio[UnifiedBiometricProcessor]
+  Align --> Auto[AutomaticRecordingSession]
+  Sens --> Store[History and auto-flush CSV]
+  Bio --> HR[HR SpO2 TFI]
+  Auto --> Events[State events pause resume]
+  HR --> DVM[DashboardViewModel]
+  DVM --> DashUI[DashboardView]
 ```
-Oralable REV10 (TGM GATT 3A0FF000)
-  → BLECentralManager (NotifyOnDisconnection)
-    → DeviceConnectionCoordinator (discover → FW gate → placement → awaited staggered CCC)
-      → OralableDevice + BLEDataParser (OralableCore)
-        → DeviceManagerAdapter (50 Hz alignment)
-          ├→ SensorDataProcessor → history, auto-flush CSV
-          ├→ UnifiedBiometricProcessor → HR, SpO₂, TFI
-          ├→ AutomaticRecordingSession → state events, pause/resume on disconnect
-          └→ DashboardViewModel → DashboardView UI
+
+**Connect readiness:**
+
+```mermaid
+flowchart LR
+  D[disconnected] --> C[connecting]
+  C --> E[enablingNotifications]
+  E --> R[ready]
 ```
 
-**Connect readiness:** `disconnected` → `connecting` → … → `enablingNotifications` → `ready` when PPG + ACC + **status + battery** CCC confirms are set (`OralableDevice.NotificationReadiness.allRequired`).
+Ready when PPG + ACC + **status + battery** CCC confirms are set (`OralableDevice.NotificationReadiness.allRequired`).
 
 **CCC order (await each `didUpdateNotificationState`):** battery `004` → status `009` → PPG `001` → ACC `002` → temp `003`. Battery CCC and streaming CCC blocks use **timeouts**; on failure the coordinator calls `cancelPendingContinuations()` so waiters do not hang. Disable/`isNotifying == false` also resumes waiters with error.
 
 ---
 
-## 8. Pre-launch UI (feature flags)
+## 9. Pre-launch UI (feature flags)
 
 `FeatureFlags.swift` — toggles in **Developer Settings** (tap app version 7× in Settings).
 
@@ -252,6 +399,7 @@ Oralable REV10 (TGM GATT 3A0FF000)
 | `showCloudKitShare` | **false** | Share with professional |
 | `showDetectionSettings` | **false** | Thresholds / event settings |
 | `showPilotStudy` | **false** | Pilot UI |
+| `showOvernightHypnogram` | **true** (vitals) / **false** (App Store Minimal) | Dashboard morning card + Share hypnogram preview (FIG-CO-025 adaptation) |
 | PPG IR card | **always on** | Core dashboard waveform |
 
 **App Store screenshots** should reflect **flag-off** consumer UI unless you intentionally launch with flags lifted.
@@ -271,7 +419,7 @@ iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recomm
 
 ---
 
-## 9. Done vs remaining
+## 10. Done vs remaining
 
 ### ✅ Implemented (code-complete)
 
@@ -295,18 +443,19 @@ iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recomm
 | App Store Connect IAP live | `APP_STORE_CONNECT_IAP_SETUP.md` |
 | Metadata + screenshots + submission | `APP_STORE_METADATA.md`, `DENTIST_APP_STORE_METADATA.md` |
 
-### ✅ Shipped (export path) — morning card still open
+### ✅ Shipped (export + in-app hypnogram)
 
 | Item | Spec reference | Notes |
 |------|----------------|-------|
-| **Overnight clinical PDF** | [OVERNIGHT_NIGHT_REPORT.md](../../cursor_oralable/docs/OVERNIGHT_NIGHT_REPORT.md) · FTS APP-10 | Share → Clinical Temporalis Report — hypnogram-first, hourly stack, dual-rail, event CSV. **In-app morning card / Figma still open.** |
+| **Overnight clinical PDF** | [OVERNIGHT_NIGHT_REPORT.md](../../cursor_oralable/docs/OVERNIGHT_NIGHT_REPORT.md) · FTS APP-10 | Share → Clinical Temporalis Report — hypnogram-first, hourly stack, dual-rail, event CSV |
+| **In-app state hypnogram** | OVERNIGHT · FIG-CO-025 · APP-10 | `StateHypnogramView` + `OvernightMorningCardView` + `OvernightNightReportBuilder`; Share preview + Dashboard; flag `showOvernightHypnogram` |
 
 ### 🔲 Product UX not designed or built
 
 | Item | Spec reference | Notes |
 |------|----------------|-------|
-| **Wireframes / screen map (visual)** | — | **This doc** replaces until Figma exists |
-| **Overnight morning card (in-app)** | OVERNIGHT_NIGHT_REPORT · APP-10 remainder | Band chips + hypnogram on dashboard/history — PDF path already shipped |
+| **Wireframes / screen map (visual)** | — | **This doc §2 Mermaid + FIG-IOS-*** replaces until Figma exists |
+| **Overnight morning card polish** | OVERNIGHT_NIGHT_REPORT · APP-10 | Core UI shipping; Figma / screenshot art for FIG-IOS-003 still open |
 | **App Store screenshot designs** | Launch checklist | 7 per app — copy exists, art not in repo |
 | PDF export from `HistoricalDetailView` | Launch checklist known issues | Stub at line ~73 |
 | HealthKit export from historical | Launch checklist | Stub |
@@ -317,7 +466,7 @@ iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recomm
 
 ---
 
-## 10. Roadmap and timeline
+## 11. Roadmap and timeline
 
 Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md), [IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md), [COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md), [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md), and [ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §12.
 
@@ -325,7 +474,7 @@ Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md),
 |-------|--------|----------|--------------|
 | **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.70** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
 | **Eng overnight PDF** | **Shipped 24 Jul 2026** | Same Gen1 | Share clinical PDF + Mac night pack (hypnogram-first) — early eng, not Phase 1+ complete |
-| **Phase 1+ — Muscle** | Q4 2026 – Q1 2027 | **Same Gen1** hardware | IR-DC / TFI / SASHB live UX; Protocol B; ≥6 h overnight eval; morning card |
+| **Phase 1+ — Muscle** | Q4 2026 – Q1 2027 | **Same Gen1** hardware | IR-DC / TFI / SASHB live UX; Protocol B; ≥6 h overnight eval; morning card polish (hypnogram UI already shipping) |
 | **Gen2 hardware** | Q4 2026 – H2 2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |
 | **P4 — Android MVP** | Q3–Q4 2026+ | Gen1 stream | Kotlin BLE + local CSV |
 | **P5 — Regulated UI** | H2 2027 – 2028 | Gen2 primary | SaMD-locked labeling, 510(k) monitoring claims |
@@ -344,26 +493,26 @@ Canonical calendar: [PRODUCT_ROADMAP.md §3](../../cursor_oralable/docs/PRODUCT_
 Pages: KPIs → **bout hypnogram (lead)** → hourly stack + SASHB → smoking-gun IR-DC/SpO₂ → event table; plus `Oralable_Night_Events_*.csv`.  
 Samples from `sensorDataHistory` + memory-flush CSVs + session `dataFilePath`.
 
-**Still open (UI):** morning card with **three band chips + hypnogram**:
+**In-app (shipping):** morning card + Share preview with **band chips + state hypnogram** (adapts FIG-CO-025):
 
 ```
 ┌─────────────────────────────────────────┐
 │  Night · ≥6h · Jaw load | O2 | Rescue   │  ← Low / Moderate / High chips
 ├─────────────────────────────────────────┤
-│  State hypnogram (primary)              │
+│  State hypnogram (primary)              │  ← StateHypnogramView
 ├─────────────────────────────────────────┤
-│  Hourly stack + SASHB (secondary)       │
-├─────────────────────────────────────────┤
-│  [Share PDF] [Send to dentist]          │
+│  [Share PDF] (hourly / dual-rail in PDF)│
 └─────────────────────────────────────────┘
 ```
 
-Consumer: Share clinical PDF today; later `OvernightReportView`.  
-Dentist: same bands + hypnogram language; handshake hourly rollups.
+Consumer: Dashboard + Share hypnogram; full hourly/dual-rail in Clinical PDF.  
+Dentist: same bands + hypnogram language later; handshake hourly rollups.
+
+**Feature flag:** `showOvernightHypnogram` — Developer Settings → Overnight Hypnogram.
 
 ---
 
-## 11. Source files (navigation)
+## 12. Source files (navigation)
 
 | Concern | Path |
 |---------|------|

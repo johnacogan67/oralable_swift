@@ -62,6 +62,7 @@ struct ShareView: View {
     @State private var isSharing = false
     @State private var shareProgress: String = ""
     @State private var exportType: ExportType = .events
+    @State private var overnightReport: OvernightNightReportBuilder.Result?
 
     var body: some View {
         NavigationStack {
@@ -84,6 +85,7 @@ struct ShareView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Share")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear { refreshOvernightReport() }
             .fileExporter(
                 isPresented: $showingFileExporter,
                 document: exportDocument,
@@ -329,6 +331,24 @@ struct ShareView: View {
     // MARK: - Clinical Temporalis PDF
     private var clinicalTemporalisPDFSection: some View {
         Section {
+            if featureFlags.showOvernightHypnogram {
+                VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
+                    Text("State hypnogram — very useful overnight measure")
+                        .font(designSystem.typography.bodySmall)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                    StateHypnogramView(
+                        analysis: overnightReport?.analysis,
+                        caption: "In-app adaptation of FIG-CO-025 (TEMPORALIS_20260724)"
+                    )
+                }
+                .listRowInsets(EdgeInsets(
+                    top: designSystem.spacing.sm,
+                    leading: designSystem.spacing.md,
+                    bottom: designSystem.spacing.sm,
+                    trailing: designSystem.spacing.md
+                ))
+            }
+
             Button(action: exportClinicalTemporalisPDF) {
                 HStack {
                     Image(systemName: "doc.richtext")
@@ -353,37 +373,29 @@ struct ShareView: View {
         }
     }
 
-    private func exportClinicalTemporalisPDF() {
-        let hourly = dependencies.sessionHistoryStore.segmentByHour.values.sorted { $0.hourIndex < $1.hourIndex }
-        let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
-
-        let currentSession = dependencies.recordingSessionManager.currentSession
-        let sessionStart: Date = {
-            if let t = currentSession?.startTime { return t }
-            if let t = dependencies.deviceManager.automaticRecordingSession?.sessionStartTime { return t }
-            let sessions = dependencies.recordingSessionManager.sessions
-            if let last = sessions.max(by: { $0.startTime < $1.startTime }) { return last.startTime }
-            if let first = sensorDataProcessor.sensorDataHistory.first?.timestamp { return first }
-            return Calendar.current.startOfDay(for: Date())
-        }()
-        let sessionEnd: Date = {
-            if let end = currentSession?.endTime { return end }
-            if let last = sensorDataProcessor.sensorDataHistory.last?.timestamp { return max(last, Date()) }
-            return Date()
-        }()
-        let sessionFile = currentSession?.dataFilePath
-            ?? dependencies.recordingSessionManager.sessions
-                .filter { $0.dataFilePath != nil }
-                .max(by: { $0.startTime < $1.startTime })?
-                .dataFilePath
-
-        let samples = NightReportSampleLoader.load(
-            sessionStart: sessionStart.addingTimeInterval(-2),
-            sessionEnd: sessionEnd.addingTimeInterval(2),
+    private func refreshOvernightReport() {
+        overnightReport = OvernightNightReportBuilder.build(
+            recordingSessionManager: dependencies.recordingSessionManager,
+            automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: sensorDataProcessor.sensorDataHistory,
-            sessionFileURL: sessionFile
+            sessionHistoryStore: dependencies.sessionHistoryStore,
+            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
         )
-        let analysis = OvernightStateClassifier.analyze(samples)
+    }
+
+    private func exportClinicalTemporalisPDF() {
+        let built = OvernightNightReportBuilder.build(
+            recordingSessionManager: dependencies.recordingSessionManager,
+            automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
+            liveHistory: sensorDataProcessor.sensorDataHistory,
+            sessionHistoryStore: dependencies.sessionHistoryStore,
+            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
+        )
+        overnightReport = built
+        let hourly = built.hourlySegments
+        let r = ClinicalReportGenerator.smokingGunCorrelation(hourly: hourly)
+        let sessionStart = built.window.start
+        let analysis = built.analysis
 
         let sync = shareCode.trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = ClinicalReportPayload(
@@ -392,7 +404,7 @@ struct ShareView: View {
             dateOfStudy: sessionStart,
             clinicianSyncCode: sync,
             spO2ClenchCorrelation: r,
-            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+            tfiPercent: built.tfiPercent,
             generatedAt: Date(),
             hourlySegments: hourly,
             nightAnalysis: analysis

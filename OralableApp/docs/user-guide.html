@@ -377,9 +377,21 @@
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Recording Tips</h3>
             <ul style="color: var(--color-text-secondary);">
                 <li>Record for at least 5-10 minutes to capture patterns</li>
+                <li>For overnight bands and the state hypnogram, aim for <strong>≥6 hours</strong> worn (goal 8 hours)</li>
                 <li>Keep device properly positioned</li>
                 <li>Note significant events for reference</li>
             </ul>
+
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Overnight state hypnogram</h3>
+            <p style="color: var(--color-text-secondary);">After a long overnight wear, the patient app can show a <strong>state hypnogram</strong> — a barcode-style view of device-inferred quiet / tonic / phasic / rescue / recovery patterns across the night. It appears on the <strong>Dashboard</strong> (morning card) and as a preview on the <strong>Share</strong> tab. This is the primary overnight graphic for personal awareness.</p>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Open <strong>Dashboard</strong> after an overnight session to see band chips (when wear ≥6&nbsp;h) plus the hypnogram</li>
+                <li>Open <strong>Share</strong> → Clinical report section for the same hypnogram preview</li>
+                <li>Export <strong>Clinical Temporalis PDF</strong> for the full pack (hypnogram + hourly detail + event CSV)</li>
+            </ul>
+            <div class="note-box">
+                <strong>Wellness only:</strong> Hypnogram states are device-inferred for personal awareness. They are not a medical sleep study, bruxism diagnosis, or apnea index.
+            </div>
 
             <!-- SECTION 6: HISTORY -->
             <h2 id="history" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">6. Viewing History</h2>
@@ -415,23 +427,28 @@
                         <td style="font-weight: 600;">Available</td>
                     </tr>
                     <tr>
+                        <td>Heart Rate</td>
+                        <td>Derived from temple PPG (Phase 0)</td>
+                        <td style="font-weight: 600;">Available</td>
+                    </tr>
+                    <tr>
+                        <td>SpO2</td>
+                        <td>Blood oxygen estimate (Phase 0)</td>
+                        <td style="font-weight: 600;">Available</td>
+                    </tr>
+                    <tr>
+                        <td>Overnight hypnogram</td>
+                        <td>Device-inferred quiet / tonic / phasic / rescue / recovery (Dashboard + Share)</td>
+                        <td style="font-weight: 600;">Available</td>
+                    </tr>
+                    <tr>
                         <td>Movement</td>
-                        <td>Accelerometer data</td>
-                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
+                        <td>Accelerometer (CSV / research)</td>
+                        <td style="font-weight: 600;">In CSV export</td>
                     </tr>
                     <tr>
                         <td>Temperature</td>
                         <td>Skin temperature</td>
-                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
-                    </tr>
-                    <tr>
-                        <td>Heart Rate</td>
-                        <td>Derived from PPG</td>
-                        <td style="color: var(--color-text-secondary);">Coming Soon</td>
-                    </tr>
-                    <tr>
-                        <td>SpO2</td>
-                        <td>Blood oxygen estimate</td>
                         <td style="color: var(--color-text-secondary);">Coming Soon</td>
                     </tr>
                 </table>
@@ -440,13 +457,13 @@
             <!-- SECTION 7: SHARING -->
             <h2 id="sharing" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">7. Sharing Data</h2>
 
-            <p style="color: var(--color-text-secondary);">Share recorded data as CSV files for analysis or professional review.</p>
+            <p style="color: var(--color-text-secondary);">Share recorded data as CSV or as a <strong>Clinical Temporalis PDF</strong> (hypnogram-first overnight pack). The Share tab also previews the overnight state hypnogram after a long wear night.</p>
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">How to Share</h3>
             <ol class="steps">
                 <li>Go to the <strong>Share</strong> tab</li>
                 <li>Select date range (Today, This Week, This Month, or Custom)</li>
-                <li>Tap <strong>Share CSV</strong></li>
+                <li>Tap <strong>Share CSV</strong>, or export <strong>Clinical Temporalis PDF</strong> for the overnight pack</li>
                 <li>Choose method: AirDrop, Email, Files, etc.</li>
             </ol>
 
@@ -579,20 +596,26 @@
                 </table>
             </div>
 
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">In the app today</h3>
+            <ul style="color: var(--color-text-secondary);">
+                <li>Temple vitals (HR / SpO₂) with device status</li>
+                <li>Overnight <strong>state hypnogram</strong> (Dashboard + Share preview)</li>
+                <li>Clinical Temporalis <strong>PDF</strong> export (hypnogram-first)</li>
+                <li>CSV export</li>
+            </ul>
+
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Coming Soon</h3>
             <ul style="color: var(--color-text-secondary);">
                 <li>Premium subscription</li>
                 <li>CloudKit share codes</li>
-                <li>Additional metrics (Movement, Temperature, HR, SpO2)</li>
-                <li>Apple Health integration</li>
+                <li>Phase 1+ muscle / IR-DC UX</li>
+                <li>Apple Health integration polish</li>
             </ul>
 
-            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Q2 2026</h3>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Later</h3>
             <ul style="color: var(--color-text-secondary);">
                 <li>Apple Watch companion app</li>
-                <li>ANR M40 EMG device support</li>
-                <li>Speech therapy exercise library</li>
-                <li>PDF export</li>
+                <li>ANR M40 EMG device support (research path)</li>
             </ul>
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">2027+</h3>

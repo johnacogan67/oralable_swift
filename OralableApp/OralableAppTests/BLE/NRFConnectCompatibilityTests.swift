@@ -77,6 +77,7 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertFalse(session.isSessionPaused)
     }
 
+    @MainActor
     func testPrepareProtocolBSessionSetsWorn() {
         let flags = FeatureFlags.shared
         flags.devicePlacementMode = .offDockIdle

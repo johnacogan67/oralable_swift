@@ -57,15 +57,31 @@ struct DashboardView: View {
     @State private var showingProfile = false
     @State private var showingDeviceDiscovery = false
     @State private var dismissedErrorDescription: String?
+    @State private var overnightReport: OvernightNightReportBuilder.Result?
 
     var body: some View {
         dashboardContent(viewModel: dashboardViewModel)
+        .onAppear { refreshOvernightReport() }
         .onChange(of: deviceManager.lastError?.errorDescription) { newErrorDescription in
             // Reset dismissed state when a new different error arrives
             if newErrorDescription != dismissedErrorDescription {
                 dismissedErrorDescription = nil
             }
         }
+    }
+
+    private func refreshOvernightReport() {
+        guard featureFlags.showOvernightHypnogram else {
+            overnightReport = nil
+            return
+        }
+        overnightReport = OvernightNightReportBuilder.build(
+            recordingSessionManager: dependencies.recordingSessionManager,
+            automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
+            liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
+            sessionHistoryStore: dependencies.sessionHistoryStore,
+            tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent
+        )
     }
 
     @ViewBuilder
@@ -150,6 +166,10 @@ struct DashboardView: View {
                             placementMode: featureFlags.devicePlacementMode,
                             rssi: viewModel.bleRSSI
                         )
+                    }
+
+                    if featureFlags.showOvernightHypnogram {
+                        OvernightMorningCardView(result: overnightReport)
                     }
 
                     // Recording State Indicator (automatic recording)

@@ -54,6 +54,7 @@ class FeatureFlags: ObservableObject {
         static let enableFirmwareLogNotify = "feature.ble.enableFirmwareLogNotify"
         static let vitalsPhaseEnabled = "feature.pilot.vitalsPhaseEnabled"
         static let debugRebootIntervalMinutes = "feature.pilot.debugRebootIntervalMinutes"
+        static let showOvernightHypnogram = "feature.dashboard.showOvernightHypnogram"
     }
 
     // MARK: - Default Configuration
@@ -91,6 +92,9 @@ class FeatureFlags: ObservableObject {
 
         /// Phase 0 pilot: HR + SpO2 first; hide Protocol B / muscle calibration.
         static let vitalsPhaseEnabled = true
+
+        /// In-app state hypnogram (FIG-CO-025 adaptation) — Share preview + morning card.
+        static let showOvernightHypnogram = true
 
         /// Bench-only firmware warm reboot interval (minutes). 0 = off.
         static let debugRebootIntervalMinutes: UInt16 = 0
@@ -213,6 +217,11 @@ class FeatureFlags: ObservableObject {
         didSet { defaults.set(debugRebootIntervalMinutes, forKey: Keys.debugRebootIntervalMinutes) }
     }
 
+    /// In-app overnight state hypnogram (Share preview + Dashboard morning card).
+    @Published var showOvernightHypnogram: Bool {
+        didSet { defaults.set(showOvernightHypnogram, forKey: Keys.showOvernightHypnogram) }
+    }
+
     /// Set by Share → Prepare Protocol B session; promotes off-dock → worn on next connect.
     @Published var protocolBSessionPrepared: Bool = false
 
@@ -244,6 +253,7 @@ class FeatureFlags: ObservableObject {
         self.enableFirmwareLogNotify = defaults.object(forKey: Keys.enableFirmwareLogNotify) as? Bool ?? Defaults.enableFirmwareLogNotify
         self.vitalsPhaseEnabled = defaults.object(forKey: Keys.vitalsPhaseEnabled) as? Bool ?? Defaults.vitalsPhaseEnabled
         self.debugRebootIntervalMinutes = defaults.object(forKey: Keys.debugRebootIntervalMinutes) as? UInt16 ?? Defaults.debugRebootIntervalMinutes
+        self.showOvernightHypnogram = defaults.object(forKey: Keys.showOvernightHypnogram) as? Bool ?? Defaults.showOvernightHypnogram
 
         if vitalsPhaseEnabled {
             applyVitalsPhaseConfig()
@@ -265,6 +275,7 @@ class FeatureFlags: ObservableObject {
         showAdvancedMetrics = false
         showPilotStudy = false
         showDetectionSettings = false
+        showOvernightHypnogram = true
         Logger.shared.info("[FeatureFlags] Applied vitals phase config (HR + SpO2)")
     }
 
@@ -278,6 +289,7 @@ class FeatureFlags: ObservableObject {
         showTemperatureCard = false
         showSpO2Card = false
         showAdvancedMetrics = false
+        showOvernightHypnogram = false
 
         // Share Features
         showShareWithProfessional = true
@@ -304,6 +316,7 @@ class FeatureFlags: ObservableObject {
         showSubscription = true
         showDetectionSettings = true
         showCloudKitShare = true
+        showOvernightHypnogram = true
         Logger.shared.info("[FeatureFlags] Applied full config")
     }
 
@@ -321,6 +334,7 @@ class FeatureFlags: ObservableObject {
         showSubscription = true
         showDetectionSettings = true
         showCloudKitShare = true
+        showOvernightHypnogram = true
         Logger.shared.info("[FeatureFlags] Applied wellness config")
     }
 
@@ -334,6 +348,7 @@ class FeatureFlags: ObservableObject {
         showSpO2Card = false
         showBatteryCard = false
         showAdvancedMetrics = false
+        showOvernightHypnogram = false
 
         // Share Features
         showShareWithProfessional = true
@@ -360,6 +375,7 @@ class FeatureFlags: ObservableObject {
         showSubscription = true
         showDetectionSettings = true
         showCloudKitShare = true
+        showOvernightHypnogram = true
         Logger.shared.info("[FeatureFlags] Applied research config")
     }
 
@@ -388,6 +404,7 @@ class FeatureFlags: ObservableObject {
         - CloudKit Share: \(showCloudKitShare)
         - Demo Mode: \(demoModeEnabled)
         - Pilot Study: \(showPilotStudy)
+        - Overnight Hypnogram: \(showOvernightHypnogram)
         """
     }
 }

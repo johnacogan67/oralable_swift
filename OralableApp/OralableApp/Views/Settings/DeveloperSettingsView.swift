@@ -38,6 +38,7 @@ struct DeveloperSettingsView: View {
                 Toggle("Heart Rate Card", isOn: $featureFlags.showHeartRateCard)
                 Toggle("SpO2 Card", isOn: $featureFlags.showSpO2Card)
                 Toggle("Battery Card", isOn: $featureFlags.showBatteryCard)
+                Toggle("Overnight Hypnogram", isOn: $featureFlags.showOvernightHypnogram)
             }
 
             // Share Features Section
