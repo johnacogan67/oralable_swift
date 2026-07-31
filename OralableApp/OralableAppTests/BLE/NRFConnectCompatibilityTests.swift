@@ -103,4 +103,15 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         session.processSensorData(irValue: 1_000_000, timestamp: Date())
         XCTAssertEqual(session.eventCount, 1, "Only initial DataStreaming event expected off-body")
     }
+
+    func testWornStateResyncedAfterSessionStartMatchesConnectPath() {
+        // Status CCC + read complete during discovery before `onDeviceConnected`.
+        // `startFreshSession` resets worn=true; production re-applies `primaryFirmwareDeviceStatus`.
+        let session = AutomaticRecordingSession()
+        session.updateFirmwareWornState(false)
+        session.onDeviceConnected()
+        session.updateFirmwareWornState(false)
+        session.processSensorData(irValue: 1_000_000, timestamp: Date())
+        XCTAssertEqual(session.eventCount, 1, "Off-body gate must survive session start when status already reported worn=false")
+    }
 }
