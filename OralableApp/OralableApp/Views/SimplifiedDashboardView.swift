@@ -99,13 +99,24 @@ struct SimplifiedDashboardView: View {
             overnightReport = nil
             return
         }
-        overnightReport = OvernightNightReportBuilder.build(
+        let inputs = OvernightNightReportBuilder.makeBuildInputs(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent
+            liveTFI: deviceManagerAdapter.temporalisFatigueIndexPercent,
+            lastSessionMeanTFI: deviceManagerAdapter.lastSessionMeanTFIPercent
         )
+        Task.detached(priority: .userInitiated) {
+            let result = OvernightNightReportBuilder.build(
+                window: inputs.window,
+                liveHistory: inputs.liveHistory,
+                hourlySegments: inputs.hourlySegments,
+                tfiPercent: inputs.liveTFI,
+                lastSessionMeanTFI: inputs.lastSessionMeanTFI
+            )
+            await MainActor.run { overnightReport = result }
+        }
     }
 
     // MARK: - Top Bar
