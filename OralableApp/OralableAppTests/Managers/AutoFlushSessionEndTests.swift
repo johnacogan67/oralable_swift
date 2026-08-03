@@ -28,7 +28,7 @@ final class AutoFlushSessionEndTests: XCTestCase {
 
     func testFlushNowForcePersistsUnifiedBufferAfterSessionEnds() async throws {
         let dm = DeviceManager(bleService: MockBLEService())
-        let proc = SensorDataProcessor()
+        let proc = SensorDataProcessor(calculator: BioMetricCalculator())
         AutoFlushService.shared.start(deviceManager: dm, sensorDataProcessor: proc)
 
         let ts = Date(timeIntervalSince1970: 1_700_000_000)
@@ -71,7 +71,7 @@ final class AutoFlushSessionEndTests: XCTestCase {
 
     func testFlushNowWithoutForceSkipsWhenSessionInactive() async throws {
         let dm = DeviceManager(bleService: MockBLEService())
-        let proc = SensorDataProcessor()
+        let proc = SensorDataProcessor(calculator: BioMetricCalculator())
         AutoFlushService.shared.start(deviceManager: dm, sensorDataProcessor: proc)
 
         let ts = Date()
