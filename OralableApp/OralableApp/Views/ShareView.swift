@@ -377,6 +377,8 @@ struct ShareView: View {
         overnightReport = OvernightNightReportBuilder.build(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
+            lastCompletedAutoStart: dependencies.deviceManager.lastCompletedAutomaticSessionStart,
+            lastCompletedAutoEnd: dependencies.deviceManager.lastCompletedAutomaticSessionEnd,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
             tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
@@ -387,6 +389,8 @@ struct ShareView: View {
         let built = OvernightNightReportBuilder.build(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
+            lastCompletedAutoStart: dependencies.deviceManager.lastCompletedAutomaticSessionStart,
+            lastCompletedAutoEnd: dependencies.deviceManager.lastCompletedAutomaticSessionEnd,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
             tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
