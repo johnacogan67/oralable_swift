@@ -289,6 +289,15 @@ class DeviceManager: ObservableObject {
             .store(in: &cancellables)
     }
 
+    /// Call when BLE discovery reaches `.ready`.
+    /// Ends an expired automatic-session pause before `onDeviceConnected()` so a
+    /// late reconnect cannot leave the session active+paused (Core no-ops in that
+    /// state) and then lose AutoFlush / unlimited reconnect when the timer ends it.
+    func notifyAutomaticRecordingDeviceReady() {
+        automaticRecordingSession?.endSessionIfPauseExpired()
+        automaticRecordingSession?.onDeviceConnected()
+    }
+
     /// Handle events from background worker
     private func handleBackgroundWorkerEvent(_ event: BLEBackgroundWorkerEvent) {
         switch event {
