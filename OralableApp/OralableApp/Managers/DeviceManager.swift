@@ -633,6 +633,34 @@ class DeviceManager: ObservableObject {
         (primaryBLEDevice as? OralableDevice)?.lastAppliedPlacementMode
     }
 
+    /// Placement mode that should drive vitals status / LED mirrors while connected.
+    ///
+    /// Settings may persist a preferred `FeatureFlags.devicePlacementMode` that is deferred until the
+    /// next reconnect (Gen1 drops BLE on mid-session `00B`). `TGMDeviceStatus.operationalState`
+    /// treats preferred Worn (`3`) as on-body even when firmware `worn` is false — so the dashboard
+    /// must use the mode actually written to firmware, not the deferred preference.
+    func statusPlacementMode(
+        preferred: FeatureFlags.DevicePlacementMode = FeatureFlags.shared.devicePlacementMode
+    ) -> FeatureFlags.DevicePlacementMode {
+        Self.resolveStatusPlacementMode(
+            isConnected: primaryDeviceReadiness.isConnected,
+            applied: appliedFirmwarePlacementMode(),
+            preferred: preferred
+        )
+    }
+
+    /// Pure resolver for unit tests — prefer firmware-applied mode whenever a link is up.
+    static func resolveStatusPlacementMode(
+        isConnected: Bool,
+        applied: FeatureFlags.DevicePlacementMode?,
+        preferred: FeatureFlags.DevicePlacementMode
+    ) -> FeatureFlags.DevicePlacementMode {
+        if isConnected, let applied {
+            return applied
+        }
+        return preferred
+    }
+
     /// Apply explicit firmware placement (`00B` 0x09). Requires FW ≥ 1.0.62.
     /// Gen1 pcb00003: mid-session writes while streaming often drop BLE — use `force: true` only during connect setup.
     func applyFirmwarePlacementMode(_ mode: FeatureFlags.DevicePlacementMode, force: Bool = false) {
