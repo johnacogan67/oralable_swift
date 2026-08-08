@@ -59,7 +59,7 @@ struct SimplifiedDashboardView: View {
                                 heartRateQuality: deviceManagerAdapter.heartRateQuality,
                                 spo2: viewModel.spO2,
                                 spo2Quality: deviceManagerAdapter.spO2Quality,
-                                placementMode: featureFlags.devicePlacementMode,
+                                placementMode: deviceManager.statusPlacementMode(),
                                 rssi: viewModel.bleRSSI
                             )
                         } else {

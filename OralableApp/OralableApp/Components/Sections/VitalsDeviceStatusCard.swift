@@ -11,16 +11,24 @@ import OralableCore
 struct VitalsDeviceStatusCard: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var deviceManager: DeviceManager
+    @ObservedObject private var featureFlags = FeatureFlags.shared
 
     let heartRate: Int
     let heartRateQuality: Double
     let spo2: Int
     let spo2Quality: Double
+    /// Firmware-applied (or disconnected preference) placement — must not be a deferred Settings choice.
     let placementMode: FeatureFlags.DevicePlacementMode
     let rssi: Int?
 
     private var firmwareStatus: TGMDeviceStatus? {
         deviceManager.primaryFirmwareDeviceStatus
+    }
+
+    private var pendingPreferredPlacement: FeatureFlags.DevicePlacementMode? {
+        let preferred = featureFlags.devicePlacementMode
+        guard preferred != placementMode else { return nil }
+        return preferred
     }
 
     private var operationalState: DeviceOperationalState {
@@ -110,6 +118,12 @@ struct VitalsDeviceStatusCard: View {
                         .font(designSystem.typography.caption)
                         .foregroundColor(rssiColor(rssi))
                 }
+            }
+
+            if let pending = pendingPreferredPlacement {
+                Text("Pending: \(pending.title) — disconnect and reconnect to apply. Status above reflects the mode still active on the clip.")
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.warning)
             }
 
             if placementMode == .offDockIdle {
