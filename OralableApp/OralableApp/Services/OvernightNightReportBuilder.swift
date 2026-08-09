@@ -90,20 +90,30 @@ enum OvernightNightReportBuilder {
         automaticSessionStart: Date?,
         liveHistory: [SensorData],
         sessionHistoryStore: SessionHistoryStore,
-        tfiPercent: Double
-    ) -> Result {
+        tfiPercent: Double,
+        deviceManager: DeviceManager
+    ) async -> Result {
         let current = recordingSessionManager.currentSession
         let sessions = recordingSessionManager.sessions
         let hourly = Array(sessionHistoryStore.segmentByHour.values).sorted { $0.hourIndex < $1.hourIndex }
-        let window = resolveSessionWindow(
+        var window = resolveSessionWindow(
             currentSession: current,
             automaticSessionStart: automaticSessionStart,
             sessions: sessions,
             liveHistory: liveHistory
         )
+        // Prefer wall clock while the session is still open so the load window is not
+        // clipped to the trimmed processor ring (~10k / ~200s).
+        if current?.endTime == nil {
+            window.end = max(window.end, Date())
+        }
+        let unifiedSnapshot = await deviceManager.snapshotUnifiedSensorData(
+            from: window.start.addingTimeInterval(-2),
+            to: window.end.addingTimeInterval(2)
+        )
         return build(
             window: window,
-            liveHistory: liveHistory,
+            liveHistory: liveHistory + unifiedSnapshot,
             hourlySegments: hourly,
             tfiPercent: tfiPercent
         )
