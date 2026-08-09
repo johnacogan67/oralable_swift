@@ -349,7 +349,9 @@ struct ShareView: View {
                 ))
             }
 
-            Button(action: exportClinicalTemporalisPDF) {
+            Button {
+                Task { await exportClinicalTemporalisPDF() }
+            } label: {
                 HStack {
                     Image(systemName: "doc.richtext")
                         .foregroundColor(designSystem.colors.info)
@@ -374,22 +376,27 @@ struct ShareView: View {
     }
 
     private func refreshOvernightReport() {
-        overnightReport = OvernightNightReportBuilder.build(
-            recordingSessionManager: dependencies.recordingSessionManager,
-            automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
-            liveHistory: sensorDataProcessor.sensorDataHistory,
-            sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
-        )
+        Task {
+            overnightReport = await OvernightNightReportBuilder.build(
+                recordingSessionManager: dependencies.recordingSessionManager,
+                automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
+                liveHistory: sensorDataProcessor.sensorDataHistory,
+                sessionHistoryStore: dependencies.sessionHistoryStore,
+                tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+                deviceManager: dependencies.deviceManager
+            )
+        }
     }
 
-    private func exportClinicalTemporalisPDF() {
-        let built = OvernightNightReportBuilder.build(
+    @MainActor
+    private func exportClinicalTemporalisPDF() async {
+        let built = await OvernightNightReportBuilder.build(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
+            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+            deviceManager: dependencies.deviceManager
         )
         overnightReport = built
         let hourly = built.hourlySegments
