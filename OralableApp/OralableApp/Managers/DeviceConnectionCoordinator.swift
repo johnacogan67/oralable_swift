@@ -210,8 +210,11 @@ extension DeviceManager {
             isConnecting = false
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")
 
-            // Start automatic recording session
-            automaticRecordingSession?.onDeviceConnected()
+            // Automatic recording follows Oralable clinical capture only — ANR/secondary
+            // readiness must not start or resume the overnight session.
+            if AutomaticRecordingCapturePolicy.shouldStartOrResume(for: device.deviceType) {
+                automaticRecordingSession?.onDeviceConnected()
+            }
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
@@ -249,8 +252,6 @@ extension DeviceManager {
 
         isConnecting = false
 
-        automaticRecordingSession?.onDeviceDisconnected()
-
         if let oralable = devices[peripheral.identifier] as? OralableDevice {
             backgroundWorker.setDeviceOffBody(false, for: peripheral.identifier)
         }
@@ -279,8 +280,27 @@ extension DeviceManager {
             primaryDevice = connectedDevices.first
         }
 
+        // Pause automatic recording only when no Oralable remains ready. A secondary ANR
+        // (or secondary Oralable) drop must not gate processSensorData / expire the session
+        // while the clinical primary is still streaming.
+        syncAutomaticRecordingAfterDisconnect()
+
         // Reconnection handling is centralized in BLEBackgroundWorker's BLE event subscription.
         // Avoid invoking worker handlers here to prevent duplicate reconnection scheduling.
+    }
+
+    /// Whether any Oralable peripheral is fully ready for clinical capture.
+    func hasReadyOralableDevice() -> Bool {
+        AutomaticRecordingCapturePolicy.hasReadyOralable(
+            connectedDevices: connectedDevices,
+            readiness: deviceReadiness
+        )
+    }
+
+    /// Pause the automatic session only after the last ready Oralable disappears.
+    func syncAutomaticRecordingAfterDisconnect() {
+        guard !hasReadyOralableDevice() else { return }
+        automaticRecordingSession?.onDeviceDisconnected()
     }
 
     /// Cancel all ongoing reconnection attempts
