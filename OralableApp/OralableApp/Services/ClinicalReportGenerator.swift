@@ -343,11 +343,16 @@ enum ClinicalReportGenerator {
         let span = max(1e-3, last.elapsedS - t0)
         let plot = rect.insetBy(dx: 8, dy: 8)
 
+        let timelineElapsed = timeline.map(\.elapsedS)
         var i = 0
         while i < timeline.count {
             let st = timeline[i].state
             var j = i + 1
-            while j < timeline.count && timeline[j].state == st { j += 1 }
+            while j < timeline.count
+                    && timeline[j].state == st
+                    && !OvernightStateClassifier.hasGap(timelineElapsed, from: j - 1, to: j) {
+                j += 1
+            }
             let x0 = plot.minX + CGFloat((timeline[i].elapsedS - t0) / span) * plot.width
             let x1 = plot.minX + CGFloat((timeline[j - 1].elapsedS - t0) / span) * plot.width
             if let row = order.firstIndex(of: st) {
