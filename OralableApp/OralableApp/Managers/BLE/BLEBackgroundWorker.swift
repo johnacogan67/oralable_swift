@@ -853,6 +853,9 @@ final class BLEBackgroundWorker: ObservableObject {
                 if let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
                     pendingReconnectionPeripherals[peripheralId] = peripheral
                 }
+                reconnectionStates[peripheralId]?.task = nil
+                reconnectionStates[peripheralId]?.isActive = false
+                activeReconnections.remove(peripheralId)
             }
 
             // Cancel timeout tasks
