@@ -124,8 +124,8 @@ class BaseAuthenticationManager: NSObject, ObservableObject {
         let fullName = credential.fullName
 
         Task { @MainActor in
-            Logger.shared.info("Apple ID Sign In - User ID: \(userID)")
-            Logger.shared.debug("Email: \(email?.description ?? "nil"), Full Name: \(fullName?.description ?? "nil")")
+            Logger.shared.info("Apple ID Sign In credential received")
+            Logger.shared.debug("Apple ID credential fields - emailProvided: \(email != nil), fullNameProvided: \(fullName != nil)")
         }
 
         // Prepare values to save
@@ -136,7 +136,7 @@ class BaseAuthenticationManager: NSObject, ObservableObject {
         if let email = email, !email.isEmpty {
             emailToSave = email
             Task { @MainActor in
-                Logger.shared.info("Email received: \(email)")
+                Logger.shared.info("Email received from Apple ID credential")
             }
         } else {
             // Load existing email from storage for subsequent sign-ins
@@ -157,7 +157,7 @@ class BaseAuthenticationManager: NSObject, ObservableObject {
 
             fullNameToSave = displayName
             Task { @MainActor in
-                Logger.shared.info("Full name received: \(displayName)")
+                Logger.shared.info("Full name received from Apple ID credential")
             }
         } else {
             // Load existing full name from storage for subsequent sign-ins
@@ -179,7 +179,7 @@ class BaseAuthenticationManager: NSObject, ObservableObject {
             self.authenticationError = nil
 
             Task { @MainActor in
-                Logger.shared.info("Authentication successful - Email: \(self.userEmail ?? "nil"), Name: \(self.userFullName ?? "nil")")
+                Logger.shared.info("Authentication successful")
             }
         }
     }
