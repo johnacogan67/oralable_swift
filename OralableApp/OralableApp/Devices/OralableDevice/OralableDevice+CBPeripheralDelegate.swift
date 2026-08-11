@@ -305,6 +305,10 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareReadContinuation = nil
                 c.resume(throwing: DeviceError.invalidData)
             }
+            if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
+                firmwareConfigStateReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            }
             return
         }
 
