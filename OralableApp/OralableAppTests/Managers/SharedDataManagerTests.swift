@@ -197,6 +197,31 @@ final class DataCompressionTests: XCTestCase {
         XCTAssertNotNil(compressed, "Compression of small data should not return nil")
     }
 
+    func testCompressionRoundtripWithIncompressibleData() {
+        // Given - deterministic high-entropy bytes can expand slightly under LZFSE.
+        var value: UInt32 = 0x12345678
+        let randomLikeBytes = (0..<4096).map { _ -> UInt8 in
+            value = value &* 1_664_525 &+ 1_013_904_223
+            return UInt8(truncatingIfNeeded: value >> 24)
+        }
+        let originalData = Data(randomLikeBytes)
+        let originalSize = originalData.count
+
+        // When
+        guard let compressed = originalData.compressed() else {
+            XCTFail("Compression should succeed even when LZFSE output is larger than input")
+            return
+        }
+
+        guard let decompressed = compressed.decompressed(expectedSize: originalSize) else {
+            XCTFail("Decompression should succeed for incompressible data")
+            return
+        }
+
+        // Then
+        XCTAssertEqual(decompressed, originalData, "Roundtrip should preserve incompressible data exactly")
+    }
+
     func testCompressionRoundtripWithJSONData() {
         // Given - JSON data similar to what BruxismSessionData produces
         let jsonDict: [String: Any] = [

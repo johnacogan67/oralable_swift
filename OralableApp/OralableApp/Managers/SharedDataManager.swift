@@ -33,25 +33,48 @@ extension Data {
     func compressed() -> Data? {
         guard !isEmpty else { return nil }
 
-        let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
-        defer { destinationBuffer.deallocate() }
+        let capacities = compressionDestinationCapacities(for: count)
+        for capacity in capacities {
+            let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: capacity)
+            defer { destinationBuffer.deallocate() }
 
-        let compressedSize = withUnsafeBytes { sourceBuffer -> Int in
-            guard let sourcePointer = sourceBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return 0
+            let compressedSize = withUnsafeBytes { sourceBuffer -> Int in
+                guard let sourcePointer = sourceBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                    return 0
+                }
+                return compression_encode_buffer(
+                    destinationBuffer,
+                    capacity,
+                    sourcePointer,
+                    count,
+                    nil,
+                    COMPRESSION_LZFSE
+                )
             }
-            return compression_encode_buffer(
-                destinationBuffer,
-                count,
-                sourcePointer,
-                count,
-                nil,
-                COMPRESSION_LZFSE
-            )
+
+            if compressedSize > 0 {
+                return Data(bytes: destinationBuffer, count: compressedSize)
+            }
         }
 
-        guard compressedSize > 0 else { return nil }
-        return Data(bytes: destinationBuffer, count: compressedSize)
+        return nil
+    }
+
+    private func compressionDestinationCapacities(for sourceSize: Int) -> [Int] {
+        let minimumOverhead = max(64, sourceSize / 16)
+        let firstCapacity = sourceSize.addingReportingOverflow(minimumOverhead)
+
+        let initial = firstCapacity.overflow ? Int.max : firstCapacity.partialValue
+        let doubled = sourceSize.multipliedReportingOverflow(by: 2)
+        let retry: Int
+        if doubled.overflow {
+            retry = Int.max
+        } else {
+            let retryCapacity = doubled.partialValue.addingReportingOverflow(1024)
+            retry = retryCapacity.overflow ? Int.max : retryCapacity.partialValue
+        }
+
+        return initial == retry ? [initial] : [initial, retry]
     }
 
     /// Decompress data using LZFSE algorithm
