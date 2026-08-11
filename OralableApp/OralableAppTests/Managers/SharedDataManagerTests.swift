@@ -938,6 +938,30 @@ final class ShareErrorTests: XCTestCase {
 // MARK: - SharedDataManager State Tests
 
 @MainActor
+private final class QueuedSyncSharedDataManager: SharedDataManager {
+    var syncCallCount = 0
+    var onSyncStarted: ((Int) -> Void)?
+    private var syncContinuations: [CheckedContinuation<Void, Never>] = []
+
+    override func syncSensorDataToCloudKit() async throws {
+        syncCallCount += 1
+        let callNumber = syncCallCount
+        onSyncStarted?(callNumber)
+        await withCheckedContinuation { continuation in
+            syncContinuations.append(continuation)
+        }
+    }
+
+    func finishNextSync(file: StaticString = #filePath, line: UInt = #line) {
+        guard !syncContinuations.isEmpty else {
+            XCTFail("Expected an active sync to finish", file: file, line: line)
+            return
+        }
+        syncContinuations.removeFirst().resume()
+    }
+}
+
+@MainActor
 final class SharedDataManagerStateTests: XCTestCase {
 
     var sut: SharedDataManager!
@@ -1060,6 +1084,43 @@ final class SharedDataManagerStateTests: XCTestCase {
         } catch {
             XCTFail("Should return early without throwing")
         }
+    }
+
+    func testUploadCurrentDataForSharingRunsTrailingSyncForQueuedRequest() async {
+        // Given - a sync request arrives while an earlier CloudKit upload is still active
+        let queuedSyncManager = QueuedSyncSharedDataManager(authenticationManager: mockAuthManager)
+        let firstSyncStarted = expectation(description: "first sync started")
+        let secondSyncStarted = expectation(description: "second sync started")
+
+        queuedSyncManager.onSyncStarted = { callNumber in
+            if callNumber == 1 {
+                firstSyncStarted.fulfill()
+            } else if callNumber == 2 {
+                secondSyncStarted.fulfill()
+            }
+        }
+
+        // When
+        let firstUpload = Task {
+            await queuedSyncManager.uploadCurrentDataForSharing()
+        }
+        await fulfillment(of: [firstSyncStarted], timeout: 1.0)
+
+        let queuedUpload = Task {
+            await queuedSyncManager.uploadCurrentDataForSharing()
+        }
+        await queuedUpload.value
+
+        // Then - the overlapping request is queued, not dropped or run concurrently
+        XCTAssertEqual(queuedSyncManager.syncCallCount, 1)
+
+        queuedSyncManager.finishNextSync()
+        await fulfillment(of: [secondSyncStarted], timeout: 1.0)
+        XCTAssertEqual(queuedSyncManager.syncCallCount, 2)
+
+        queuedSyncManager.finishNextSync()
+        await firstUpload.value
+        XCTAssertEqual(queuedSyncManager.syncCallCount, 2)
     }
 }
 
