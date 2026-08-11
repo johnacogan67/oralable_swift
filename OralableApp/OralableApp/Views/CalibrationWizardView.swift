@@ -9,6 +9,12 @@ import SwiftUI
 import OralableCore
 import UIKit
 
+enum CalibrationCaptureValidation {
+    static func canPersistSuccessfulCalibration(oralableSampleCount: Int, rawCalibrationCSVFileName: String?) -> Bool {
+        oralableSampleCount > 0 && rawCalibrationCSVFileName != nil
+    }
+}
+
 struct CalibrationWizardView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
@@ -243,21 +249,33 @@ struct CalibrationWizardView: View {
         }
         let id = UUID()
         let samples = sensorDataProcessor.endCalibrationOralableCapture().filter { $0.deviceType == .oralable }
+        guard !samples.isEmpty else {
+            failCalibrationCompletion("No Oralable samples were captured; calibration was not saved.")
+            return
+        }
+
         var csvName: String?
-        if !samples.isEmpty {
-            let name = "temporalis_cal_\(id.uuidString).csv"
-            do {
-                let url = try SessionHistoryStore.researchCalibrationURL(fileName: name)
-                try ResearchRawDataExport.writeOralableRaw50HzCSV(
-                    samples: samples,
-                    to: url,
-                    isManualOverride: isManualPlacementOverride
-                )
-                csvName = name
-                Logger.shared.info("[CalibrationWizard] Raw calibration CSV: \(samples.count) Oralable samples → \(name)")
-            } catch {
-                Logger.shared.warning("[CalibrationWizard] Could not save calibration CSV: \(error.localizedDescription)")
-            }
+        let name = "temporalis_cal_\(id.uuidString).csv"
+        do {
+            let url = try SessionHistoryStore.researchCalibrationURL(fileName: name)
+            try ResearchRawDataExport.writeOralableRaw50HzCSV(
+                samples: samples,
+                to: url,
+                isManualOverride: isManualPlacementOverride
+            )
+            csvName = name
+            Logger.shared.info("[CalibrationWizard] Raw calibration CSV: \(samples.count) Oralable samples → \(name)")
+        } catch {
+            failCalibrationCompletion("Could not save calibration CSV: \(error.localizedDescription)")
+            return
+        }
+
+        guard CalibrationCaptureValidation.canPersistSuccessfulCalibration(
+            oralableSampleCount: samples.count,
+            rawCalibrationCSVFileName: csvName
+        ) else {
+            failCalibrationCompletion("Calibration capture was incomplete; calibration was not saved.")
+            return
         }
         sessionHistoryStore.recordTemporalisSleepCalibration(
             calibrationId: id,
@@ -268,6 +286,12 @@ struct CalibrationWizardView: View {
         Logger.shared.info("[CalibrationWizard] Completed calibration \(id) baseline=\(lockedBaselineVoltage)V peripheral=\(pid)")
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         onSuccessfulCalibration?()
+        onFinished()
+    }
+
+    private func failCalibrationCompletion(_ message: String) {
+        Logger.shared.warning("[CalibrationWizard] \(message)")
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
         onFinished()
     }
 
