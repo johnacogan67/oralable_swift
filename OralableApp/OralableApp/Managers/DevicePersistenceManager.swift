@@ -50,6 +50,11 @@ class DevicePersistenceManager {
         saveDevices(devices)
     }
 
+    func forgetAllDevices() {
+        UserDefaults.standard.removeObject(forKey: rememberedDevicesKey)
+        Logger.shared.info("[DevicePersistenceManager] Forgot all remembered devices")
+    }
+
     func isDeviceRemembered(id: String) -> Bool {
         return getRememberedDevices().contains { $0.id == id }
     }

@@ -22,6 +22,8 @@ struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @EnvironmentObject var designSystem: DesignSystem
     @EnvironmentObject var sharedDataManager: SharedDataManager
+    @EnvironmentObject var dependencies: AppDependencies
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
     @Environment(\.dismiss) var dismiss
 
     @State private var showingPrivacyPolicy = false
@@ -73,6 +75,7 @@ struct ProfileView: View {
         .alert("Sign Out", isPresented: $showingSignOut) {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
+                dependencies.resetUserSessionState(firstLaunchManager: firstLaunchManager)
                 authManager.signOut()
                 dismiss()
             }
@@ -137,7 +140,11 @@ struct ProfileView: View {
                 // Delete CloudKit data first
                 try await sharedDataManager.deleteAllUserData()
 
-                // Delete local data and sign out
+                await MainActor.run {
+                    dependencies.resetUserSessionState(firstLaunchManager: firstLaunchManager)
+                }
+
+                // Delete remaining authentication data and sign out
                 await authManager.deleteAccount()
 
                 await MainActor.run {

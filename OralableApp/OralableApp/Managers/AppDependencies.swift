@@ -124,7 +124,23 @@ final class AppDependencies: ObservableObject {
     /// Reset cached DashboardViewModel (call on logout or when fresh state needed)
     func resetDashboardViewModel() {
         Logger.shared.info("[AppDependencies] Resetting cached DashboardViewModel")
-        dashboardViewModel.stopMonitoring()
+        dashboardViewModel.resetForUserSession()
+    }
+
+    /// Clear local state that must never cross authentication boundaries.
+    func resetUserSessionState(firstLaunchManager: FirstLaunchManager? = nil) {
+        Logger.shared.info("[AppDependencies] Resetting user-scoped local state")
+        deviceManager.resetForUserSession()
+        deviceManagerAdapter.clearHistory()
+        sensorDataProcessor.resetForUserSession()
+        sensorDataStore.clearHistory()
+        sessionHistoryStore.resetForDisconnect()
+        sessionHistoryStore.clearTemporalisSleepCalibration(deleteRawFile: true)
+        recordingSessionManager.clearAllLocalSessions()
+        historicalDataManager.clearAllMetrics()
+        ApplicationSupportPaths.clearMemoryFlushDirectory()
+        dashboardViewModel.resetForUserSession()
+        firstLaunchManager?.reset()
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {

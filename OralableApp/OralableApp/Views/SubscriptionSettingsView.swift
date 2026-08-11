@@ -11,6 +11,8 @@ import AuthenticationServices
 
 struct SubscriptionSettingsView: View {
     @EnvironmentObject var designSystem: DesignSystem
+    @EnvironmentObject var dependencies: AppDependencies
+    @EnvironmentObject var firstLaunchManager: FirstLaunchManager
     @ObservedObject var deviceManagerAdapter: DeviceManagerAdapter
     @ObservedObject var sensorDataProcessor: SensorDataProcessor
     @Binding var selectedMode: HistoricalAppMode?
@@ -281,6 +283,7 @@ struct SubscriptionSettingsView: View {
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Sign Out", role: .destructive) {
+                dependencies.resetUserSessionState(firstLaunchManager: firstLaunchManager)
                 authManager.signOut()
                 selectedMode = nil
             }
