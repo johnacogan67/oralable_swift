@@ -43,6 +43,8 @@ struct CalibrationWizardView: View {
     @State private var timerActive = false
     @State private var lastPhaseIndex: Int = -1
     @State private var calibrationStartAt: Date?
+    @State private var calibrationPausedAt: Date?
+    @State private var totalCalibrationPausedDuration: TimeInterval = 0
 
     private var progress: Double {
         guard totalSeconds > 0 else { return 0 }
@@ -120,11 +122,22 @@ struct CalibrationWizardView: View {
                 hasStarted = false
                 timerActive = false
                 lastPhaseIndex = -1
+                calibrationStartAt = nil
+                calibrationPausedAt = nil
+                totalCalibrationPausedDuration = 0
             }
             .onDisappear {
                 timerActive = false
                 if hasStarted, !didComplete {
                     _ = sensorDataProcessor.endCalibrationOralableCapture()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard hasStarted, timerActive, !didComplete else { return }
+                if newPhase == .active {
+                    resumeCalibrationTimer()
+                } else {
+                    pauseCalibrationTimer()
                 }
             }
             .task(id: timerActive) {
@@ -135,11 +148,14 @@ struct CalibrationWizardView: View {
                 while !Task.isCancelled, timerActive, hasStarted, !didComplete {
                     // Pause updates while inactive/backgrounded; resume when active.
                     if scenePhase != .active {
+                        pauseCalibrationTimer()
                         try? await Task.sleep(nanoseconds: 250_000_000)
                         continue
                     }
+                    resumeCalibrationTimer()
 
-                    let newElapsed = min(totalSeconds, max(0, Int(Date().timeIntervalSince(startAt))))
+                    let activeDuration = Date().timeIntervalSince(startAt) - totalCalibrationPausedDuration
+                    let newElapsed = min(totalSeconds, max(0, Int(activeDuration)))
                     if newElapsed != elapsed {
                         elapsed = newElapsed
                         emitPhaseHapticIfNeeded()
@@ -228,8 +244,21 @@ struct CalibrationWizardView: View {
         timerActive = true
         lastPhaseIndex = -1
         calibrationStartAt = Date()
+        calibrationPausedAt = scenePhase == .active ? nil : Date()
+        totalCalibrationPausedDuration = 0
         sensorDataProcessor.beginCalibrationOralableCapture()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    private func pauseCalibrationTimer() {
+        guard calibrationPausedAt == nil else { return }
+        calibrationPausedAt = Date()
+    }
+
+    private func resumeCalibrationTimer() {
+        guard let pausedAt = calibrationPausedAt else { return }
+        totalCalibrationPausedDuration += max(0, Date().timeIntervalSince(pausedAt))
+        calibrationPausedAt = nil
     }
 
     private func completeCalibration() {
