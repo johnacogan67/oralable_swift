@@ -123,7 +123,7 @@ struct CalibrationWizardView: View {
             }
             .onDisappear {
                 timerActive = false
-                if hasStarted, !didComplete {
+                if hasStarted {
                     _ = sensorDataProcessor.endCalibrationOralableCapture()
                 }
             }
@@ -236,13 +236,13 @@ struct CalibrationWizardView: View {
         guard !didComplete else { return }
         didComplete = true
         timerActive = false
+        let samples = sensorDataProcessor.endCalibrationOralableCapture().filter { $0.deviceType == .oralable }
         guard let pid = deviceManager.primaryDevice?.peripheralIdentifier else {
             Logger.shared.warning("[CalibrationWizard] No primary device at completion; calibration not saved.")
             onFinished()
             return
         }
         let id = UUID()
-        let samples = sensorDataProcessor.endCalibrationOralableCapture().filter { $0.deviceType == .oralable }
         var csvName: String?
         if !samples.isEmpty {
             let name = "temporalis_cal_\(id.uuidString).csv"
