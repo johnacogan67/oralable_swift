@@ -663,6 +663,37 @@ final class SharedDataModelTests: XCTestCase {
         XCTAssertTrue(sessionData.sensorReadings.isEmpty)
     }
 
+    func testMergeSensorDataPreservesExistingSamplesAndDedupesExactDuplicates() {
+        let start = Date(timeIntervalSince1970: 1_704_067_200)
+
+        func makeSensorData(timestamp: Date, red: Int32, ir: Int32) -> SensorData {
+            SensorData(
+                timestamp: timestamp,
+                ppg: PPGData(red: red, ir: ir, green: 300, timestamp: timestamp),
+                accelerometer: AccelerometerData(x: 1, y: 2, z: 3, timestamp: timestamp),
+                temperature: TemperatureData(celsius: 36.8, timestamp: timestamp),
+                battery: BatteryData(percentage: 90, timestamp: timestamp),
+                heartRate: HeartRateData(bpm: 72, quality: 0.9, timestamp: timestamp),
+                spo2: SpO2Data(percentage: 98, quality: 0.95, timestamp: timestamp),
+                deviceType: .oralable
+            )
+        }
+
+        let existing = makeSensorData(timestamp: start, red: 100, ir: 200)
+        let exactDuplicate = makeSensorData(timestamp: start, red: 100, ir: 200)
+        let sameTimestampDistinctSample = makeSensorData(timestamp: start, red: 101, ir: 201)
+        let laterIncoming = makeSensorData(timestamp: start.addingTimeInterval(0.02), red: 102, ir: 202)
+
+        let merged = SharedDataManager.mergeSensorDataPreservingDistinctSamples(
+            [existing],
+            with: [exactDuplicate, laterIncoming, sameTimestampDistinctSample]
+        )
+
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map(\.ppg.red), [100 as Int32, 101, 102])
+        XCTAssertEqual(merged.map(\.ppg.ir), [200 as Int32, 201, 202])
+    }
+
     func testBruxismSessionDataCodable() throws {
         // Given
         let sensorData = createMockSensorData(count: 3)
