@@ -257,6 +257,30 @@ final class DataCompressionTests: XCTestCase {
         XCTAssertEqual(decompressed, largeData, "Decompressed data should match original")
     }
 
+    func testCompressionRoundtripWithLowRedundancyData() {
+        // Given - pseudo-random bytes can expand under LZFSE, so compression needs room to grow
+        var state: UInt64 = 0x1234_5678_9ABC_DEF0
+        var randomLikeData = Data()
+        for _ in 0..<8192 {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            randomLikeData.append(UInt8(truncatingIfNeeded: state >> 32))
+        }
+
+        // When
+        guard let compressed = randomLikeData.compressed() else {
+            XCTFail("Compression should succeed even when output is larger than the source")
+            return
+        }
+
+        guard let decompressed = compressed.decompressed(expectedSize: randomLikeData.count) else {
+            XCTFail("Decompression should succeed for low-redundancy data")
+            return
+        }
+
+        // Then
+        XCTAssertEqual(decompressed, randomLikeData, "Roundtrip should preserve low-redundancy data")
+    }
+
     func testDecompressionWithInsufficientExpectedSizeReturnsNil() {
         // Given
         let originalString = "This is a test string that will be compressed and then decompressed with wrong size"
@@ -726,6 +750,35 @@ final class SharedDataModelTests: XCTestCase {
             XCTAssertEqual(decodedReading.temperatureCelsius, originalReading.temperatureCelsius, accuracy: 0.001)
             XCTAssertEqual(decodedReading.batteryPercentage, originalReading.batteryPercentage)
         }
+    }
+
+    func testBruxismSessionDataFromSerializableReadingsPreservesMetadata() {
+        // Given
+        let sensorData = createMockSensorData(count: 4)
+        let readings = sensorData.map(SerializableSensorData.init)
+
+        // When
+        let sessionData = BruxismSessionData(sensorReadings: readings)
+
+        // Then
+        XCTAssertEqual(sessionData.recordingCount, readings.count)
+        XCTAssertEqual(sessionData.sensorReadings.count, readings.count)
+        XCTAssertEqual(sessionData.startDate, readings.first!.timestamp)
+        XCTAssertEqual(sessionData.endDate, readings.last!.timestamp)
+    }
+
+    @MainActor
+    func testMergedSensorReadingsAppendsAndDeduplicatesOverlap() {
+        // Given
+        let existing = createMockSensorData(count: 4).map(SerializableSensorData.init)
+        let incoming = Array(existing.suffix(1)) + createMockSensorData(count: 2).map(SerializableSensorData.init)
+
+        // When
+        let merged = SharedDataManager.mergedSensorReadings(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 6, "Overlapping syncs should append new samples without duplicating existing ones")
+        XCTAssertEqual(merged.map(\.timestamp), merged.map(\.timestamp).sorted(), "Merged readings should stay chronological")
     }
 
     // MARK: - SerializableSensorData Tests
