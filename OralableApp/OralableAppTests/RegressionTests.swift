@@ -684,6 +684,33 @@ extension RegressionTests {
             XCTFail("Should be deviceDisconnected event")
         }
     }
+
+    func testPPGAlignmentKeepsAllSamplesFromSamePacketFrame() {
+        let firstTimestamp = Date(timeIntervalSinceReferenceDate: 1_000)
+        let secondTimestamp = firstTimestamp.addingTimeInterval(0.02)
+        let readings = [
+            SensorReading(sensorType: .ppgRed, value: 150, timestamp: firstTimestamp, frameNumber: 42),
+            SensorReading(sensorType: .ppgInfrared, value: 250, timestamp: firstTimestamp, frameNumber: 42),
+            SensorReading(sensorType: .ppgGreen, value: 350, timestamp: firstTimestamp, frameNumber: 42),
+            SensorReading(sensorType: .ppgRed, value: 151, timestamp: secondTimestamp, frameNumber: 42),
+            SensorReading(sensorType: .ppgInfrared, value: 251, timestamp: secondTimestamp, frameNumber: 42),
+            SensorReading(sensorType: .ppgGreen, value: 351, timestamp: secondTimestamp, frameNumber: 42)
+        ]
+
+        let arrays = DeviceManagerAdapter.biometricSampleArrays(from: readings)
+        let rows = DeviceManagerAdapter.oralableSensorDataRows(
+            from: readings,
+            heartRate: 0,
+            heartRateQuality: 0,
+            temperature: 0,
+            batteryLevel: 0
+        )
+
+        XCTAssertEqual(arrays.ir, [250, 251])
+        XCTAssertEqual(arrays.red, [150, 151])
+        XCTAssertEqual(arrays.green, [350, 351])
+        XCTAssertEqual(rows.count, 2)
+    }
 }
 
 // MARK: - Settings Persistence Regression Tests
