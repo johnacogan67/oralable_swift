@@ -121,6 +121,7 @@ private struct ReconnectionState {
     var lastAttemptTime: Date?
     var task: Task<Void, Never>?
     var isActive: Bool = false
+    var peripheral: CBPeripheral?
 
     mutating func incrementAttempt() {
         attemptCount += 1
@@ -133,6 +134,7 @@ private struct ReconnectionState {
         task?.cancel()
         task = nil
         isActive = false
+        peripheral = nil
     }
 }
 
@@ -377,6 +379,7 @@ final class BLEBackgroundWorker: ObservableObject {
 
         // Initialize or get existing state
         var state = reconnectionStates[peripheralId] ?? ReconnectionState(peripheralId: peripheralId)
+        state.peripheral = peripheral
 
         // Check max attempts
         guard state.attemptCount < effectiveMaxReconnectionAttempts() else {
@@ -450,6 +453,8 @@ final class BLEBackgroundWorker: ObservableObject {
                 Logger.shared.warning("[BLEBackgroundWorker] Bluetooth off before reconnection attempt, deferring")
                 self.pendingReconnectionPeripherals[peripheralId] = peripheral
                 self.reconnectionStates[peripheralId]?.isActive = false
+                self.reconnectionStates[peripheralId]?.task = nil
+                self.activeReconnections.remove(peripheralId)
                 return
             }
 
@@ -850,9 +855,12 @@ final class BLEBackgroundWorker: ObservableObject {
             // Move active reconnections to pending
             for (peripheralId, state) in reconnectionStates where state.isActive {
                 state.task?.cancel()
-                if let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
+                if let peripheral = state.peripheral ?? bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
                     pendingReconnectionPeripherals[peripheralId] = peripheral
                 }
+                reconnectionStates[peripheralId]?.isActive = false
+                reconnectionStates[peripheralId]?.task = nil
+                activeReconnections.remove(peripheralId)
             }
 
             // Cancel timeout tasks
