@@ -850,6 +850,9 @@ final class BLEBackgroundWorker: ObservableObject {
             // Move active reconnections to pending
             for (peripheralId, state) in reconnectionStates where state.isActive {
                 state.task?.cancel()
+                reconnectionStates[peripheralId]?.isActive = false
+                reconnectionStates[peripheralId]?.task = nil
+                activeReconnections.remove(peripheralId)
                 if let peripheral = bleService?.retrievePeripherals(withIdentifiers: [peripheralId]).first {
                     pendingReconnectionPeripherals[peripheralId] = peripheral
                 }
