@@ -60,19 +60,23 @@ class SensorDataProcessor: ObservableObject {
 
     /// Every ~60 minutes while recording: spill CSV to tmp and clear RAM.
     @MainActor
-    func flushLiveHistoryToTempFileIfNonEmpty() {
+    func flushLiveHistoryToTempFileIfNonEmpty(
+        writeCSV: ([SensorData], URL) throws -> Void = { samples, url in
+            try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: samples, to: url)
+        }
+    ) {
         guard !sensorDataHistory.isEmpty else { return }
         let batch = sensorDataHistory
         do {
             let name = "oralable_processor_flush_\(Int(Date().timeIntervalSince1970)).csv"
             let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
-            try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
+            try writeCSV(batch, url)
             MemoryFlushStatus.shared.recordFlushSuccess()
             Logger.shared.info("[SensorDataProcessor] Auto-flush: \(batch.count) rows → Application Support/\(name)")
+            clearHistory()
         } catch {
-            Logger.shared.warning("[SensorDataProcessor] Auto-flush failed: \(error.localizedDescription)")
+            Logger.shared.warning("[SensorDataProcessor] Auto-flush failed; retaining \(batch.count) rows in memory: \(error.localizedDescription)")
         }
-        clearHistory()
     }
     
     /// Clear the sensor data history
