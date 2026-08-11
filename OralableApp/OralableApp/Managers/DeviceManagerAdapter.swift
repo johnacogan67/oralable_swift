@@ -406,13 +406,33 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         return best
     }
 
+    nonisolated private static func readingsSortedByTimestampPreservingInputOrder(_ readings: [SensorReading]) -> [SensorReading] {
+        readings.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.timestamp == rhs.element.timestamp {
+                    return lhs.offset < rhs.offset
+                }
+                return lhs.element.timestamp < rhs.element.timestamp
+            }
+            .map(\.element)
+    }
+
+    nonisolated private static func ppgBucketKey(for reading: SensorReading) -> Int64 {
+        if let frame = reading.frameNumber {
+            return Int64(frame)
+        }
+        return Int64((reading.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
+    }
+
     /// Aligns PPG triplets deterministically.
     /// Prefer hardware `frameNumber` when present; fall back to tight time-buckets.
+    /// If a packet-level key repeats, flush before a repeated PPG channel overwrites
+    /// the completed triplet from the previous sample in the same BLE packet.
     /// Carries last known accel sample per PPG row.
-    nonisolated private static func biometricSampleArrays(from readings: [SensorReading]) -> (
+    nonisolated static func biometricSampleArrays(from readings: [SensorReading]) -> (
         ir: [Double], red: [Double], green: [Double], ax: [Double], ay: [Double], az: [Double]
     ) {
-        let sorted = readings.sorted { $0.timestamp < $1.timestamp }
+        let sorted = readingsSortedByTimestampPreservingInputOrder(readings)
         var lastAx = 0.0, lastAy = 0.0, lastAz = 16384.0
         var ir: [Double] = []
         var red: [Double] = []
@@ -449,11 +469,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key: Int64 = {
-                    if let frame = r.frameNumber { return Int64(frame) }
-                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
-                }()
-                if bucketKey != key {
+                let key = ppgBucketKey(for: r)
+                if bucketKey != key || bucket[r.sensorType] != nil {
                     flushBucket()
                     bucketKey = key
                 }
@@ -468,14 +485,14 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     }
 
     /// One `SensorData` row per aligned PPG triplet in the batch (same bucketing as biometrics).
-    nonisolated private static func oralableSensorDataRows(
+    nonisolated static func oralableSensorDataRows(
         from readings: [SensorReading],
         heartRate: Int,
         heartRateQuality: Double,
         temperature: Double,
         batteryLevel: Double
     ) -> [SensorData] {
-        let sorted = readings.sorted { $0.timestamp < $1.timestamp }
+        let sorted = readingsSortedByTimestampPreservingInputOrder(readings)
         var lastAx = 0.0, lastAy = 0.0, lastAz = 16384.0
         var out: [SensorData] = []
         out.reserveCapacity(sorted.count / 3)
@@ -526,11 +543,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             case .accelerometerZ:
                 lastAz = r.value
             case .ppgRed, .ppgInfrared, .ppgGreen:
-                let key: Int64 = {
-                    if let frame = r.frameNumber { return Int64(frame) }
-                    return Int64((r.timestamp.timeIntervalSinceReferenceDate * 10_000.0).rounded())
-                }()
-                if bucketKey != key {
+                let key = ppgBucketKey(for: r)
+                if bucketKey != key || bucket[r.sensorType] != nil {
                     flushBucket()
                     bucketKey = key
                 }

@@ -20,6 +20,7 @@
 import XCTest
 @testable import OralableApp
 import OralableCore
+import CloudKit
 
 // MARK: - Share Code Generation Tests
 
@@ -1564,6 +1565,66 @@ final class DayGroupingTests: XCTestCase {
 
         // Then
         XCTAssertTrue(groupedByDay.isEmpty, "Empty data should produce empty groups")
+    }
+
+    @MainActor
+    func testExistingDayRecordMergePreservesEarlierCompressedReadings() throws {
+        // Given - a CloudKit day record already contains earlier samples from the same day.
+        let calendar = Calendar.current
+        let baseDate = calendar.date(from: DateComponents(year: 2025, month: 6, day: 1, hour: 10))!
+        let first = createMockSensorData(at: baseDate)
+        let second = createMockSensorData(at: baseDate.addingTimeInterval(60))
+        let duplicateSecond = createMockSensorData(at: second.timestamp)
+        let third = createMockSensorData(at: baseDate.addingTimeInterval(120))
+
+        let existingSession = BruxismSessionData(sensorData: [first, second])
+        let encoded = try JSONEncoder().encode(existingSession)
+        let compressed = try XCTUnwrap(encoded.compressed())
+
+        let record = CKRecord(recordType: "HealthDataRecord")
+        record["sensorDataCompressed"] = compressed as CKRecordValue
+        record["sensorDataUncompressedSize"] = encoded.count as CKRecordValue
+
+        // When - a later sync uploads only the current in-memory window.
+        let merged = SharedDataManager.mergedSensorData(
+            existingRecord: record,
+            incoming: [duplicateSecond, third]
+        )
+
+        // Then - the earlier CloudKit data is retained and the overlapping row is not duplicated.
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map(\.timestamp), [first.timestamp, second.timestamp, third.timestamp])
+    }
+
+    @MainActor
+    func testExistingDayRecordMergePreservesDistinctSamplesWithSameTimestamp() throws {
+        // Given - older packet parsing paths can emit multiple 50 Hz samples at one packet timestamp.
+        let timestamp = Date(timeIntervalSince1970: 1_749_000_000)
+        let first = createMockSensorData(at: timestamp)
+        let second = SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 101, ir: 201, green: 301, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 11, y: 21, z: 31, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.1, timestamp: timestamp),
+            battery: BatteryData(percentage: 79, timestamp: timestamp),
+            heartRate: nil,
+            spo2: nil
+        )
+
+        let existingSession = BruxismSessionData(sensorData: [first])
+        let encoded = try JSONEncoder().encode(existingSession)
+        let compressed = try XCTUnwrap(encoded.compressed())
+
+        let record = CKRecord(recordType: "HealthDataRecord")
+        record["sensorDataCompressed"] = compressed as CKRecordValue
+        record["sensorDataUncompressedSize"] = encoded.count as CKRecordValue
+
+        // When
+        let merged = SharedDataManager.mergedSensorData(existingRecord: record, incoming: [second])
+
+        // Then - same timestamp alone must not collapse distinct PPG samples.
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(Set(merged.map { $0.ppg.red }), Set([100, 101]))
     }
 }
 
