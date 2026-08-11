@@ -396,8 +396,15 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
-        
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+        let existingReadings = decodeSessionData(from: record)?.sensorReadings ?? []
+        let newReadings = sensorData.map { SerializableSensorData(from: $0) }
+        let mergedReadings = Self.mergedSensorReadingsForCloudSync(existing: existingReadings, new: newReadings)
+
+        if !existingReadings.isEmpty {
+            Logger.shared.info("[SharedDataManager] Merged CloudKit day record for \(date): existing=\(existingReadings.count), new=\(newReadings.count), merged=\(mergedReadings.count)")
+        }
+
+        try await populateRecord(record, with: mergedReadings, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
         Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
@@ -405,14 +412,24 @@ class SharedDataManager: ObservableObject {
     
     /// Populate a record with sensor data
     private func populateRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String, date: Date) async throws {
+        try await populateRecord(
+            record,
+            with: sensorData.map { SerializableSensorData(from: $0) },
+            patientID: patientID,
+            date: date
+        )
+    }
+
+    /// Populate a record with serialized sensor data.
+    private func populateRecord(_ record: CKRecord, with sensorReadings: [SerializableSensorData], patientID: String, date: Date) async throws {
         // Calculate metrics
         var bruxismEvents = 0
         var peakIntensity = 0.0
         let bruxismThreshold = 2.0
         var isInEvent = false
         
-        for data in sensorData {
-            let magnitude = data.accelerometer.magnitude
+        for data in sensorReadings {
+            let magnitude = data.accelMagnitude
             if magnitude > bruxismThreshold {
                 if !isInEvent {
                     bruxismEvents += 1
@@ -426,12 +443,12 @@ class SharedDataManager: ObservableObject {
             }
         }
         
-        let averageIntensity = sensorData.isEmpty ? 0.0 :
-            sensorData.reduce(0.0) { $0 + $1.accelerometer.magnitude } / Double(sensorData.count)
+        let averageIntensity = sensorReadings.isEmpty ? 0.0 :
+            sensorReadings.reduce(0.0) { $0 + $1.accelMagnitude } / Double(sensorReadings.count)
         
         // Calculate session duration from first to last reading
         let duration: TimeInterval
-        if let first = sensorData.first?.timestamp, let last = sensorData.last?.timestamp {
+        if let first = sensorReadings.first?.timestamp, let last = sensorReadings.last?.timestamp {
             duration = last.timeIntervalSince(first)
         } else {
             duration = 0
@@ -446,19 +463,19 @@ class SharedDataManager: ObservableObject {
         record["peakIntensity"] = peakIntensity as CKRecordValue
         
         // Heart rate data
-        let heartRateData = sensorData.compactMap { $0.heartRate?.bpm }
+        let heartRateData = sensorReadings.compactMap { $0.heartRateBPM }
         if !heartRateData.isEmpty, let hrData = try? JSONEncoder().encode(heartRateData) {
             record["heartRateData"] = hrData as CKRecordValue
         }
         
         // SpO2 data
-        let spo2Data = sensorData.compactMap { $0.spo2?.percentage }
+        let spo2Data = sensorReadings.compactMap { $0.spo2Percentage }
         if !spo2Data.isEmpty, let spo2JSON = try? JSONEncoder().encode(spo2Data) {
             record["oxygenSaturation"] = spo2JSON as CKRecordValue
         }
         
         // Compress and store full sensor data for time-series charts
-        let bruxismSessionData = BruxismSessionData(sensorData: sensorData)
+        let bruxismSessionData = BruxismSessionData(sensorReadings: sensorReadings)
         if let jsonData = try? JSONEncoder().encode(bruxismSessionData) {
             let uncompressedSize = jsonData.count
             if let compressed = jsonData.compressed() {
@@ -468,6 +485,53 @@ class SharedDataManager: ObservableObject {
                 let ratio = Double(uncompressedSize) / Double(compressed.count)
                 Logger.shared.info("[SharedDataManager] Compressed \(uncompressedSize) -> \(compressed.count) bytes (ratio: \(String(format: "%.1f", ratio))x)")
             }
+        }
+    }
+
+    private func decodeSessionData(from record: CKRecord) -> BruxismSessionData? {
+        guard let compressed = record["sensorDataCompressed"] as? Data else { return nil }
+
+        let expectedSize: Int?
+        if let size = record["sensorDataUncompressedSize"] as? Int {
+            expectedSize = size
+        } else if let size = record["sensorDataUncompressedSize"] as? NSNumber {
+            expectedSize = size.intValue
+        } else {
+            expectedSize = nil
+        }
+
+        guard let expectedSize,
+              let decompressed = compressed.decompressed(expectedSize: expectedSize) else {
+            Logger.shared.warning("[SharedDataManager] Could not decompress existing CloudKit day payload; replacing with current batch")
+            return nil
+        }
+
+        do {
+            return try JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+        } catch {
+            Logger.shared.warning("[SharedDataManager] Could not decode existing CloudKit day payload: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    nonisolated static func mergedSensorReadingsForCloudSync(
+        existing: [SerializableSensorData],
+        new: [SerializableSensorData]
+    ) -> [SerializableSensorData] {
+        var readingsByKey: [CloudSensorReadingKey: SerializableSensorData] = [:]
+
+        for reading in existing {
+            readingsByKey[CloudSensorReadingKey(reading)] = reading
+        }
+        for reading in new {
+            readingsByKey[CloudSensorReadingKey(reading)] = reading
+        }
+
+        return readingsByKey.values.sorted {
+            if $0.timestamp == $1.timestamp {
+                return $0.deviceType < $1.deviceType
+            }
+            return $0.timestamp < $1.timestamp
         }
     }
     
@@ -764,10 +828,24 @@ struct BruxismSessionData: Codable {
     let endDate: Date
 
     init(sensorData: [SensorData]) {
-        self.sensorReadings = sensorData.map { SerializableSensorData(from: $0) }
-        self.recordingCount = sensorData.count
-        self.startDate = sensorData.first?.timestamp ?? Date()
-        self.endDate = sensorData.last?.timestamp ?? Date()
+        self.init(sensorReadings: sensorData.map { SerializableSensorData(from: $0) })
+    }
+
+    init(sensorReadings: [SerializableSensorData]) {
+        self.sensorReadings = sensorReadings
+        self.recordingCount = sensorReadings.count
+        self.startDate = sensorReadings.first?.timestamp ?? Date()
+        self.endDate = sensorReadings.last?.timestamp ?? Date()
+    }
+}
+
+private struct CloudSensorReadingKey: Hashable {
+    let timestamp: Date
+    let deviceType: String
+
+    init(_ reading: SerializableSensorData) {
+        self.timestamp = reading.timestamp
+        self.deviceType = reading.deviceType
     }
 }
 
@@ -803,6 +881,42 @@ struct SerializableSensorData: Codable {
     let heartRateQuality: Double?
     let spo2Percentage: Double?
     let spo2Quality: Double?
+
+    init(
+        timestamp: Date,
+        deviceType: String,
+        ppgRed: Int32,
+        ppgIR: Int32,
+        ppgGreen: Int32,
+        emg: Double?,
+        accelX: Int16,
+        accelY: Int16,
+        accelZ: Int16,
+        accelMagnitude: Double,
+        temperatureCelsius: Double,
+        batteryPercentage: Int,
+        heartRateBPM: Double?,
+        heartRateQuality: Double?,
+        spo2Percentage: Double?,
+        spo2Quality: Double?
+    ) {
+        self.timestamp = timestamp
+        self.deviceType = deviceType
+        self.ppgRed = ppgRed
+        self.ppgIR = ppgIR
+        self.ppgGreen = ppgGreen
+        self.emg = emg
+        self.accelX = accelX
+        self.accelY = accelY
+        self.accelZ = accelZ
+        self.accelMagnitude = accelMagnitude
+        self.temperatureCelsius = temperatureCelsius
+        self.batteryPercentage = batteryPercentage
+        self.heartRateBPM = heartRateBPM
+        self.heartRateQuality = heartRateQuality
+        self.spo2Percentage = spo2Percentage
+        self.spo2Quality = spo2Quality
+    }
 
     init(from sensorData: SensorData) {
         self.timestamp = sensorData.timestamp
