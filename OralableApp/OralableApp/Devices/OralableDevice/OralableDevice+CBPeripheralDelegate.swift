@@ -291,6 +291,9 @@ extension OralableDevice: CBPeripheralDelegate {
             if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
                 firmwareReadContinuation = nil
                 c.resume(throwing: error)
+            } else if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
+                deviceIdReadContinuation = nil
+                c.resume(throwing: error)
             }
             if characteristic.uuid == firmwareConfigStateCharUUID, let c = firmwareConfigStateReadContinuation {
                 firmwareConfigStateReadContinuation = nil
@@ -303,6 +306,9 @@ extension OralableDevice: CBPeripheralDelegate {
             Logger.shared.warning("[OralableDevice] ⚠️ Received nil data from characteristic")
             if characteristic.uuid == firmwareVersionCharUUID, let c = firmwareReadContinuation {
                 firmwareReadContinuation = nil
+                c.resume(throwing: DeviceError.invalidData)
+            } else if characteristic.uuid == deviceIdCharUUID, let c = deviceIdReadContinuation {
+                deviceIdReadContinuation = nil
                 c.resume(throwing: DeviceError.invalidData)
             }
             return
