@@ -386,6 +386,24 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func copySensorData(_ data: SensorData, timestamp: Date) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: data.ppg.red, ir: data.ppg.ir, green: data.ppg.green, timestamp: timestamp),
+            accelerometer: AccelerometerData(
+                x: data.accelerometer.x,
+                y: data.accelerometer.y,
+                z: data.accelerometer.z,
+                timestamp: timestamp
+            ),
+            temperature: TemperatureData(celsius: data.temperature.celsius, timestamp: timestamp),
+            battery: BatteryData(percentage: data.battery.percentage, timestamp: timestamp),
+            heartRate: data.heartRate,
+            spo2: data.spo2,
+            deviceType: data.deviceType
+        )
+    }
+
     // MARK: - SharedPatientData Tests
 
     func testSharedPatientDataInitialization() {
@@ -685,6 +703,43 @@ final class SharedDataModelTests: XCTestCase {
             original.endDate.timeIntervalSince1970,
             accuracy: 0.01
         )
+    }
+
+    func testMergeSensorReadingsPreservesExistingCloudKitSamples() {
+        // Given
+        let existing = createMockSensorData(count: 3).map { SerializableSensorData(from: $0) }
+        let incoming = createMockSensorData(count: 2)
+            .enumerated()
+            .map { index, data in
+                SerializableSensorData(
+                    from: copySensorData(
+                        data,
+                        timestamp: existing.last!.timestamp.addingTimeInterval(TimeInterval(index + 1))
+                    )
+                )
+            }
+
+        // When
+        let merged = SharedDataManager.mergeSensorReadings(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 5)
+        XCTAssertEqual(merged.map(\.timestamp), (existing + incoming).map(\.timestamp).sorted())
+    }
+
+    func testMergeSensorReadingsDeduplicatesRepeatedSyncSamples() {
+        // Given
+        let existing = createMockSensorData(count: 3).map { SerializableSensorData(from: $0) }
+        let repeated = [existing[1], existing[2]]
+        let newReading = createMockSensorData(count: 1)
+            .map { SerializableSensorData(from: copySensorData($0, timestamp: existing.last!.timestamp.addingTimeInterval(5))) }
+        let incoming = repeated + newReading
+
+        // When
+        let merged = SharedDataManager.mergeSensorReadings(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 4)
     }
 
     func testBruxismSessionDataCompressionRoundtrip() throws {
