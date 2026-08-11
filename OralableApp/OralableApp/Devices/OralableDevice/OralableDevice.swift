@@ -170,9 +170,6 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     /// Called after each successful `readRSSI` (e.g. for link-quality summaries in `BLEBackgroundWorker`).
     var linkMetricsHandler: ((UUID, Int) -> Void)?
 
-    /// Called when any GATT value is received (battery/status/PPG) for connection health tracking.
-    var linkActivityHandler: ((UUID) -> Void)?
-
     private var offBodyKeepaliveTask: Task<Void, Never>?
 
     // MARK: - Sample Rate Verification

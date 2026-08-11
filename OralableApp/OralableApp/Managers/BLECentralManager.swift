@@ -221,6 +221,7 @@ final class BLECentralManager: NSObject, BLEService {
             }
         }
         connectedPeripherals.removeAll()
+        pendingConnections.removeAll()
     }
 
     // MARK: - BLEService Protocol - Read/Write Operations
