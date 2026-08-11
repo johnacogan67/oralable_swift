@@ -386,6 +386,19 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func createMockSensorData(at timestamp: Date, deviceType: DeviceType = .oralable) -> SensorData {
+        SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 100000, ir: 120000, green: 110000, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 10, y: 20, z: 30, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.0, timestamp: timestamp),
+            battery: BatteryData(percentage: 80, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp),
+            deviceType: deviceType
+        )
+    }
+
     // MARK: - SharedPatientData Tests
 
     func testSharedPatientDataInitialization() {
@@ -726,6 +739,34 @@ final class SharedDataModelTests: XCTestCase {
             XCTAssertEqual(decodedReading.temperatureCelsius, originalReading.temperatureCelsius, accuracy: 0.001)
             XCTAssertEqual(decodedReading.batteryPercentage, originalReading.batteryPercentage)
         }
+    }
+
+    func testMergedSensorReadingsPreservesExistingDayData() {
+        // Given - an already-synced day and a later trimmed in-memory buffer with one overlapping reading.
+        let base = Date(timeIntervalSince1970: 1_704_067_200)
+        let existingData = [
+            createMockSensorData(at: base),
+            createMockSensorData(at: base.addingTimeInterval(5)),
+            createMockSensorData(at: base.addingTimeInterval(10))
+        ]
+        let newData = [
+            createMockSensorData(at: base.addingTimeInterval(10)),
+            createMockSensorData(at: base.addingTimeInterval(15))
+        ]
+
+        let existingReadings = BruxismSessionData(sensorData: existingData).sensorReadings
+        let newReadings = BruxismSessionData(sensorData: newData).sensorReadings
+
+        // When
+        let merged = BruxismSessionData.mergedSensorReadings(existing: existingReadings, new: newReadings)
+
+        // Then
+        XCTAssertEqual(merged.count, 4, "Merging a trimmed buffer must not drop earlier synced readings")
+        XCTAssertEqual(
+            merged.map { $0.timestamp.timeIntervalSince1970 },
+            [0, 5, 10, 15].map { base.addingTimeInterval(TimeInterval($0)).timeIntervalSince1970 }
+        )
+        XCTAssertEqual(BruxismSessionData(sensorReadings: merged).recordingCount, 4)
     }
 
     // MARK: - SerializableSensorData Tests
