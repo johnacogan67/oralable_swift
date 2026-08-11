@@ -45,7 +45,7 @@ struct OralableApp: App {
             Task(priority: .utility) {
                 try? await Task.sleep(for: .seconds(2))
                 await waitUntilBleIdleForCloudKitSync(deviceManager: deviceManager)
-                await sharedDataManager.uploadCurrentDataForSharing()
+                await sharedDataManager.uploadCurrentDataForSharing(force: true)
             }
         }
 
@@ -126,7 +126,7 @@ struct OralableApp: App {
                 // Save any pending events
                 deviceManager.automaticRecordingSession?.savePendingEvents()
                 await waitUntilBleIdleForCloudKitSync(deviceManager: deviceManager)
-                await sharedDataManager.uploadCurrentDataForSharing()
+                await sharedDataManager.uploadCurrentDataForSharing(force: true)
             }
 
         case .inactive:
