@@ -877,6 +877,60 @@ final class SharedDataModelTests: XCTestCase {
             accuracy: 0.01
         )
     }
+
+    @MainActor
+    func testMergedSensorReadingsPreservesExistingCloudKitSamples() {
+        // Given - an earlier CloudKit payload and a later live-buffer sync for the same day
+        let existing = [
+            makeSerializableReading(at: Date(timeIntervalSince1970: 1704067200), red: 100),
+            makeSerializableReading(at: Date(timeIntervalSince1970: 1704067260), red: 200)
+        ]
+        let incoming = [
+            existing[1],
+            makeSerializableReading(at: Date(timeIntervalSince1970: 1704067320), red: 300)
+        ]
+
+        // When
+        let merged = SharedDataManager.mergedSensorReadings(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 3, "Existing same-day samples must not be replaced by the latest live buffer")
+        XCTAssertEqual(merged.map(\.ppgRed), [100, 200, 300])
+    }
+
+    @MainActor
+    func testMergedSensorReadingsKeepsDistinctSamplesWithSameTimestamp() {
+        // Given - multi-channel/device samples can legitimately share timestamps
+        let timestamp = Date(timeIntervalSince1970: 1704067200)
+        let first = makeSerializableReading(at: timestamp, red: 100, green: 101)
+        let second = makeSerializableReading(at: timestamp, red: 200, green: 201)
+
+        // When
+        let merged = SharedDataManager.mergedSensorReadings(existing: [first], incoming: [second, first])
+
+        // Then
+        XCTAssertEqual(merged.count, 2, "Only exact duplicate serialized readings should be de-duplicated")
+        XCTAssertEqual(merged.map(\.ppgRed), [100, 200])
+    }
+
+    private func makeSerializableReading(
+        at timestamp: Date,
+        red: Int32,
+        green: Int32 = 0
+    ) -> SerializableSensorData {
+        let sensorData = SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: red, ir: red + 10, green: green, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 37.0, timestamp: timestamp),
+            battery: BatteryData(percentage: 100, timestamp: timestamp),
+            heartRate: nil,
+            spo2: nil,
+            deviceType: .oralable
+        )
+
+        return SerializableSensorData(from: sensorData)
+    }
 }
 
 // MARK: - ShareError Tests
