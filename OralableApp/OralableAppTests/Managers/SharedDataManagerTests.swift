@@ -1171,6 +1171,64 @@ final class SerializationIntegrationTests: XCTestCase {
         XCTAssertEqual(lastRestored.temperatureCelsius, lastOriginal.temperatureCelsius, accuracy: 0.001)
     }
 
+    func testSharedDayMergePreservesExistingReadings() throws {
+        // Given - an existing CloudKit day payload and a later upload with one duplicate plus one new reading
+        let existing = createMockSensorData(count: 2)
+        let incoming = [existing[1]] + createMockSensorData(count: 1).map { sample in
+            SensorData(
+                timestamp: existing[1].timestamp.addingTimeInterval(5),
+                ppg: sample.ppg,
+                accelerometer: sample.accelerometer,
+                temperature: sample.temperature,
+                battery: sample.battery,
+                heartRate: sample.heartRate,
+                spo2: sample.spo2,
+                deviceType: sample.deviceType
+            )
+        }
+
+        // When
+        let merged = SharedDataManager.mergedSensorData(existing: existing, incoming: incoming)
+
+        // Then
+        XCTAssertEqual(merged.count, 3, "Exact duplicate samples should not remove prior distinct day readings")
+        XCTAssertEqual(merged.map(\.timestamp), merged.map(\.timestamp).sorted(), "Merged readings should be chronological")
+        XCTAssertEqual(SerializableSensorData(from: merged[0]).ppgRed, SerializableSensorData(from: existing[0]).ppgRed)
+        XCTAssertEqual(SerializableSensorData(from: merged[1]).ppgRed, SerializableSensorData(from: existing[1]).ppgRed)
+    }
+
+    func testSharedDayMergeKeepsDistinctSamplesWithSameTimestamp() throws {
+        // Given - two sensor samples with the same timestamp but different payload values
+        let timestamp = Date()
+        let first = SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 100, ir: 200, green: 300, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 1, y: 2, z: 3, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 36.5, timestamp: timestamp),
+            battery: BatteryData(percentage: 90, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 70, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98, quality: 0.8, timestamp: timestamp),
+            deviceType: .oralable
+        )
+        let second = SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: 101, ir: 201, green: 301, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: 1, y: 2, z: 3, timestamp: timestamp),
+            temperature: TemperatureData(celsius: 36.5, timestamp: timestamp),
+            battery: BatteryData(percentage: 90, timestamp: timestamp),
+            heartRate: HeartRateData(bpm: 70, quality: 0.9, timestamp: timestamp),
+            spo2: SpO2Data(percentage: 98, quality: 0.8, timestamp: timestamp),
+            deviceType: .oralable
+        )
+
+        // When
+        let merged = SharedDataManager.mergedSensorData(existing: [first], incoming: [second])
+
+        // Then
+        XCTAssertEqual(merged.count, 2, "Distinct samples that share a timestamp must not be deduplicated away")
+        XCTAssertEqual(Set(merged.map { $0.ppg.red }), Set([100, 101]))
+    }
+
     func testLargeDatasetSerializationPipeline() throws {
         // Given - large dataset
         let rawData = createMockSensorData(count: 500)

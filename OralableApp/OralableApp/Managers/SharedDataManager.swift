@@ -132,7 +132,7 @@ class SharedDataManager: ObservableObject {
     private let publicDatabase: CKDatabase
     private let authenticationManager: AuthenticationManager
     private weak var sensorDataProcessor: SensorDataProcessor?
-    private var lastSyncRequestDate: Date?
+    private var syncRequestedWhileInFlight = false
 
     init(authenticationManager: AuthenticationManager, sensorDataProcessor: SensorDataProcessor? = nil) {
         // Use shared container for both patient and professional apps
@@ -396,11 +396,50 @@ class SharedDataManager: ObservableObject {
     /// Update existing day record with new data
     private func updateDayRecord(_ record: CKRecord, with sensorData: [SensorData], patientID: String) async throws {
         let date = record["recordingDate"] as? Date ?? Date()
+        let mergedSensorData = try existingSensorData(from: record).map { existing in
+            Self.mergedSensorData(existing: existing, incoming: sensorData)
+        } ?? sensorData
         
-        try await populateRecord(record, with: sensorData, patientID: patientID, date: date)
+        try await populateRecord(record, with: mergedSensorData, patientID: patientID, date: date)
         
         try await publicDatabase.save(record)
-        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date)")
+        Logger.shared.info("[SharedDataManager] ✅ Updated day record for \(date) with \(mergedSensorData.count) readings")
+    }
+
+    private func existingSensorData(from record: CKRecord) throws -> [SensorData]? {
+        guard let compressedData = record["sensorDataCompressed"] as? Data else {
+            return nil
+        }
+
+        guard let uncompressedSize = record["sensorDataUncompressedSize"] as? Int else {
+            throw SharedDataMergeError.missingUncompressedSize
+        }
+
+        guard let decompressedData = compressedData.decompressed(expectedSize: uncompressedSize) else {
+            throw SharedDataMergeError.decompressionFailed
+        }
+
+        do {
+            let sessionData = try JSONDecoder().decode(BruxismSessionData.self, from: decompressedData)
+            return sessionData.sensorReadings.map { $0.sensorData }
+        } catch {
+            throw SharedDataMergeError.decodeFailed(error)
+        }
+    }
+
+    nonisolated static func mergedSensorData(existing: [SensorData], incoming: [SensorData]) -> [SensorData] {
+        var seen = Set<SensorDataMergeKey>()
+        var merged: [SensorData] = []
+        merged.reserveCapacity(existing.count + incoming.count)
+
+        for sample in existing + incoming {
+            let key = SensorDataMergeKey(sample)
+            if seen.insert(key).inserted {
+                merged.append(sample)
+            }
+        }
+
+        return merged.sorted { $0.timestamp < $1.timestamp }
     }
     
     /// Populate a record with sensor data
@@ -473,29 +512,23 @@ class SharedDataManager: ObservableObject {
     
     /// Call this when the Share screen appears or when user wants to sync
     func uploadCurrentDataForSharing() async {
-        // Coalesce rapid-fire requests (e.g. disconnect loops + backgrounding).
-        // This avoids repeatedly compressing JSON + hitting CloudKit in tight windows.
-        let now = Date()
-        lastSyncRequestDate = now
         if isSyncing {
-            Logger.shared.info("[SharedDataManager] Skipping upload: already syncing")
-            return
-        }
-        if let last = lastSyncDate, now.timeIntervalSince(last) < 20 {
-            Logger.shared.info(
-                "[SharedDataManager] Skipping upload: last sync \(String(format: "%.1f", now.timeIntervalSince(last)))s ago"
-            )
+            syncRequestedWhileInFlight = true
+            Logger.shared.info("[SharedDataManager] Queued upload: sync already in progress")
             return
         }
 
-        do {
-            try await syncSensorDataToCloudKit()
-        } catch {
-            Logger.shared.error("[SharedDataManager] ❌ Failed to sync data: \(error)")
-            await MainActor.run {
-                self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
+        repeat {
+            syncRequestedWhileInFlight = false
+            do {
+                try await syncSensorDataToCloudKit()
+            } catch {
+                Logger.shared.error("[SharedDataManager] ❌ Failed to sync data: \(error)")
+                await MainActor.run {
+                    self.errorMessage = "Failed to sync data: \(error.localizedDescription)"
+                }
             }
-        }
+        } while syncRequestedWhileInFlight
     }
 
     // MARK: - Get Patient Health Data for Sharing
@@ -836,6 +869,77 @@ struct SerializableSensorData: Codable {
         self.batteryPercentage = sensorData.battery.percentage
 
         // Calculated metrics
+        self.heartRateBPM = sensorData.heartRate?.bpm
+        self.heartRateQuality = sensorData.heartRate?.quality
+        self.spo2Percentage = sensorData.spo2?.percentage
+        self.spo2Quality = sensorData.spo2?.quality
+    }
+
+    var sensorData: SensorData {
+        let heartRate: HeartRateData? = heartRateBPM.map {
+            HeartRateData(bpm: $0, quality: heartRateQuality ?? 0, timestamp: timestamp)
+        }
+        let spo2: SpO2Data? = spo2Percentage.map {
+            SpO2Data(percentage: $0, quality: spo2Quality ?? 0, timestamp: timestamp)
+        }
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: PPGData(red: ppgRed, ir: ppgIR, green: ppgGreen, timestamp: timestamp),
+            accelerometer: AccelerometerData(x: accelX, y: accelY, z: accelZ, timestamp: timestamp),
+            temperature: TemperatureData(celsius: temperatureCelsius, timestamp: timestamp),
+            battery: BatteryData(percentage: batteryPercentage, timestamp: timestamp),
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: deviceType == "ANR M40" ? .anr : .oralable
+        )
+    }
+}
+
+private enum SharedDataMergeError: LocalizedError {
+    case missingUncompressedSize
+    case decompressionFailed
+    case decodeFailed(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingUncompressedSize:
+            return "Existing shared sensor payload is missing its uncompressed size"
+        case .decompressionFailed:
+            return "Existing shared sensor payload could not be decompressed"
+        case .decodeFailed(let error):
+            return "Existing shared sensor payload could not be decoded: \(error.localizedDescription)"
+        }
+    }
+}
+
+private struct SensorDataMergeKey: Hashable {
+    let timestamp: Date
+    let deviceType: String
+    let ppgRed: Int32
+    let ppgIR: Int32
+    let ppgGreen: Int32
+    let accelX: Int16
+    let accelY: Int16
+    let accelZ: Int16
+    let temperatureCelsius: Double
+    let batteryPercentage: Int
+    let heartRateBPM: Double?
+    let heartRateQuality: Double?
+    let spo2Percentage: Double?
+    let spo2Quality: Double?
+
+    init(_ sensorData: SensorData) {
+        self.timestamp = sensorData.timestamp
+        self.deviceType = sensorData.deviceType == .anr ? "ANR M40" : "Oralable"
+        self.ppgRed = sensorData.ppg.red
+        self.ppgIR = sensorData.ppg.ir
+        self.ppgGreen = sensorData.ppg.green
+        self.accelX = sensorData.accelerometer.x
+        self.accelY = sensorData.accelerometer.y
+        self.accelZ = sensorData.accelerometer.z
+        self.temperatureCelsius = sensorData.temperature.celsius
+        self.batteryPercentage = sensorData.battery.percentage
         self.heartRateBPM = sensorData.heartRate?.bpm
         self.heartRateQuality = sensorData.heartRate?.quality
         self.spo2Percentage = sensorData.spo2?.percentage
