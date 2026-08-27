@@ -3,11 +3,11 @@
 Canonical UX/navigation reference for **Oralable** (consumer) and **Oralable for Dentists** (professional).  
 There are **no Figma/Sketch wireframes** in the repos; this document plus **implemented SwiftUI** are the source of truth.
 
-**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md) · **Figures:** [FIGURES.md](./FIGURES.md) · master [cursor_oralable/docs/FIGURES.md](../../cursor_oralable/docs/FIGURES.md)
+**Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md) · **Agent routing:** slug `ios-patient` · [AGENTS.md](../../cursor_oralable/AGENTS.md) · [WORKSPACE_TOPICS.md](../../cursor_oralable/docs/WORKSPACE_TOPICS.md) · **Figures:** [FIGURES.md](./FIGURES.md) · master [cursor_oralable/docs/FIGURES.md](../../cursor_oralable/docs/FIGURES.md)
 
-**Last updated:** 31 Jul 2026 · **Doc version:** 1.2.3 · FW **1.0.70** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
+**Last updated:** 27 Aug 2026 · **Doc version:** 1.2.4 · FW **1.0.82** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
 
-**Phase note (July 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.70** · app **4.3.3** (STAT blink = dock/charge; Automatic OK).
+**Phase note (August 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.82** · app **4.3.3** (sense only on BLE; green charge LEDs when the phone is away; IR-pulse worn).
 
 **Ed/Pedro:** ship **Oralable (patient) only**. Keep **Oralable for Dentists** and `showCloudKitShare` dark until Phase 1+ — see `cursor_oralable/docs/data_room/APPS_AND_REVENUE_EVAL.md`.
 
@@ -53,7 +53,7 @@ Shared: **OralableCore** (BLE parsing, algorithms, design tokens, `AutomaticReco
 
 ## 2. How the patient app works — Phase 0
 
-End-to-end working model for **Oralable 4.3.3** + FW **1.0.70** (Ed/Pedro kits). Wellness wording only — not a medical diagnosis.
+End-to-end working model for **Oralable 4.3.3** + FW **1.0.82**. Wellness wording only — not a medical diagnosis.
 
 ### 2.1 Night / day session lifecycle
 
@@ -75,8 +75,8 @@ flowchart LR
 
 | Step | What the user does | What the app does |
 |------|--------------------|-------------------|
-| Charge | Clip on Oralable magnetic case (USB-C) | Status LED mirror: blink = charging; solid = taper; `on_dock` / `charge_active` |
-| Pair | Open Devices / first-launch discovery | Scan TGM `3A0FF000` → FW gate (≥1.0.63, recommend 1.0.70) → CCC enable |
+| Charge | Clip on Oralable magnetic case (USB-C) | No phone: flash green = charging, solid green = taper / hold (not always 4.2 V). While linked: clip LED off; sensors off on the pad. |
+| Pair | Open Devices / first-launch discovery | Scan TGM `3A0FF000` → FW gate (≥1.0.63, recommend 1.0.82) → CCC enable |
 | Place | Temple (default) | Placement picker: Manual or Automatic (STAT); quality-gated vitals |
 | Wear night | Leave app background-capable | Auto-record; pause on disconnect; resume on reconnect |
 | Morning | Share / history | Clinical Temporalis PDF + event CSV when samples exist |
@@ -400,7 +400,10 @@ Ready when PPG + ACC + **status + battery** CCC confirms are set (`OralableDevic
 | `showDetectionSettings` | **false** | Thresholds / event settings |
 | `showPilotStudy` | **false** | Pilot UI |
 | `showOvernightHypnogram` | **true** (vitals) / **false** (App Store Minimal) | Dashboard morning card + Share hypnogram preview (FIG-CO-025 adaptation) |
+| `showDualProtocolA` | **false** | Dual Protocol A research (~6 min + ANR); Share pack includes **`session.edf` with ANR EMG**. FW 1.0.71+: abort if Oralable BLE drops (sensors stop). |
 | PPG IR card | **always on** | Core dashboard waveform |
+
+**Research EDF+:** Dual A Share writes `TEMPORALIS_RAW_*` + `ANR_EMG_*` + `DUAL_PAIR_*` + `session.edf` (EMG when ANR used). Oralable-only EDF (no EMG): Developer Settings → Export Oralable-only session.edf. Not PSG; not AHI. Mac `align_anr_oralable_concordance.py` remains methods reference.
 
 **App Store screenshots** should reflect **flag-off** consumer UI unless you intentionally launch with flags lifted.
 
@@ -415,7 +418,7 @@ Hidden: Settings → About → tap version **7×** → **Developer Settings**.
 | **Apply firmware settings** | Write `3A0FF00B` TLV | LED PA, intervals, stream mask (bench) |
 | **Export nRF-style CSV** | — | Full session log for side-by-side with nRF Connect |
 
-iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.70** (`recommendedOralableSemanticVersion`) for Automatic dock via LTC4124 STAT blink/taper. Older than **1.0.70** still connect with manual placement. Bench matrix: [ORALABLE_SYSTEM_ARCHITECTURE.md](../../cursor_oralable/docs/ORALABLE_SYSTEM_ARCHITECTURE.md#3-validation-status-matrix-where-we-are).
+iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.82** (`recommendedOralableSemanticVersion`) for sense-on-BLE, green charge LEDs, 5% floor, and IR-pulse worn. Automatic dock is **1.0.70+**. Older than **1.0.70** still connect with manual placement. Bench matrix: [ORALABLE_SYSTEM_ARCHITECTURE.md](../../cursor_oralable/docs/ORALABLE_SYSTEM_ARCHITECTURE.md#3-validation-status-matrix-where-we-are).
 
 ---
 
@@ -472,7 +475,7 @@ Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md),
 
 | Phase | Target | Hardware | Deliverables |
 |-------|--------|----------|--------------|
-| **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.70** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
+| **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.82** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
 | **Eng overnight PDF** | **Shipped 24 Jul 2026** | Same Gen1 | Share clinical PDF + Mac night pack (hypnogram-first) — early eng, not Phase 1+ complete |
 | **Phase 1+ — Muscle** | Q4 2026 – Q1 2027 | **Same Gen1** hardware | IR-DC / TFI / SASHB live UX; Protocol B; ≥6 h overnight eval; morning card polish (hypnogram UI already shipping) |
 | **Gen2 hardware** | Q4 2026 – H2 2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |

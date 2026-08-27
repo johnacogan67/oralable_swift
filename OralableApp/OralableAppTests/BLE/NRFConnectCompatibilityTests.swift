@@ -13,7 +13,7 @@ final class NRFConnectCompatibilityTests: XCTestCase {
 
     func testFirmwareGateRequires163() {
         XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.63")
-        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.70")
+        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.82")
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.63-nrfconnect"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.64"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.65-nrfconnect"))
@@ -23,7 +23,11 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertFalse(FirmwareGate.supportsAutomaticDockDetect("1.0.66"))
         XCTAssertTrue(FirmwareGate.supportsAutomaticDockDetect("1.0.70-nrfconnect"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.66"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.70"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.70"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.71"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.72"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.73"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.82"))
         XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.62"))
     }
 

@@ -15,8 +15,8 @@ enum FirmwareGate {
     /// Alias for UI copy and existing call sites.
     static let minimumOralableSemanticVersion = minRequiredVersion
 
-    /// Latest Gen1 workspace target (LTC4124 STAT blink = charging / on_dock).
-    static let recommendedOralableSemanticVersion = "1.0.70"
+    /// Latest Gen1 ship: sense on BLE, green pad LEDs, 5% floor, IR-pulse worn.
+    static let recommendedOralableSemanticVersion = "1.0.82"
 
     /// Firmware with explicit user device mode opcode (`00B` 0x09).
     static let minimumPlacementModeVersion = "1.0.62"

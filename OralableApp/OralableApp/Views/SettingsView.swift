@@ -21,6 +21,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
@@ -103,7 +104,7 @@ struct SettingsView: View {
                                 .foregroundColor(battery < DeviceManager.wornPlacementMinimumBatteryPercent
                                                  ? designSystem.colors.warning
                                                  : designSystem.colors.success)
-                            Text("Clip battery: \(battery)%")
+                            Text("MAM battery: \(battery)%")
                                 .font(designSystem.typography.bodySmall)
                                 .foregroundColor(designSystem.colors.textSecondary)
                         }
@@ -114,10 +115,11 @@ struct SettingsView: View {
                         .foregroundColor(designSystem.colors.textSecondary)
 
                     if let fw = dependencies.deviceManager.primaryFirmwareVersion() {
+                        let last = dependencies.deviceManager.firmwareVersionIsFromLastConnection
                         Text(
                             FirmwareGate.supportsAutomaticDockDetect(fw)
-                                ? "Firmware \(fw): Automatic uses LTC4124 STAT (blink = charging)."
-                                : "Firmware \(fw): prefer manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."
+                                ? "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ":") Automatic uses STAT (blink = charging). MAM LED off while linked."
+                                : "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ":") prefer manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."
                         )
                         .font(designSystem.typography.captionSmall)
                         .foregroundColor(
@@ -128,7 +130,7 @@ struct SettingsView: View {
                     }
 
                     if featureFlags.devicePlacementMode == .offDockIdle {
-                        Text("On the Oralable case you should see green — firmware thinks off charger. Select On wireless charger (or Automatic on 1.0.70+), then disconnect and reconnect.")
+                        Text("Bench / idle is for off the case. On the Oralable case pick On wireless charger (or Automatic on 1.0.70+), then disconnect and reconnect. No phone: flash green = charging, solid green = taper / hold or already charged. Status never shows red. While linked the MAM LED is off.")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.warning)
                     }
@@ -143,7 +145,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Device placement")
                 } footer: {
-                    Text("Gen1 pcb00003: FW \(FirmwareGate.recommendedOralableSemanticVersion)+ can use Automatic (STAT blink). Older kits: set placement manually. Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. At low battery, worn mode drops BLE within seconds.")
+                    Text("Gen1 pcb00003: Automatic dock is FW 1.0.70+. Current target is \(FirmwareGate.recommendedOralableSemanticVersion) (sensors only while linked; green charge LEDs when the phone is away). Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. Below ~5% the MAM turns PPG/ACC off; BLE and charge stay up.")
                 }
 
                 if featureFlags.vitalsPhaseEnabled {
@@ -256,7 +258,7 @@ struct SettingsView: View {
                     }
                 }
             } message: {
-                Text("Worn mode turns on the red PPG LED for vitals sensing. Only confirm when the clip is on your temple and battery is at least \(DeviceManager.wornPlacementMinimumBatteryPercent)%. On a table, use Off charger (not worn) for a green status LED.")
+                Text("Worn mode turns on the red PPG LED for vitals sensing. Only confirm when the clip is on your temple and battery is at least \(DeviceManager.wornPlacementMinimumBatteryPercent)%. On a table, use Off charger (not worn). The status LED stays dark off the pad.")
             }
             .alert("Charge before temple mode", isPresented: $showLowBatteryForWornAlert) {
                 Button("OK", role: .cancel) {}
