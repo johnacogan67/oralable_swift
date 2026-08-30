@@ -5,9 +5,9 @@ There are **no Figma/Sketch wireframes** in the repos; this document plus **impl
 
 **Related:** [LAUNCH_READINESS_CHECKLIST.md](../OralableApp/LAUNCH_READINESS_CHECKLIST.md) · [oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md](../../oralable_nrf/docs/ORALABLE_MARKET_LANDSCAPE.md) §5 · [cursor_oralable/docs/PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md) · [cursor_oralable/docs/IP_NORTH_STAR.md](../../cursor_oralable/docs/IP_NORTH_STAR.md) · [cursor_oralable/docs/data_room/COST_AND_TIMELINE.md](../../cursor_oralable/docs/data_room/COST_AND_TIMELINE.md) · [cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md](../../cursor_oralable/docs/ALGORITHM_ARCHITECTURE.md) · **Agent routing:** slug `ios-patient` · [AGENTS.md](../../cursor_oralable/AGENTS.md) · [WORKSPACE_TOPICS.md](../../cursor_oralable/docs/WORKSPACE_TOPICS.md) · **Figures:** [FIGURES.md](./FIGURES.md) · master [cursor_oralable/docs/FIGURES.md](../../cursor_oralable/docs/FIGURES.md)
 
-**Last updated:** 27 Aug 2026 · **Doc version:** 1.2.4 · FW **1.0.82** · app **4.3.3** · timeline → PRODUCT_ROADMAP §3
+**Last updated:** 30 Aug 2026 · **Doc version:** 1.2.5 · FW **1.0.84** · app **4.3.3** (build **5**) · timeline → PRODUCT_ROADMAP §3
 
-**Phase note (August 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.82** · app **4.3.3** (sense only on BLE; green charge LEDs when the phone is away; IR-pulse worn).
+**Phase note (August 2026):** **Phase 0 Vitals** is the shipping UX — temple HR/SpO₂, placement picker, no muscle-fit calibration. Fit guide + `CalibrationWizardView` below are **Phase 1+ / legacy** paths (feature-flagged). Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW **1.0.84** · app **4.3.3** (sense only on BLE; green charge LEDs when the phone is away; IR-pulse worn; pad/zombie recover; desk abandon).
 
 **Ed/Pedro:** ship **Oralable (patient) only**. Keep **Oralable for Dentists** and `showCloudKitShare` dark until Phase 1+ — see `cursor_oralable/docs/data_room/APPS_AND_REVENUE_EVAL.md`.
 
@@ -53,7 +53,7 @@ Shared: **OralableCore** (BLE parsing, algorithms, design tokens, `AutomaticReco
 
 ## 2. How the patient app works — Phase 0
 
-End-to-end working model for **Oralable 4.3.3** + FW **1.0.82**. Wellness wording only — not a medical diagnosis.
+End-to-end working model for **Oralable 4.3.3** + FW **1.0.84**. Wellness wording only — not a medical diagnosis.
 
 ### 2.1 Night / day session lifecycle
 
@@ -76,7 +76,7 @@ flowchart LR
 | Step | What the user does | What the app does |
 |------|--------------------|-------------------|
 | Charge | Clip on Oralable magnetic case (USB-C) | No phone: flash green = charging, solid green = taper / hold (not always 4.2 V). While linked: clip LED off; sensors off on the pad. |
-| Pair | Open Devices / first-launch discovery | Scan TGM `3A0FF000` → FW gate (≥1.0.63, recommend 1.0.82) → CCC enable |
+| Pair | Open Devices / first-launch discovery | Scan TGM `3A0FF000` → FW gate (≥1.0.63, recommend 1.0.84) → CCC enable |
 | Place | Temple (default) | Placement picker: Manual or Automatic (STAT); quality-gated vitals |
 | Wear night | Leave app background-capable | Auto-record; pause on disconnect; resume on reconnect |
 | Morning | Share / history | Clinical Temporalis PDF + event CSV when samples exist |
@@ -174,33 +174,36 @@ flowchart TD
     LC --> AUTH{isAuthenticated?}
     AUTH -->|No + first launch| OB[OnboardingView<br/>4 pages + Sign in with Apple]
     AUTH -->|No| LOGIN[LoginView]
-    AUTH -->|Yes| SETUP{hasPairedOralablePrimary<br/>AND hasCompletedFirstFit?}
-    SETUP -->|Yes| MAIN[MainTabView]
+    AUTH -->|Yes| REQ{requireProtocolASetup?}
+    REQ -->|Yes| PAIR{hasPairedOralablePrimary?}
+    PAIR -->|No| FIRST[FirstLaunchOnboardingView]
+    PAIR -->|Yes| PA{hasCompletedProtocolASetup?}
+    PA -->|No| PROTO[SingleProtocolASetupView]
+    PA -->|Yes| MAIN[MainTabView General]
+    PROTO -->|Go to dashboard| MAIN
+    REQ -->|No| SETUP{hasPairedOralablePrimary<br/>AND hasCompletedFirstFit?}
+    SETUP -->|Yes| MAIN
     SETUP -->|Trial mode| TRIAL[TrialSetupDashboardView]
-    SETUP -->|Else| FIRST[FirstLaunchOnboardingView]
+    SETUP -->|Else| FIRST
     FIRST --> DISC[DeviceDiscoveryView sheet]
-    FIRST --> FIT[TemporalisFitGuideView]
-    FIT --> CAL[CalibrationWizardView]
-    CAL --> OK[SetupSuccessView]
-    OK -->|Go to dashboard| MAIN
-    MAIN --> TAB1[Dashboard tab]
-    MAIN --> TAB2[Devices tab]
-    MAIN --> TAB3[Share tab]
-    MAIN --> TAB4[Settings tab]
 ```
 
 ### First-launch setup sequence
 
-**Phase 0 (current):** pair → placement (temple / case / bench) → vitals dashboard. Calibration wizard is **not** required.
+**Current (default `requireProtocolASetup = true`):** pair → **single-MAM Protocol A Setup** (IR optical preflight + ~6 min Mac cue table + Oralable-only export) → General Mode (`MainTabView`). Wellness training protocol only — not Dual A, not overnight, not a medical calibration.
+
+On export complete the pack is **ingested into General Mode**: a completed IR `RecordingSession` (tag `protocol_a_setup`) in session history, plus a Share-tab bookmark for the EDF + sidecar under `Documents/ProtocolASetup/`.
 
 | Step | Screen | Purpose |
 |------|--------|---------|
-| 1 | `FirstLaunchOnboardingView` | Explain pair → place on temple → vitals |
-| 2 | `DeviceDiscoveryView` | Scan/connect Oralable Gen1 REV10 (TGM `3A0FF000`) |
-| 3 | Placement picker / Vitals device status | Manual or Automatic (FW ≥ 1.0.70 STAT); Charge/Taper chips |
-| 4 | Dashboard | HR / SpO₂ with quality gating |
+| 1 | `FirstLaunchOnboardingView` | Pair Oralable Gen1 |
+| 2 | `DeviceDiscoveryView` | Scan/connect (TGM `3A0FF000`) |
+| 3 | `SingleProtocolASetupView` | IR preflight (drop ≥8% rest median) → 360 s cues → export → register session |
+| 4 | Dashboard / History / Share | Protocol A Setup listed like an IR session; Share → **Protocol A Setup** section |
 
-**Phase 1+ / legacy (muscle path — deferred):**
+**Desk override:** Developer Settings → turn **Require Protocol A Setup** OFF → pair alone unlocks MainTab (legacy Phase 0 vitals path).
+
+**Phase 1+ / legacy (muscle fit — deferred when Protocol A Setup is the gate):**
 
 | Step | Screen | Purpose |
 |------|--------|---------|
@@ -208,9 +211,9 @@ flowchart TD
 | 4′ | `CalibrationWizardView` | IR-DC baseline / coupling check |
 | 5′ | `SetupSuccessView` | Confirm; **only here** → `markFirstFitCompleted()` → `MainTabView` |
 
-**Trial path:** User can skip pairing → `TrialSetupDashboardView` (limited dashboard without full gold-standard setup).
+**Trial path:** User can skip pairing → `TrialSetupDashboardView` (limited dashboard without full setup).
 
-**Auto-resume:** If `sessionHistoryStore.temporalisSleepCalibration` exists on launch, pairing + first-fit flags can be restored (`LaunchCoordinator.onAppear`).
+**Auto-resume:** Legacy `temporalisSleepCalibration` restore skips Protocol A **only** when `requireProtocolASetup` is false.
 
 ### Main tabs (`MainTabView.swift`)
 
@@ -218,8 +221,8 @@ flowchart TD
 |-----|-----------|-------|
 | Dashboard | `HomeView` → `DashboardView` **or** `SimplifiedDashboardView` | Toggle via Settings → `useSimplifiedDashboard` (`@AppStorage`) |
 | Devices | `DevicesView` | BLE scan, paired devices, `DeviceDetailView` |
-| Share | `ShareView` | Export CSV, share with professional (when enabled) |
-| Settings | `SettingsView` | Health, support links, hidden developer settings (7-tap version) |
+| Share | `ShareView` | CSV, Protocol A Setup pack (EDF), Protocol B log (when not vitals-only), clinical PDF |
+| Settings | `SettingsView` | Health, **Session history** (Protocol A + recordings), support, hidden developer settings (7-tap version) |
 
 ### Dashboard drill-down
 
@@ -249,10 +252,11 @@ flowchart LR
 
 | Screen | File | Status | Notes |
 |--------|------|--------|-------|
-| Launch coordinator | `LaunchCoordinator.swift` | ✅ Shipped | Single gate for auth + setup |
+| Launch coordinator | `LaunchCoordinator.swift` | ✅ Shipped | Auth + pair + Protocol A Setup gate |
 | Welcome onboarding | `OnboardingView.swift` | ✅ | 4 pages, Sign in with Apple, skip |
 | Login | `LoginView.swift` | ✅ | Returning users |
-| First-launch setup | `FirstLaunchOnboardingView.swift` | ✅ | Pair + fit entry |
+| First-launch setup | `FirstLaunchOnboardingView.swift` | ✅ | Pair entry |
+| Protocol A Setup | `SingleProtocolASetupView.swift` | ✅ | Single-MAM IR preflight + 360 s cues (default gate ON) |
 | Trial dashboard | `TrialSetupDashboardView.swift` | ✅ | Skipped pairing |
 | Main tabs | `MainTabView.swift` | ✅ | 4 tabs |
 | Dashboard (full) | `DashboardView.swift` | ✅ | PPG IR always; optional cards behind flags |
@@ -400,7 +404,8 @@ Ready when PPG + ACC + **status + battery** CCC confirms are set (`OralableDevic
 | `showDetectionSettings` | **false** | Thresholds / event settings |
 | `showPilotStudy` | **false** | Pilot UI |
 | `showOvernightHypnogram` | **true** (vitals) / **false** (App Store Minimal) | Dashboard morning card + Share hypnogram preview (FIG-CO-025 adaptation) |
-| `showDualProtocolA` | **false** | Dual Protocol A research (~6 min + ANR); Share pack includes **`session.edf` with ANR EMG**. FW 1.0.71+: abort if Oralable BLE drops (sensors stop). |
+| `requireProtocolASetup` | **true** | Gate General Mode behind one-time single-MAM Protocol A Setup (`SingleProtocolASetupView`). Developer Settings can turn OFF for desk pairing. |
+| `showDualProtocolA` | **false** | Dual Protocol A research (~6 min + ANR); separate from Setup. Share pack includes **`session.edf` with ANR EMG**. FW 1.0.71+: abort if Oralable BLE drops (sensors stop). |
 | PPG IR card | **always on** | Core dashboard waveform |
 
 **Research EDF+:** Dual A Share writes `TEMPORALIS_RAW_*` + `ANR_EMG_*` + `DUAL_PAIR_*` + `session.edf` (EMG when ANR used). Oralable-only EDF (no EMG): Developer Settings → Export Oralable-only session.edf. Not PSG; not AHI. Mac `align_anr_oralable_concordance.py` remains methods reference.
@@ -418,7 +423,7 @@ Hidden: Settings → About → tap version **7×** → **Developer Settings**.
 | **Apply firmware settings** | Write `3A0FF00B` TLV | LED PA, intervals, stream mask (bench) |
 | **Export nRF-style CSV** | — | Full session log for side-by-side with nRF Connect |
 
-iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.82** (`recommendedOralableSemanticVersion`) for sense-on-BLE, green charge LEDs, 5% floor, and IR-pulse worn. Automatic dock is **1.0.70+**. Older than **1.0.70** still connect with manual placement. Bench matrix: [ORALABLE_SYSTEM_ARCHITECTURE.md](../../cursor_oralable/docs/ORALABLE_SYSTEM_ARCHITECTURE.md#3-validation-status-matrix-where-we-are).
+iOS `FirmwareGate` minimum **1.0.63** (hard gate). Recommend **1.0.84** (`recommendedOralableSemanticVersion`) for sense-on-BLE, green charge LEDs, 5% floor, IR-pulse worn, pad/zombie recover, and desk/bench abandon. Automatic dock is **1.0.70+**. Older than **1.0.70** still connect with manual placement. Bench matrix: [ORALABLE_SYSTEM_ARCHITECTURE.md](../../cursor_oralable/docs/ORALABLE_SYSTEM_ARCHITECTURE.md#3-validation-status-matrix-where-we-are).
 
 ---
 
@@ -475,7 +480,7 @@ Aligns with [PRODUCT_ROADMAP.md](../../cursor_oralable/docs/PRODUCT_ROADMAP.md),
 
 | Phase | Target | Hardware | Deliverables |
 |-------|--------|----------|--------------|
-| **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.82** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
+| **Phase 0 — Vitals** | Now – Sep 2026 | Gen1 BOM REV8 / REV10 / FW **1.0.84** · app **4.3.3** | Temple HR/SpO₂; placement + STAT LED mirror; kits **gated**; patient app only |
 | **Eng overnight PDF** | **Shipped 24 Jul 2026** | Same Gen1 | Share clinical PDF + Mac night pack (hypnogram-first) — early eng, not Phase 1+ complete |
 | **Phase 1+ — Muscle** | Q4 2026 – Q1 2027 | **Same Gen1** hardware | IR-DC / TFI / SASHB live UX; Protocol B; ≥6 h overnight eval; morning card polish (hypnogram UI already shipping) |
 | **Gen2 hardware** | Q4 2026 – H2 2027 | BOM REV9 / REV11 / ES4L15BA1 / FW 2.0.x | Same GATT; longer battery; chrsts/SOC/LED targets |

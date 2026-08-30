@@ -21,7 +21,7 @@ This `docs/` folder in `oralable_swift` is a **frozen / local copy** for app-doc
 
 | Generation | BOM | PCB | Module (U5) | Battery | Firmware |
 |------------|-----|-----|-------------|---------|----------|
-| **Gen1** (shipping / pilot) | `PCB00003-TGM-BOM-REV8` | **REV10** pilot (REV8 prod data) | Kaga **ES2832AA2** · nRF52832 | CG-320B ~15 mAh | **1.0.82** ship (min 1.0.63) · app **4.3.3** |
+| **Gen1** (shipping / pilot) | `PCB00003-TGM-BOM-REV8` | **REV10** pilot (REV8 prod data) | Kaga **ES2832AA2** · nRF52832 | CG-320B ~15 mAh | **1.0.84** target (min 1.0.63) · app **4.3.3** (build **5**) |
 | **Gen2** (upcoming) | `PCB00003-TGM-BOM-REV9` | **REV11** | Kaga **ES4L15BA1** · nRF54L15 | LP260820 ~30 mAh | **2.0.x** target |
 
 - **Phase 0 / Phase 1+** = software on **Gen1** (same BOM REV8 / REV10). Phases do **not** change the BOM.
@@ -36,5 +36,5 @@ This `docs/` folder in `oralable_swift` is a **frozen / local copy** for app-doc
 2. Optionally mirror the same HTML into this `docs/` folder if you still want a local copy.  
 3. Alternate draft trees (not live Netlify source): `../oralable-website/`, `../docs-v2/`.
 
-**Pilot kits (July 2026):** Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · firmware **1.0.82** · app **4.3.3** (STAT blink = charging; Automatic dock; IR-pulse worn).  
+**Pilot kits (July 2026):** Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · firmware **1.0.84** · app **4.3.3** (build **5**) (STAT blink = charging; Automatic dock; IR-pulse worn; pad/desk recover).  
 **Module:** Kaga ES2832AA2 (nRF52832), not Taiyo Yuden EYSHSNZWZ.

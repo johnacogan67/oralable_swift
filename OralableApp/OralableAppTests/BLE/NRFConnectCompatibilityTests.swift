@@ -7,13 +7,14 @@
 
 import XCTest
 @testable import OralableApp
-import OralableCore
+import struct OralableCore.BLEDataParser
+import enum OralableCore.BLEConstants
 
 final class NRFConnectCompatibilityTests: XCTestCase {
 
     func testFirmwareGateRequires163() {
         XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.63")
-        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.82")
+        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.84")
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.63-nrfconnect"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.64"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.65-nrfconnect"))
@@ -27,7 +28,8 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.71"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.72"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.73"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.82"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.82"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.84"))
         XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.62"))
     }
 
@@ -47,6 +49,17 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertTrue(status!.worn)
         XCTAssertEqual(status!.deviceState, 2)
         XCTAssertEqual(status!.batteryPercent, 75)
+    }
+
+    func testParseFirmwareStatusNotifyWithChargeActive() {
+        // 5-byte layout: on_dock, worn, device_state, battery_pct, charge_active
+        let payload = Data([1, 0, 1, 42, 1])
+        let status = BLEDataParser.parseDeviceStatusPacket(payload)
+        XCTAssertNotNil(status)
+        XCTAssertTrue(status!.onDock)
+        XCTAssertTrue(status!.chargeActive)
+        XCTAssertFalse(status!.worn)
+        XCTAssertEqual(status!.batteryPercent, 42)
     }
 
     func testValidationLogNotClearedOnScanWhenRecordingActive() {
