@@ -386,6 +386,26 @@ final class SharedDataModelTests: XCTestCase {
         return sensorData
     }
 
+    private func createSensorData(timestamp: Date, red: Int32) -> SensorData {
+        let ppg = PPGData(red: red, ir: red + 1, green: red + 2, timestamp: timestamp)
+        let accelerometer = AccelerometerData(x: Int16(red % 100), y: 20, z: 30, timestamp: timestamp)
+        let temperature = TemperatureData(celsius: 37.0, timestamp: timestamp)
+        let battery = BatteryData(percentage: 80, timestamp: timestamp)
+        let heartRate = HeartRateData(bpm: 72.0, quality: 0.9, timestamp: timestamp)
+        let spo2 = SpO2Data(percentage: 98.0, quality: 0.9, timestamp: timestamp)
+
+        return SensorData(
+            timestamp: timestamp,
+            ppg: ppg,
+            accelerometer: accelerometer,
+            temperature: temperature,
+            battery: battery,
+            heartRate: heartRate,
+            spo2: spo2,
+            deviceType: .oralable
+        )
+    }
+
     // MARK: - SharedPatientData Tests
 
     func testSharedPatientDataInitialization() {
@@ -726,6 +746,41 @@ final class SharedDataModelTests: XCTestCase {
             XCTAssertEqual(decodedReading.temperatureCelsius, originalReading.temperatureCelsius, accuracy: 0.001)
             XCTAssertEqual(decodedReading.batteryPercentage, originalReading.batteryPercentage)
         }
+    }
+
+    func testMergedSensorReadingsPreservesExistingAndIncomingSamples() {
+        let morning = SerializableSensorData(
+            from: createSensorData(timestamp: Date(timeIntervalSince1970: 1_704_067_200), red: 100)
+        )
+        let evening = SerializableSensorData(
+            from: createSensorData(timestamp: Date(timeIntervalSince1970: 1_704_096_000), red: 200)
+        )
+
+        let merged = SharedDataManager.mergedSensorReadings(existing: [morning], incoming: [evening])
+
+        XCTAssertEqual(merged.map(\.ppgRed), [100, 200])
+    }
+
+    func testMergedSensorReadingsDeduplicatesExactReading() {
+        let reading = SerializableSensorData(
+            from: createSensorData(timestamp: Date(timeIntervalSince1970: 1_704_067_200), red: 100)
+        )
+
+        let merged = SharedDataManager.mergedSensorReadings(existing: [reading], incoming: [reading])
+
+        XCTAssertEqual(merged.count, 1)
+        XCTAssertEqual(merged.first, reading)
+    }
+
+    func testMergedSensorReadingsKeepsDistinctSamplesWithSameTimestamp() {
+        let timestamp = Date(timeIntervalSince1970: 1_704_067_200)
+        let first = SerializableSensorData(from: createSensorData(timestamp: timestamp, red: 100))
+        let second = SerializableSensorData(from: createSensorData(timestamp: timestamp, red: 200))
+
+        let merged = SharedDataManager.mergedSensorReadings(existing: [first], incoming: [second])
+
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(merged.map(\.ppgRed), [100, 200])
     }
 
     // MARK: - SerializableSensorData Tests
