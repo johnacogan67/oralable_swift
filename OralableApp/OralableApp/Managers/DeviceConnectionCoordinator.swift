@@ -152,6 +152,19 @@ extension DeviceManager {
                 }
                 oralableFirmwareBlockedPeripheralIds.remove(peripheral.identifier)
 
+                // Battery CCC + fresh gauge before placement: worn mode at low battery drops BLE
+                // within seconds, and cold/reconnect paths previously applied 00B before any %.
+                do {
+                    try await withTimeout(seconds: 10) {
+                        try await oralableDevice.enableDeferredDiscoverySubscriptions()
+                    }
+                } catch {
+                    oralableDevice.cancelPendingContinuations()
+                    throw error
+                }
+
+                await awaitBatteryLevelForPlacement(oralable: oralableDevice)
+
                 // Apply placement before streaming CCCs so bench connects stay in connect-probe / off-body policy.
                 do {
                     try resolvePilotPlacementOnConnect(oralable: oralableDevice)
@@ -162,15 +175,6 @@ extension DeviceManager {
                     Logger.shared.warning(
                         "[DeviceManager][BLETrace \(traceId)] ⚠️ Pre-notify placement skipped: \(error.localizedDescription)"
                     )
-                }
-
-                do {
-                    try await withTimeout(seconds: 10) {
-                        try await oralableDevice.enableDeferredDiscoverySubscriptions()
-                    }
-                } catch {
-                    oralableDevice.cancelPendingContinuations()
-                    throw error
                 }
             }
 

@@ -681,6 +681,37 @@ class DeviceManager: ObservableObject {
         Logger.shared.info("[DeviceManager] Protocol B session prepared (worn placement armed)")
     }
 
+    /// Wait briefly for a fresh battery gauge after CCC/read before applying worn placement.
+    func awaitBatteryLevelForPlacement(
+        oralable: OralableDevice,
+        timeoutSeconds: TimeInterval = 3.0
+    ) async {
+        if oralable.batteryLevel != nil { return }
+
+        if let peripheral = oralable.peripheral,
+           let characteristic = oralable.tgmBatteryCharacteristic {
+            peripheral.readValue(for: characteristic)
+        }
+
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if oralable.batteryLevel != nil { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
+    /// Vitals worn placement requires a known battery ≥ threshold; unknown/low → Off charger.
+    static func wornPlacementModeAfterBatteryGate(
+        requested: FeatureFlags.DevicePlacementMode,
+        batteryPercent: Int?,
+        vitalsPhaseEnabled: Bool
+    ) -> FeatureFlags.DevicePlacementMode {
+        guard vitalsPhaseEnabled, requested == .worn else { return requested }
+        guard let pct = batteryPercent else { return .offDockIdle }
+        guard pct >= wornPlacementMinimumBatteryPercent else { return .offDockIdle }
+        return .worn
+    }
+
     /// Resolves placement for pilot connect.
     /// FW ≥ 1.0.70: keep Automatic (STAT blink dock). Older Gen1: remap Automatic → Off charger.
     func resolvePilotPlacementOnConnect(oralable: OralableDevice) throws {
@@ -714,14 +745,23 @@ class DeviceManager: ObservableObject {
             flags.devicePlacementMode = mode
         }
 
-        if flags.vitalsPhaseEnabled && mode == .worn {
-            if let pct = oralable.batteryLevel, pct < Self.wornPlacementMinimumBatteryPercent {
-                mode = .offDockIdle
-                flags.devicePlacementMode = mode
+        let gated = Self.wornPlacementModeAfterBatteryGate(
+            requested: mode,
+            batteryPercent: oralable.batteryLevel,
+            vitalsPhaseEnabled: flags.vitalsPhaseEnabled
+        )
+        if gated != mode {
+            if oralable.batteryLevel == nil {
+                Logger.shared.warning(
+                    "[DeviceManager] Vitals: blocked worn on connect — battery unknown; using Off charger (not worn)"
+                )
+            } else if let pct = oralable.batteryLevel {
                 Logger.shared.warning(
                     "[DeviceManager] Vitals: blocked worn on connect at \(pct)% — using Off charger (not worn)"
                 )
             }
+            mode = gated
+            flags.devicePlacementMode = mode
         }
 
         try oralable.setFirmwareUserDeviceMode(mode)
