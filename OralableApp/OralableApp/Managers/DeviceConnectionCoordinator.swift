@@ -210,8 +210,13 @@ extension DeviceManager {
             isConnecting = false
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")
 
-            // Start automatic recording session
+            // Start automatic recording session.
+            // `startFreshSession` optimistically sets worn=true; re-apply any status that already
+            // arrived during CCC setup so off-body connects do not process table IR as worn.
             automaticRecordingSession?.onDeviceConnected()
+            if let worn = primaryFirmwareDeviceStatus?.worn {
+                automaticRecordingSession?.updateFirmwareWornState(worn)
+            }
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")

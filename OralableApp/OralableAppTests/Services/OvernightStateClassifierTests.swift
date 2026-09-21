@@ -120,6 +120,93 @@ final class OvernightStateClassifierTests: XCTestCase {
         XCTAssertEqual(samples[1].accelZ, 16_384, accuracy: 0.1)
     }
 
+    func testDisconnectGapDoesNotInflateWearOrLongestTonic() {
+        let t0 = Date(timeIntervalSince1970: 1_700_100_000)
+        var samples: [NightReportSample] = []
+
+        // Segment A: 0–20s quiet baseline, 20–40s tonic
+        for i in 0..<200 {
+            let t = t0.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: 200_000,
+                    accelX: 0,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 98
+                )
+            )
+        }
+        for i in 200..<400 {
+            let t = t0.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: 100_000,
+                    accelX: 80,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 97
+                )
+            )
+        }
+
+        // 20-minute BLE disconnect hole (within auto-session resume window), then same pattern again.
+        let gapS: TimeInterval = 1_200
+        let t1 = t0.addingTimeInterval(40 + gapS)
+        for i in 0..<200 {
+            let t = t1.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: 200_000,
+                    accelX: 0,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 98
+                )
+            )
+        }
+        for i in 200..<400 {
+            let t = t1.addingTimeInterval(Double(i) * 0.1)
+            samples.append(
+                NightReportSample(
+                    timestamp: t,
+                    ir: 100_000,
+                    accelX: 80,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 97
+                )
+            )
+        }
+
+        guard let analysis = OvernightStateClassifier.analyze(samples, classifyHz: 10, timelineHz: 2) else {
+            XCTFail("Expected analysis")
+            return
+        }
+
+        let wallClockS = samples.last!.timestamp.timeIntervalSince(samples.first!)
+        XCTAssertGreaterThan(wallClockS, gapS + 60)
+        // Wear must exclude the disconnect hole (capped adjacent coverage), not span first→last.
+        XCTAssertLessThan(analysis.kpis.wearS, 120, "Wear should be ~80s of samples, not \(wallClockS)s wall clock")
+        XCTAssertGreaterThan(analysis.kpis.wearS, 60)
+        // Longest tonic must not merge across the 20-minute gap into one ~1240s bout.
+        XCTAssertLessThan(analysis.kpis.longestTonicS, 60, "Longest tonic inflated across disconnect: \(analysis.kpis.longestTonicS)")
+        XCTAssertGreaterThan(analysis.kpis.longestTonicS, 5)
+        let tonicBouts = analysis.bouts.filter { $0.state == .tonic }
+        XCTAssertGreaterThanOrEqual(tonicBouts.count, 2, "Expected separate tonic bouts on each side of the gap")
+    }
+
+    func testCoveredDurationExcludesLargeGaps() {
+        let elapsed = [0.0, 0.1, 0.2, 1200.2, 1200.3, 1200.4]
+        let covered = OvernightStateClassifier.coveredDurationS(elapsed)
+        XCTAssertEqual(covered, 1.3, accuracy: 0.001)
+        XCTAssertTrue(OvernightStateClassifier.hasGap(elapsed, from: 2, to: 3))
+        XCTAssertFalse(OvernightStateClassifier.hasGap(elapsed, from: 0, to: 1))
+    }
+
     func testLoaderMergesLiveHistory() {
         let t0 = Date()
         let live = (0..<20).map { i -> SensorData in

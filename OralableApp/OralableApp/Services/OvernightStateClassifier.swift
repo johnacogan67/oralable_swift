@@ -99,6 +99,9 @@ enum OvernightStateClassifier {
     static let recoveryMaxS = 30.0
     static let recoveryDropPctMax = 8.0
     static let spo2HypoxiaThreshold = 90.0
+    /// Wall-clock gap above this splits bouts / hypnogram runs (BLE disconnects, flush holes).
+    /// Matches the 1s cap used by `stateMinutes` / SASHB so disconnect time is not credited.
+    static let maxContiguousGapS = 1.0
 
     /// Classify at ~classifyHz, return analysis with ~timelineHz for charts.
     static func analyze(
@@ -387,7 +390,9 @@ enum OvernightStateClassifier {
             }
             let state = states[i]
             var j = i + 1
-            while j < n && states[j] == state { j += 1 }
+            while j < n && states[j] == state && !hasGap(elapsedS, from: j - 1, to: j) {
+                j += 1
+            }
             let start = elapsedS[i]
             let end = elapsedS[j - 1]
             let winSpo2 = Array(spo2[i..<j]).filter { $0.isFinite }
@@ -397,9 +402,11 @@ enum OvernightStateClassifier {
             let peakM = Array(motion[i..<j]).max() ?? .nan
 
             var recoveryS = 0.0
-            if [.tonic, .phasic, .rescue].contains(state), j < n {
+            if [.tonic, .phasic, .rescue].contains(state), j < n, !hasGap(elapsedS, from: j - 1, to: j) {
                 var k = j
-                while k < n && states[k] == .recovery { k += 1 }
+                while k < n && states[k] == .recovery && !hasGap(elapsedS, from: k - 1, to: k) {
+                    k += 1
+                }
                 if k > j {
                     recoveryS = elapsedS[k - 1] - elapsedS[j]
                 }
@@ -420,6 +427,22 @@ enum OvernightStateClassifier {
             i = j
         }
         return bouts
+    }
+
+    /// True when adjacent classify samples are separated by more than `maxContiguousGapS`.
+    static func hasGap(_ elapsedS: [Double], from: Int, to: Int) -> Bool {
+        guard from >= 0, to < elapsedS.count, to > from else { return false }
+        return elapsedS[to] - elapsedS[from] > maxContiguousGapS
+    }
+
+    /// Wear / coverage seconds: sum capped adjacent deltas (disconnect holes excluded).
+    static func coveredDurationS(_ elapsedS: [Double]) -> Double {
+        guard elapsedS.count >= 2 else { return 0 }
+        var total = 0.0
+        for i in 1..<elapsedS.count {
+            total += min(1.0, max(0, elapsedS[i] - elapsedS[i - 1]))
+        }
+        return total
     }
 
     private static func stateMinutes(
@@ -451,7 +474,7 @@ enum OvernightStateClassifier {
         bouts: [OvernightBout]
     ) -> OvernightKPIs {
         let minutes = stateMinutes(states: states, elapsedS: elapsedS)
-        let wearS = elapsedS.count >= 2 ? (elapsedS.last! - elapsedS.first!) : 0
+        let wearS = coveredDurationS(elapsedS)
         let tonicBouts = bouts.filter { $0.state == .tonic }
         let phasicBouts = bouts.filter { $0.state == .phasic }
         let rescueBouts = bouts.filter { $0.state == .rescue }
