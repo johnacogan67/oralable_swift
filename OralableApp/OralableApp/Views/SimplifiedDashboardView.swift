@@ -102,6 +102,8 @@ struct SimplifiedDashboardView: View {
         overnightReport = OvernightNightReportBuilder.build(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
+            lastCompletedAutoStart: deviceManager.lastCompletedAutomaticSessionStart,
+            lastCompletedAutoEnd: deviceManager.lastCompletedAutomaticSessionEnd,
             liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
             tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent

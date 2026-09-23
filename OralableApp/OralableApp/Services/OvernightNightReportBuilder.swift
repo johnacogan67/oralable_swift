@@ -38,28 +38,46 @@ enum OvernightNightReportBuilder {
         currentSession: RecordingSession?,
         automaticSessionStart: Date?,
         sessions: [RecordingSession],
-        liveHistory: [SensorData]
+        liveHistory: [SensorData],
+        lastCompletedAutoStart: Date? = nil,
+        lastCompletedAutoEnd: Date? = nil,
+        flushBounds: (start: Date, end: Date)? = nil,
+        now: Date = Date()
     ) -> SessionWindow {
-        let start: Date = {
+        // Preferred bounds may collapse after auto-session pause expiry clears
+        // `sessionStartTime` (RAM history ≈ 200s, or calendar start-of-day).
+        let preferredStart: Date = {
             if let t = currentSession?.startTime { return t }
             if let t = automaticSessionStart { return t }
+            if let t = lastCompletedAutoStart { return t }
             if let last = sessions.max(by: { $0.startTime < $1.startTime }) {
                 return last.startTime
             }
             if let first = liveHistory.first?.timestamp { return first }
-            return Calendar.current.startOfDay(for: Date())
+            return Calendar.current.startOfDay(for: now)
         }()
-        let end: Date = {
+        // Prefer wall-clock / completed-session end over trimmed processor history.
+        let preferredEnd: Date = {
             if let end = currentSession?.endTime { return end }
-            if let last = liveHistory.last?.timestamp { return max(last, Date()) }
-            return Date()
+            if let end = lastCompletedAutoEnd, automaticSessionStart == nil {
+                return end
+            }
+            return now
         }()
+        let resolved = NightReportSampleLoader.resolveClinicalExportWindow(
+            preferredStart: preferredStart,
+            preferredEnd: preferredEnd,
+            lastCompletedAutoStart: lastCompletedAutoStart,
+            lastCompletedAutoEnd: lastCompletedAutoEnd,
+            flushBounds: flushBounds,
+            now: now
+        )
         let file = currentSession?.dataFilePath
             ?? sessions
                 .filter { $0.dataFilePath != nil }
                 .max(by: { $0.startTime < $1.startTime })?
                 .dataFilePath
-        return SessionWindow(start: start, end: end, sessionFileURL: file)
+        return SessionWindow(start: resolved.start, end: resolved.end, sessionFileURL: file)
     }
 
     nonisolated static func build(
@@ -88,6 +106,8 @@ enum OvernightNightReportBuilder {
     static func build(
         recordingSessionManager: RecordingSessionManager,
         automaticSessionStart: Date?,
+        lastCompletedAutoStart: Date? = nil,
+        lastCompletedAutoEnd: Date? = nil,
         liveHistory: [SensorData],
         sessionHistoryStore: SessionHistoryStore,
         tfiPercent: Double
@@ -95,11 +115,15 @@ enum OvernightNightReportBuilder {
         let current = recordingSessionManager.currentSession
         let sessions = recordingSessionManager.sessions
         let hourly = Array(sessionHistoryStore.segmentByHour.values).sorted { $0.hourIndex < $1.hourIndex }
+        let flushBounds = NightReportSampleLoader.sampleTimeBounds()
         let window = resolveSessionWindow(
             currentSession: current,
             automaticSessionStart: automaticSessionStart,
             sessions: sessions,
-            liveHistory: liveHistory
+            liveHistory: liveHistory,
+            lastCompletedAutoStart: lastCompletedAutoStart,
+            lastCompletedAutoEnd: lastCompletedAutoEnd,
+            flushBounds: flushBounds
         )
         return build(
             window: window,

@@ -165,6 +165,12 @@ class DeviceManager: ObservableObject {
     /// Starts on device connect, stops on disconnect
     public private(set) var automaticRecordingSession: AutomaticRecordingSession?
 
+    /// Bounds of the most recently completed automatic session (survives pause-expiry clearing
+    /// `sessionStartTime`, used by overnight hypnogram / clinical PDF export).
+    public private(set) var lastCompletedAutomaticSessionStart: Date?
+    public private(set) var lastCompletedAutomaticSessionEnd: Date?
+    private var automaticSessionStartCapture: Date?
+
     // MARK: - Internal Properties (accessed by extensions in other files)
 
     /// Single-flight guard for the async discovery/notification pipeline per peripheral.
@@ -263,15 +269,23 @@ class DeviceManager: ObservableObject {
         session.skipCalibration = FeatureFlags.shared.vitalsPhaseEnabled
 
         session.onSessionStarted = { [weak self] in
+            guard let self else { return }
+            self.automaticSessionStartCapture = self.automaticRecordingSession?.sessionStartTime ?? Date()
             Logger.shared.info("[DeviceManager] Automatic recording session started")
             NRFConnectBLELogger.shared.throttleHighRateNotifications = false
-            self?.backgroundWorker.setUnlimitedReconnectActive(true)
+            self.backgroundWorker.setUnlimitedReconnectActive(true)
         }
 
         session.onSessionStopped = { [weak self] eventCount in
+            guard let self else { return }
+            if let start = self.automaticSessionStartCapture {
+                self.lastCompletedAutomaticSessionStart = start
+                self.lastCompletedAutomaticSessionEnd = Date()
+            }
+            self.automaticSessionStartCapture = nil
             Logger.shared.info("[DeviceManager] Automatic recording session stopped with \(eventCount) events")
             NRFConnectBLELogger.shared.throttleHighRateNotifications = true
-            self?.backgroundWorker.setUnlimitedReconnectActive(false)
+            self.backgroundWorker.setUnlimitedReconnectActive(false)
         }
 
         session.onStateChanged = { newState in

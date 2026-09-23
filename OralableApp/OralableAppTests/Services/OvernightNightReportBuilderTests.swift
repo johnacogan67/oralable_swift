@@ -35,6 +35,61 @@ final class OvernightNightReportBuilderTests: XCTestCase {
         XCTAssertEqual(OvernightNightReportBuilder.evaluableWearSeconds, 6 * 3600)
     }
 
+    func testResolveSessionWindowExpandsCollapsedRAMHistoryWithFlushBounds() {
+        let now = Date(timeIntervalSince1970: 1_700_050_000)
+        let historyFirst = now.addingTimeInterval(-180)
+        let historyLast = now.addingTimeInterval(-1)
+        let liveHistory = [historyFirst, historyLast].map { ts in
+            SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: 1000, ir: 180_000, green: 800, timestamp: ts),
+                accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: ts),
+                temperature: TemperatureData(celsius: 36.5, timestamp: ts),
+                battery: BatteryData(percentage: 90, timestamp: ts),
+                heartRate: nil,
+                spo2: SpO2Data(percentage: 97, quality: 0.9, timestamp: ts),
+                deviceType: .oralable
+            )
+        }
+        let flushStart = now.addingTimeInterval(-9 * 3600)
+        let flushEnd = now.addingTimeInterval(-30 * 60)
+
+        let window = OvernightNightReportBuilder.resolveSessionWindow(
+            currentSession: nil,
+            automaticSessionStart: nil,
+            sessions: [],
+            liveHistory: liveHistory,
+            lastCompletedAutoStart: nil,
+            lastCompletedAutoEnd: nil,
+            flushBounds: (flushStart, flushEnd),
+            now: now
+        )
+
+        XCTAssertEqual(window.start, flushStart)
+        XCTAssertEqual(window.end, now)
+    }
+
+    func testResolveSessionWindowUsesLastCompletedWhenMorningSessionIsActive() {
+        let now = Date(timeIntervalSince1970: 1_700_060_000)
+        let morningStart = now.addingTimeInterval(-90 * 60)
+        let nightStart = now.addingTimeInterval(-11 * 3600)
+        let nightEnd = now.addingTimeInterval(-2 * 3600)
+
+        let window = OvernightNightReportBuilder.resolveSessionWindow(
+            currentSession: nil,
+            automaticSessionStart: morningStart,
+            sessions: [],
+            liveHistory: [],
+            lastCompletedAutoStart: nightStart,
+            lastCompletedAutoEnd: nightEnd,
+            flushBounds: nil,
+            now: now
+        )
+
+        XCTAssertEqual(window.start, nightStart)
+        XCTAssertEqual(window.end, now)
+    }
+
     func testBandChipsInsufficientWhenNotEvaluable() {
         let window = OvernightNightReportBuilder.SessionWindow(
             start: Date(),
