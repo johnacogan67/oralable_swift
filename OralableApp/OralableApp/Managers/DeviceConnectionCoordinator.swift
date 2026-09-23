@@ -210,8 +210,11 @@ extension DeviceManager {
             isConnecting = false
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")
 
-            // Start automatic recording session
-            automaticRecordingSession?.onDeviceConnected()
+            // Resume or start automatic recording. Clear an expired pause first —
+            // OralableCore's onDeviceConnected() no-ops when still active+paused
+            // after the resume window, so a late reconnect can leave a zombie pause
+            // until the 60s timer ends the session while already connected (no restart).
+            notifyAutomaticRecordingDeviceReady()
 
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
