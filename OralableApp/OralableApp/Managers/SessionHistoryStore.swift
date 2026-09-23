@@ -194,6 +194,17 @@ final class SessionHistoryStore: ObservableObject {
         segmentByHour = [:]
     }
 
+    /// Mean hourly TFI for overnight / clinician export, including the in-progress hour bucket.
+    /// Returns `nil` when no TFI samples have been recorded in this session.
+    func meanTFIPercentForExport() -> Double? {
+        var values = segmentByHour.values.map(\.tfiPercent).filter { $0 > 0 }
+        if hourTfiCount > 0 {
+            values.append(hourTfiSum / Double(hourTfiCount))
+        }
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count)
+    }
+
     func recordTemporalis(_ probabilities: TemporalisProbabilities, at date: Date) {
         guard isRecordingContextActive else { return }
         ensureAnchor(at: date)

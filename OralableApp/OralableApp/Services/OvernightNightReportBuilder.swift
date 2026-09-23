@@ -62,11 +62,28 @@ enum OvernightNightReportBuilder {
         return SessionWindow(start: start, end: end, sessionFileURL: file)
     }
 
+    /// Prefer overnight hourly mean TFI over live gauge (which resets to 50 on disconnect).
+    nonisolated static func resolveReportTFI(
+        liveTFI: Double,
+        hourlySegments: [HourlyTemporalisSegment],
+        lastSessionMeanTFI: Double? = nil
+    ) -> Double {
+        let fromHourly = hourlySegments.map(\.tfiPercent).filter { $0 > 0 }
+        if !fromHourly.isEmpty {
+            return fromHourly.reduce(0, +) / Double(fromHourly.count)
+        }
+        if let last = lastSessionMeanTFI, last > 0 {
+            return last
+        }
+        return liveTFI
+    }
+
     nonisolated static func build(
         window: SessionWindow,
         liveHistory: [SensorData],
         hourlySegments: [HourlyTemporalisSegment],
-        tfiPercent: Double
+        tfiPercent: Double,
+        lastSessionMeanTFI: Double? = nil
     ) -> Result {
         let samples = NightReportSampleLoader.load(
             sessionStart: window.start.addingTimeInterval(-2),
@@ -75,23 +92,36 @@ enum OvernightNightReportBuilder {
             sessionFileURL: window.sessionFileURL
         )
         let analysis = OvernightStateClassifier.analyze(samples)
+        let resolvedTFI = resolveReportTFI(
+            liveTFI: tfiPercent,
+            hourlySegments: hourlySegments,
+            lastSessionMeanTFI: lastSessionMeanTFI
+        )
         return Result(
             window: window,
             samples: samples,
             analysis: analysis,
             hourlySegments: hourlySegments,
-            tfiPercent: tfiPercent
+            tfiPercent: resolvedTFI
         )
     }
 
+    /// Gather MainActor-bound inputs for an off-main `build(window:...)`.
     @MainActor
-    static func build(
+    static func makeBuildInputs(
         recordingSessionManager: RecordingSessionManager,
         automaticSessionStart: Date?,
         liveHistory: [SensorData],
         sessionHistoryStore: SessionHistoryStore,
-        tfiPercent: Double
-    ) -> Result {
+        liveTFI: Double,
+        lastSessionMeanTFI: Double? = nil
+    ) -> (
+        window: SessionWindow,
+        liveHistory: [SensorData],
+        hourlySegments: [HourlyTemporalisSegment],
+        liveTFI: Double,
+        lastSessionMeanTFI: Double?
+    ) {
         let current = recordingSessionManager.currentSession
         let sessions = recordingSessionManager.sessions
         let hourly = Array(sessionHistoryStore.segmentByHour.values).sorted { $0.hourIndex < $1.hourIndex }
@@ -101,11 +131,32 @@ enum OvernightNightReportBuilder {
             sessions: sessions,
             liveHistory: liveHistory
         )
-        return build(
-            window: window,
+        return (window, liveHistory, hourly, liveTFI, lastSessionMeanTFI)
+    }
+
+    @MainActor
+    static func build(
+        recordingSessionManager: RecordingSessionManager,
+        automaticSessionStart: Date?,
+        liveHistory: [SensorData],
+        sessionHistoryStore: SessionHistoryStore,
+        tfiPercent: Double,
+        lastSessionMeanTFI: Double? = nil
+    ) -> Result {
+        let inputs = makeBuildInputs(
+            recordingSessionManager: recordingSessionManager,
+            automaticSessionStart: automaticSessionStart,
             liveHistory: liveHistory,
-            hourlySegments: hourly,
-            tfiPercent: tfiPercent
+            sessionHistoryStore: sessionHistoryStore,
+            liveTFI: tfiPercent,
+            lastSessionMeanTFI: lastSessionMeanTFI
+        )
+        return build(
+            window: inputs.window,
+            liveHistory: inputs.liveHistory,
+            hourlySegments: inputs.hourlySegments,
+            tfiPercent: inputs.liveTFI,
+            lastSessionMeanTFI: inputs.lastSessionMeanTFI
         )
     }
 }

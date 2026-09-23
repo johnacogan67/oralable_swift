@@ -148,11 +148,14 @@ enum ClinicalReportGenerator {
             )
             y += 18
 
+            // Prefer overnight hourly mean TFI over live gauge (disconnect resets live TFI to 50).
+            let tfiDisplay = hourlyKPIs.meanTFI > 0 ? hourlyKPIs.meanTFI : payload.tfiPercent
+
             let kpiLines: [String]
             if let a = analysis {
                 let k = a.kpis
                 kpiLines = [
-                    "Wear: \(fmt1(k.wearS / 60.0)) min (\(a.sampleCount) samples)   |   TFI: \(fmt1(payload.tfiPercent))%",
+                    "Wear: \(fmt1(k.wearS / 60.0)) min (\(a.sampleCount) samples)   |   TFI: \(fmt1(tfiDisplay))%",
                     "Tonic: \(fmt1(k.tonicMin)) min (longest \(fmt1(k.longestTonicS)) s)   |   Phasic: \(fmt1(k.phasicMin)) min (\(k.phasicBoutCount) bouts)",
                     "Rescue: \(k.rescueCount) events (\(fmt1(k.rescueTotalS)) s)   |   Recovery med/max: \(fmt1(k.recoveryMedianS))/\(fmt1(k.recoveryMaxS)) s",
                     "SASHB: \(fmt1(k.sashb)) %·s   |   SpO₂ μ/min: \(fmt1(k.spo2Mean))/\(fmt1(k.spo2Min))%",
@@ -160,7 +163,7 @@ enum ClinicalReportGenerator {
                 ]
             } else {
                 kpiLines = [
-                    "Wear: \(fmt1(hourlyKPIs.wearHours)) h   |   TFI: \(fmt1(payload.tfiPercent > 0 ? payload.tfiPercent : hourlyKPIs.meanTFI))%",
+                    "Wear: \(fmt1(hourlyKPIs.wearHours)) h   |   TFI: \(fmt1(tfiDisplay))%",
                     "Tonic: \(fmt1(hourlyKPIs.tonicMin)) min   |   Phasic: \(fmt1(hourlyKPIs.phasicMin)) min",
                     "Rescue: \(hourlyKPIs.rescueEvents) events (\(fmt1(hourlyKPIs.rescueMin)) min)   |   SASHB: \(fmt1(hourlyKPIs.sashbTotal)) %·s",
                     "Smoking-gun r (hourly SASHB vs rescue): \(payload.spO2ClenchCorrelation.map { fmt($0) } ?? "insufficient data")",

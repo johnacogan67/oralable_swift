@@ -374,13 +374,24 @@ struct ShareView: View {
     }
 
     private func refreshOvernightReport() {
-        overnightReport = OvernightNightReportBuilder.build(
+        let inputs = OvernightNightReportBuilder.makeBuildInputs(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
+            liveTFI: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+            lastSessionMeanTFI: dependencies.deviceManagerAdapter.lastSessionMeanTFIPercent
         )
+        Task.detached(priority: .userInitiated) {
+            let result = OvernightNightReportBuilder.build(
+                window: inputs.window,
+                liveHistory: inputs.liveHistory,
+                hourlySegments: inputs.hourlySegments,
+                tfiPercent: inputs.liveTFI,
+                lastSessionMeanTFI: inputs.lastSessionMeanTFI
+            )
+            await MainActor.run { overnightReport = result }
+        }
     }
 
     private func exportClinicalTemporalisPDF() {
@@ -389,7 +400,8 @@ struct ShareView: View {
             automaticSessionStart: dependencies.deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent
+            tfiPercent: dependencies.deviceManagerAdapter.temporalisFatigueIndexPercent,
+            lastSessionMeanTFI: dependencies.deviceManagerAdapter.lastSessionMeanTFIPercent
         )
         overnightReport = built
         let hourly = built.hourlySegments

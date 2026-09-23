@@ -78,6 +78,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var deviceState: DeviceStateResult?
 
     @Published var temporalisFatigueIndexPercent: Double = 50
+    /// Overnight mean TFI captured immediately before disconnect wipe of hourly rollups.
+    /// Used by morning-card / clinical PDF so Jaw load is not forced to the live default (50).
+    @Published private(set) var lastSessionMeanTFIPercent: Double?
     @Published private(set) var latestTemporalisProbabilities: TemporalisProbabilities?
 
     // MARK: - Initialization
@@ -196,6 +199,11 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
             .sink { [weak self] connected in
                 guard let self = self else { return }
                 if !connected {
+                    // Snapshot before `resetForDisconnect` wipes `segmentByHour` — otherwise
+                    // morning hypnogram / clinical PDF Jaw-load TFI collapses to the live default 50.
+                    if let mean = self.sessionHistoryStore?.meanTFIPercentForExport() {
+                        self.lastSessionMeanTFIPercent = mean
+                    }
                     self.sessionHistoryStore?.resetForDisconnect()
                     self.temporalisFatigueIndexPercent = 50
                     self.emgSessionPeak = 1

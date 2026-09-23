@@ -75,13 +75,25 @@ struct DashboardView: View {
             overnightReport = nil
             return
         }
-        overnightReport = OvernightNightReportBuilder.build(
+        let inputs = OvernightNightReportBuilder.makeBuildInputs(
             recordingSessionManager: dependencies.recordingSessionManager,
             automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
             liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
             sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent
+            liveTFI: deviceManagerAdapter.temporalisFatigueIndexPercent,
+            lastSessionMeanTFI: deviceManagerAdapter.lastSessionMeanTFIPercent
         )
+        // Night CSV load + classify can be hundreds of MB — never block dashboard appear.
+        Task.detached(priority: .userInitiated) {
+            let result = OvernightNightReportBuilder.build(
+                window: inputs.window,
+                liveHistory: inputs.liveHistory,
+                hourlySegments: inputs.hourlySegments,
+                tfiPercent: inputs.liveTFI,
+                lastSessionMeanTFI: inputs.lastSessionMeanTFI
+            )
+            await MainActor.run { overnightReport = result }
+        }
     }
 
     @ViewBuilder
