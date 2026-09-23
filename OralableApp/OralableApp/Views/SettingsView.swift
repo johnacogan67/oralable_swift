@@ -21,7 +21,6 @@
 //
 
 import SwiftUI
-import OralableCore
 
 struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
@@ -116,10 +115,13 @@ struct SettingsView: View {
 
                     if let fw = dependencies.deviceManager.primaryFirmwareVersion() {
                         let last = dependencies.deviceManager.firmwareVersionIsFromLastConnection
+                        // This card calls the clip MAM. BLEConstants.TGM has no display-name field.
+                        let clipName = "MAM"
+                        let source = last ? " — last connection." : ":"
                         Text(
                             FirmwareGate.supportsAutomaticDockDetect(fw)
-                                ? "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ":") Automatic uses STAT (blink = charging). MAM LED off while linked."
-                                : "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ":") prefer manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."
+                                ? "\(clipName) firmware \(fw)\(source) Automatic uses STAT (blink = charging). MAM LED off while linked."
+                                : "\(clipName) firmware \(fw)\(source) prefer manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."
                         )
                         .font(designSystem.typography.captionSmall)
                         .foregroundColor(
