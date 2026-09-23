@@ -11,6 +11,10 @@ import OralableCore
 
 enum NightReportSampleLoader {
 
+    /// Extra wall-clock margin around the session window when using file mtimes.
+    /// Hourly flushes are named/written at spill time (end of their ring window).
+    static let flushFileTimeSlack: TimeInterval = 3600
+
     /// Load samples overlapping `[sessionStart, sessionEnd]` from flush CSVs, live history, and optional session CSV.
     static func load(
         sessionStart: Date,
@@ -22,12 +26,22 @@ enum NightReportSampleLoader {
         var samples: [NightReportSample] = []
 
         // 1) Memory flush CSVs (ResearchRawDataExport format)
+        // Skip files by mtime outside the session window. The directory is never pruned, so
+        // multi-night wear accumulates ~150–200MB+/night; String(contentsOf:) of every CSV
+        // before time-filtering jetsams the process when Dashboard/Share builds the morning report.
         if let urls = try? FileManager.default.contentsOfDirectory(
             at: flushDirectory,
             includingPropertiesForKeys: [.contentModificationDateKey],
             options: [.skipsHiddenFiles]
         ) {
             for url in urls where url.pathExtension.lowercased() == "csv" {
+                guard flushFileMayOverlapSession(
+                    url: url,
+                    sessionStart: sessionStart,
+                    sessionEnd: sessionEnd
+                ) else {
+                    continue
+                }
                 samples.append(contentsOf: parseResearchCSV(at: url, start: sessionStart, end: sessionEnd))
             }
         }
@@ -50,16 +64,39 @@ enum NightReportSampleLoader {
         return dedupe(samples)
     }
 
+    /// True when a flush CSV's modification time could overlap `[sessionStart, sessionEnd]` (with slack).
+    /// Public for unit tests.
+    static func flushFileMayOverlapSession(
+        url: URL,
+        sessionStart: Date,
+        sessionEnd: Date,
+        slack: TimeInterval = flushFileTimeSlack
+    ) -> Bool {
+        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey])
+        guard let modified = values?.contentModificationDate else {
+            // Unknown mtime: keep the file and let row timestamps decide.
+            return true
+        }
+        let earliest = sessionStart.addingTimeInterval(-slack)
+        let latest = sessionEnd.addingTimeInterval(slack)
+        return modified >= earliest && modified <= latest
+    }
+
     // MARK: - Parsers
 
     static func parseResearchCSV(at url: URL, start: Date, end: Date) -> [NightReportSample] {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        // Prefer mmap so multi-10MB hourly flushes are not fully copied into a contiguous String up front.
+        guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]),
+              let content = String(data: data, encoding: .utf8) else {
+            return []
+        }
         return parseResearchCSV(content: content, start: start, end: end)
     }
 
     /// Public for unit tests — ResearchRawDataExport header.
     static func parseResearchCSV(content: String, start: Date, end: Date) -> [NightReportSample] {
-        let lines = content.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty }
+        // Keep Substring line views — avoid allocating a String per 50 Hz row before the time filter.
+        let lines = content.split(whereSeparator: \.isNewline).filter { !$0.isEmpty }
         guard lines.count > 1 else { return [] }
         let header = lines[0].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
         let map = Dictionary(uniqueKeysWithValues: header.enumerated().map { ($1, $0) })
@@ -79,13 +116,15 @@ enum NightReportSampleLoader {
         fmt.formatOptions = [.withInternetDateTime]
 
         var out: [NightReportSample] = []
-        out.reserveCapacity(lines.count - 1)
+        out.reserveCapacity(min(lines.count - 1, 4_096))
         for line in lines.dropFirst() {
             let cols = splitCSV(line)
             guard tsIdx < cols.count, irIdx < cols.count else { continue }
             let tsStr = cols[tsIdx]
             guard let ts = fmtFrac.date(from: tsStr) ?? fmt.date(from: tsStr) else { continue }
-            if ts < start || ts > end { continue }
+            // Flush CSVs are chronological; once past the window we can stop.
+            if ts < start { continue }
+            if ts > end { break }
             let ir = Double(cols[irIdx]) ?? 0
             let ax = axIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
             let ay = ayIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
@@ -106,8 +145,11 @@ enum NightReportSampleLoader {
     }
 
     private static func parseLooseSessionCSV(at url: URL, start: Date, end: Date) -> [NightReportSample] {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        let lines = content.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty }
+        guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]),
+              let content = String(data: data, encoding: .utf8) else {
+            return []
+        }
+        let lines = content.split(whereSeparator: \.isNewline).filter { !$0.isEmpty }
         guard lines.count > 1 else { return [] }
         let header = lines[0].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
         let map = Dictionary(uniqueKeysWithValues: header.enumerated().map { ($1, $0) })
@@ -125,7 +167,8 @@ enum NightReportSampleLoader {
             let cols = splitCSV(line)
             guard tsIdx < cols.count, irIdx < cols.count else { continue }
             guard let ts = fmtFrac.date(from: cols[tsIdx]) ?? fmt.date(from: cols[tsIdx]) else { continue }
-            if ts < start || ts > end { continue }
+            if ts < start { continue }
+            if ts > end { break }
             out.append(
                 NightReportSample(
                     timestamp: ts,
@@ -142,7 +185,7 @@ enum NightReportSampleLoader {
         return out
     }
 
-    private static func splitCSV(_ line: String) -> [String] {
+    private static func splitCSV(_ line: Substring) -> [String] {
         // Research export is simple CSV without embedded commas in fields.
         line.split(separator: ",", omittingEmptySubsequences: false).map {
             $0.trimmingCharacters(in: .whitespaces)
