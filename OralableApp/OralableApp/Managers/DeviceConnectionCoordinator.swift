@@ -195,10 +195,6 @@ extension DeviceManager {
             }
             Logger.shared.debug("[DeviceManager][BLETrace \(traceId)] Step 4/5 notifications done in \(Int(Date().timeIntervalSince(notifyStart) * 1000))ms")
 
-            if let oralableDevice = device as? OralableDevice {
-                scheduleDeferredConnParamUpdate(for: oralableDevice, traceId: traceId)
-            }
-
             guard peripheral.state == .connected else {
                 Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Peripheral disconnected during notification setup")
                 updateDeviceReadiness(peripheral.identifier, to: .disconnected)
@@ -213,10 +209,18 @@ extension DeviceManager {
             // Start automatic recording session
             automaticRecordingSession?.onDeviceConnected()
 
+            // Schedule after `.ready` so disconnect/failure paths never arm a stale 8s write.
+            if let oralableDevice = device as? OralableDevice {
+                oralableDevice.scheduleDeferredConnParamUpdate(traceId: traceId)
+            }
+
         } catch {
             Logger.shared.error("[DeviceManager][BLETrace \(traceId)] ❌ Discovery failed after \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms: \(error.localizedDescription)")
             isConnecting = false
             updateDeviceReadiness(peripheral.identifier, to: .failed(error.localizedDescription))
+            if let oralableDevice = device as? OralableDevice {
+                oralableDevice.cancelDeferredConnParamUpdate()
+            }
         }
     }
 
@@ -503,25 +507,4 @@ extension DeviceManager {
         }
     }
 
-    /// Request 10s supervision after the link is stable (immediate update during CCC setup can drop iOS).
-    func scheduleDeferredConnParamUpdate(for oralable: OralableDevice, traceId: String) {
-        Task { [weak oralable] in
-            do {
-                try await Task.sleep(nanoseconds: 8_000_000_000)
-            } catch {
-                return
-            }
-            guard let oralable,
-                  let peripheral = oralable.peripheral,
-                  peripheral.state == .connected else {
-                return
-            }
-            do {
-                try oralable.requestFirmwareConnParamUpdate()
-                Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Deferred conn param update (8s post-ready)")
-            } catch {
-                Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] Deferred conn param update skipped: \(error.localizedDescription)")
-            }
-        }
-    }
 }

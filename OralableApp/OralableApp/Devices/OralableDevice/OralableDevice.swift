@@ -175,6 +175,9 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     private var offBodyKeepaliveTask: Task<Void, Never>?
 
+    /// Deferred `00B` conn-param request after link is stable (cancelled on disconnect / rediscovery).
+    private var deferredConnParamTask: Task<Void, Never>?
+
     // MARK: - Sample Rate Verification
 
     var sampleRateStats = SampleRateStats()
@@ -209,6 +212,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         Logger.shared.info("[OralableDevice] 🔌 Disconnect requested")
         deviceInfo.connectionState = .disconnecting
         setOffBodyLinkKeepaliveActive(false)
+        cancelDeferredConnParamUpdate()
 
         // Cancel any pending write continuation to avoid leaked continuations
         if let continuation = writeCompletionContinuation {
@@ -231,6 +235,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     /// Cancel any pending async continuations to prevent hangs on disconnect
     func cancelPendingContinuations() {
         setOffBodyLinkKeepaliveActive(false)
+        cancelDeferredConnParamUpdate()
         serviceDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         serviceDiscoveryContinuation = nil
         characteristicDiscoveryContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
@@ -405,6 +410,50 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
             return
         }
         try writeFirmwareConfig(Data([FirmwareConfigOpcode.requestConnParamUpdate.rawValue]))
+    }
+
+    /// Request 10s supervision after the link is stable.
+    /// Immediate update during CCC setup can drop iOS; an uncancelled Task from a prior ready
+    /// can also fire into a later discovery's CCC window and churn reconnects.
+    /// - Parameters:
+    ///   - delayNanoseconds: Wait before writing (default 8s). Injectable for tests.
+    ///   - traceId: BLETrace fragment for logs.
+    ///   - onFire: Optional test seam invoked instead of the firmware write.
+    func scheduleDeferredConnParamUpdate(
+        delayNanoseconds: UInt64 = 8_000_000_000,
+        traceId: String = "",
+        onFire: (() -> Void)? = nil
+    ) {
+        cancelDeferredConnParamUpdate()
+        deferredConnParamTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+
+            if let onFire {
+                onFire()
+                return
+            }
+
+            guard let peripheral = self.peripheral, peripheral.state == .connected else {
+                return
+            }
+            do {
+                try self.requestFirmwareConnParamUpdate()
+                Logger.shared.info("[OralableDevice][BLETrace \(traceId)] Deferred conn param update (\(delayNanoseconds / 1_000_000)ms post-ready)")
+            } catch {
+                Logger.shared.warning("[OralableDevice][BLETrace \(traceId)] Deferred conn param update skipped: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func cancelDeferredConnParamUpdate() {
+        deferredConnParamTask?.cancel()
+        deferredConnParamTask = nil
     }
 
     /// Off-body: firmware sends battery/status keepalive every 5s, but iOS may negotiate a short
