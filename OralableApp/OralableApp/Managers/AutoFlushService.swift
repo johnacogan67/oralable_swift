@@ -29,12 +29,19 @@ final class AutoFlushService {
             }
     }
 
-    private func flushIfNeeded() async {
-        guard let dm = deviceManager, dm.automaticRecordingSession?.isSessionActive == true else { return }
-        guard let proc = sensorDataProcessor else { return }
-        await MainActor.run {
-            proc.flushLiveHistoryToTempFileIfNonEmpty()
+    /// Spill processor + unified rings to Application Support CSVs.
+    /// - Parameter force: When true, flush even if the automatic session is no longer active
+    ///   (required from `onSessionStopped` after pause expiry clears `isSessionActive`).
+    func flushNow(force: Bool = false) async {
+        guard let dm = deviceManager, let proc = sensorDataProcessor else { return }
+        if !force {
+            guard dm.automaticRecordingSession?.isSessionActive == true else { return }
         }
+        proc.flushLiveHistoryToTempFileIfNonEmpty()
         await dm.flushUnifiedSensorBufferToTempFile()
+    }
+
+    private func flushIfNeeded() async {
+        await flushNow(force: false)
     }
 }

@@ -272,6 +272,9 @@ class DeviceManager: ObservableObject {
             Logger.shared.info("[DeviceManager] Automatic recording session stopped with \(eventCount) events")
             NRFConnectBLELogger.shared.throttleHighRateNotifications = true
             self?.backgroundWorker.setUnlimitedReconnectActive(false)
+            // Pause expiry / explicit end clears isSessionActive before this callback — force-spill
+            // so the trailing unflushed hour is on disk for morning hypnogram / clinical PDF.
+            Task { await AutoFlushService.shared.flushNow(force: true) }
         }
 
         session.onStateChanged = { newState in

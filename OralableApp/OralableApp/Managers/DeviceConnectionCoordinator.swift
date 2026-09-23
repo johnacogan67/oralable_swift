@@ -251,6 +251,14 @@ extension DeviceManager {
 
         automaticRecordingSession?.onDeviceDisconnected()
 
+        // Persist the trailing unflushed window immediately on BLE drop. AutoFlush is hourly and
+        // gated on isSessionActive; pause expiry (30 min) often lands before the next tick, so
+        // without this spill the final ≤60 minutes of an overnight study die with process memory.
+        // Disconnect only pauses the session (isSessionActive stays true) — see AutomaticRecordingSession.
+        if automaticRecordingSession?.isSessionActive == true {
+            Task { await AutoFlushService.shared.flushNow(force: false) }
+        }
+
         if let oralable = devices[peripheral.identifier] as? OralableDevice {
             backgroundWorker.setDeviceOffBody(false, for: peripheral.identifier)
         }
