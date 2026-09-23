@@ -559,6 +559,12 @@ class DeviceManager: ObservableObject {
             Logger.shared.warning("[DeviceManager] Unified buffer flush failed: \(error.localizedDescription)")
         }
     }
+
+    /// Non-destructive read of the unflushed unified ring for overnight report rebuild.
+    /// `SensorDataProcessor` keeps ~10k rows (~200s) while AutoFlush is hourly; this buffer holds the rest.
+    func snapshotUnifiedSensorData(from start: Date, to end: Date) async -> [SensorData] {
+        await unifiedSensorDataBuffer.data(from: start, to: end)
+    }
     
     // MARK: - Device Info Access
     

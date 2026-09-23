@@ -4,6 +4,7 @@
 //
 
 import XCTest
+import OralableCore
 @testable import OralableApp
 
 final class OvernightNightReportBuilderTests: XCTestCase {
@@ -33,6 +34,72 @@ final class OvernightNightReportBuilderTests: XCTestCase {
 
     func testEvaluableWearRequiresSixHours() {
         XCTAssertEqual(OvernightNightReportBuilder.evaluableWearSeconds, 6 * 3600)
+    }
+
+    /// Processor history trims at ~10k (~200s @ 50 Hz) while AutoFlush is hourly.
+    /// Production `OvernightNightReportBuilder.build(..., deviceManager:)` merges
+    /// `snapshotUnifiedSensorData` into liveHistory before this loader path runs.
+    func testMergedLiveHistoryKeepsUnflushedUnifiedSamplesBeyondProcessorTrim() {
+        let sessionStart = Date(timeIntervalSince1970: 1_700_100_000)
+        // ~25 minutes into the session — outside a 200s processor ring, still in unified RAM.
+        let unifiedOnly = Self.makeSensorRows(
+            from: sessionStart.addingTimeInterval(10 * 60),
+            count: 40,
+            dt: 1.0,
+            ir: 210_000
+        )
+        let processorTrim = Self.makeSensorRows(
+            from: sessionStart.addingTimeInterval(34 * 60),
+            count: 20,
+            dt: 0.1,
+            ir: 190_000
+        )
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("overnight_builder_unified_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let windowEnd = sessionStart.addingTimeInterval(35 * 60)
+        let processorOnly = NightReportSampleLoader.load(
+            sessionStart: sessionStart,
+            sessionEnd: windowEnd,
+            liveHistory: processorTrim,
+            sessionFileURL: nil,
+            flushDirectory: tmp
+        )
+        let merged = NightReportSampleLoader.load(
+            sessionStart: sessionStart,
+            sessionEnd: windowEnd,
+            liveHistory: processorTrim + unifiedOnly,
+            sessionFileURL: nil,
+            flushDirectory: tmp
+        )
+        XCTAssertEqual(processorOnly.count, processorTrim.count)
+        XCTAssertEqual(merged.count, processorTrim.count + unifiedOnly.count)
+        XCTAssertEqual(merged.first?.timestamp, unifiedOnly.first?.timestamp)
+        XCTAssertLessThan(merged.first!.timestamp, processorTrim.first!.timestamp)
+        XCTAssertNotNil(OvernightStateClassifier.analyze(merged))
+    }
+
+    private static func makeSensorRows(
+        from start: Date,
+        count: Int,
+        dt: TimeInterval,
+        ir: Double
+    ) -> [SensorData] {
+        (0..<count).map { i in
+            let ts = start.addingTimeInterval(Double(i) * dt)
+            return SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: 1000, ir: ir, green: 800, timestamp: ts),
+                accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: ts),
+                temperature: TemperatureData(celsius: 36.5, timestamp: ts),
+                battery: BatteryData(percentage: 90, timestamp: ts),
+                heartRate: nil,
+                spo2: SpO2Data(percentage: 97, quality: 0.9, timestamp: ts),
+                deviceType: .oralable
+            )
+        }
     }
 
     func testBandChipsInsufficientWhenNotEvaluable() {

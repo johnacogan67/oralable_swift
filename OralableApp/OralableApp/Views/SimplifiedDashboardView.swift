@@ -99,13 +99,16 @@ struct SimplifiedDashboardView: View {
             overnightReport = nil
             return
         }
-        overnightReport = OvernightNightReportBuilder.build(
-            recordingSessionManager: dependencies.recordingSessionManager,
-            automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
-            liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
-            sessionHistoryStore: dependencies.sessionHistoryStore,
-            tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent
-        )
+        Task {
+            overnightReport = await OvernightNightReportBuilder.build(
+                recordingSessionManager: dependencies.recordingSessionManager,
+                automaticSessionStart: deviceManager.automaticRecordingSession?.sessionStartTime,
+                liveHistory: dependencies.sensorDataProcessor.sensorDataHistory,
+                sessionHistoryStore: dependencies.sessionHistoryStore,
+                tfiPercent: deviceManagerAdapter.temporalisFatigueIndexPercent,
+                deviceManager: deviceManager
+            )
+        }
     }
 
     // MARK: - Top Bar
