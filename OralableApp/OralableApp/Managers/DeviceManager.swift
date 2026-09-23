@@ -628,6 +628,20 @@ class DeviceManager: ObservableObject {
         return nil
     }
 
+    /// True when `primaryFirmwareVersion()` came from the remembered device record, not a live GATT read.
+    /// Settings uses this so a disconnected clip is not shown as a fresh version check.
+    var firmwareVersionIsFromLastConnection: Bool {
+        if let live = (primaryBLEDevice as? OralableDevice)?.firmwareVersion?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !live.isEmpty {
+            return false
+        }
+        if let cached = primaryDevice?.firmwareVersion?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !cached.isEmpty {
+            return true
+        }
+        return false
+    }
+
     /// Placement mode last written to firmware on the active primary clip (nil if unknown / disconnected).
     func appliedFirmwarePlacementMode() -> FeatureFlags.DevicePlacementMode? {
         (primaryBLEDevice as? OralableDevice)?.lastAppliedPlacementMode
