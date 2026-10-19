@@ -10,6 +10,13 @@ import OralableCore
 
 enum ResearchRawDataExport {
 
+    /// Decimal text for CSV cells. `String(format:)` follows the phone locale, so a comma
+    /// decimal (de_DE and others) splits the row and shifts SpO2 onto the heart-rate column.
+    static func csvDecimal(_ value: Double, fractionDigits: Int) -> String {
+        let digits = max(0, fractionDigits)
+        return String(format: "%.\(digits)f", locale: Locale(identifier: "en_US_POSIX"), value)
+    }
+
     /// One row per `SensorData` sample (deviceType, ISO8601 timestamp, PPG RGB raw, accel raw, optional HR/SpO2).
     /// `ambient_ir_raw` duplicates `ir` (REV10 IR-DC counts) for leakage / ambient-saturation analysis (e.g. McGill).
     /// `is_manual_override` is `1` when the fit gate was bypassed via research override for that export (otherwise `0`).
@@ -22,8 +29,8 @@ enum ResearchRawDataExport {
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
             let ts = fmt.string(from: s.timestamp)
-            let hr = s.heartRate.map { String(format: "%.1f", $0.bpm) } ?? ""
-            let ox = s.spo2.map { String(format: "%.0f", $0.percentage) } ?? ""
+            let hr = s.heartRate.map { csvDecimal($0.bpm, fractionDigits: 1) } ?? ""
+            let ox = s.spo2.map { csvDecimal($0.percentage, fractionDigits: 0) } ?? ""
             let row = [
                 s.deviceType.rawValue,
                 ts,
@@ -34,7 +41,7 @@ enum ResearchRawDataExport {
                 "\(s.accelerometer.x)",
                 "\(s.accelerometer.y)",
                 "\(s.accelerometer.z)",
-                String(format: "%.3f", s.temperature.celsius),
+                csvDecimal(s.temperature.celsius, fractionDigits: 3),
                 "\(s.battery.percentage)",
                 hr,
                 ox,

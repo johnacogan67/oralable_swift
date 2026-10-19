@@ -99,6 +99,10 @@ final class OvernightStateClassifierTests: XCTestCase {
         let csv = OvernightStateClassifier.eventCSV(from: analysis)
         XCTAssertTrue(csv.contains("start_s,end_s,duration_s,type"))
         XCTAssertTrue(csv.contains("tonic") || csv.contains("phasic") || csv.contains("rescue"))
+        for line in csv.split(whereSeparator: \.isNewline) where !line.isEmpty {
+            let cols = line.split(separator: ",", omittingEmptySubsequences: false)
+            XCTAssertEqual(cols.count, 8, "event CSV row must not gain columns from a locale decimal comma")
+        }
     }
 
     func testResearchCSVRoundTrip() {
@@ -118,6 +122,51 @@ final class OvernightStateClassifierTests: XCTestCase {
         XCTAssertEqual(samples[0].ir, 200_000, accuracy: 0.1)
         XCTAssertEqual(samples[1].spo2, 91, accuracy: 0.1)
         XCTAssertEqual(samples[1].accelZ, 16_384, accuracy: 0.1)
+    }
+
+    /// Comma-decimal locales must not shift flush-CSV columns. The morning report
+    /// re-reads these files; a comma in temperature or heart rate makes SpO2 read as HR.
+    func testFlushCSVKeepsDotDecimalsSoSpO2ColumnSurvives() throws {
+        let germanTemp = String(format: "%.3f", locale: Locale(identifier: "de_DE"), 36.512)
+        XCTAssertTrue(germanTemp.contains(","))
+        XCTAssertEqual(ResearchRawDataExport.csvDecimal(36.512, fractionDigits: 3), "36.512")
+        XCTAssertEqual(ResearchRawDataExport.csvDecimal(72.5, fractionDigits: 1), "72.5")
+
+        let t0 = Date(timeIntervalSince1970: 1_700_000_200)
+        let sample = SensorData(
+            timestamp: t0,
+            ppg: PPGData(red: 1000, ir: 200_000, green: 800, timestamp: t0),
+            accelerometer: AccelerometerData(x: 1, y: 2, z: 16384, timestamp: t0),
+            temperature: TemperatureData(celsius: 36.512, timestamp: t0),
+            battery: BatteryData(percentage: 90, timestamp: t0),
+            heartRate: HeartRateData(bpm: 72.5, quality: 0.9, timestamp: t0),
+            spo2: SpO2Data(percentage: 91, quality: 0.9, timestamp: t0),
+            deviceType: .oralable
+        )
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("flush_locale_\(UUID().uuidString).csv")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: [sample], to: url)
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let rows = text.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty }
+        XCTAssertEqual(rows.count, 2)
+        let header = rows[0].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        let cols = rows[1].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        XCTAssertEqual(cols.count, header.count)
+        XCTAssertEqual(cols[header.firstIndex(of: "temp_celsius")!], "36.512")
+        XCTAssertEqual(cols[header.firstIndex(of: "heart_rate_bpm")!], "72.5")
+        XCTAssertEqual(cols[header.firstIndex(of: "spo2_percent")!], "91")
+        XCTAssertFalse(rows[1].contains(germanTemp))
+
+        let parsed = NightReportSampleLoader.parseResearchCSV(
+            content: text,
+            start: t0.addingTimeInterval(-1),
+            end: t0.addingTimeInterval(1)
+        )
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].ir, 200_000, accuracy: 0.1)
+        XCTAssertEqual(parsed[0].spo2, 91, accuracy: 0.1)
     }
 
     func testLoaderMergesLiveHistory() {
