@@ -202,14 +202,14 @@ enum OvernightStateClassifier {
         for b in analysis.bouts {
             lines.append(
                 [
-                    String(format: "%.3f", b.startS),
-                    String(format: "%.3f", b.endS),
-                    String(format: "%.3f", b.durationS),
+                    ResearchRawDataExport.csvDecimal(b.startS, fractionDigits: 3),
+                    ResearchRawDataExport.csvDecimal(b.endS, fractionDigits: 3),
+                    ResearchRawDataExport.csvDecimal(b.durationS, fractionDigits: 3),
                     b.state.rawValue,
-                    String(format: "%.2f", b.minSpo2),
-                    String(format: "%.2f", b.deltaSpo2),
-                    String(format: "%.5f", b.peakMotion),
-                    String(format: "%.3f", b.recoveryS)
+                    ResearchRawDataExport.csvDecimal(b.minSpo2, fractionDigits: 2),
+                    ResearchRawDataExport.csvDecimal(b.deltaSpo2, fractionDigits: 2),
+                    ResearchRawDataExport.csvDecimal(b.peakMotion, fractionDigits: 5),
+                    ResearchRawDataExport.csvDecimal(b.recoveryS, fractionDigits: 3)
                 ].joined(separator: ",")
             )
         }
