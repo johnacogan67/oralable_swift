@@ -124,13 +124,16 @@ final class SessionHistoryStore: ObservableObject {
         persistSleepCalibration()
     }
 
-    /// Call when BLE primary changes: drop stored calibration if a different peripheral is now primary.
-    func applyPrimaryDeviceForSleepGate(primaryPeripheralId: UUID?) {
-        guard let cal = temporalisSleepCalibration, let pid = primaryPeripheralId else { return }
-        if cal.peripheralId != pid {
-            temporalisSleepCalibration = nil
-            persistSleepCalibration()
-        }
+    /// Call when BLE primary changes: drop stored calibration only if a different Oralable is now primary.
+    /// ANR, a nil slot, or a transient non-Oralable primary must not erase the REV10 calibration.
+    func applyPrimaryDeviceForSleepGate(primary: DeviceInfo?) {
+        guard let cal = temporalisSleepCalibration else { return }
+        guard PrimaryDeviceSlotPolicy.shouldClearSleepCalibration(
+            storedPeripheralId: cal.peripheralId,
+            primary: primary
+        ) else { return }
+        temporalisSleepCalibration = nil
+        persistSleepCalibration()
     }
 
     /// Enables "Start overnight session" only for the REV10 unit that completed calibration while connected.
@@ -162,7 +165,7 @@ final class SessionHistoryStore: ObservableObject {
     func attach(recordingManager: RecordingSessionManager, deviceManager: DeviceManager) {
         self.recordingManager = recordingManager
         self.deviceManager = deviceManager
-        applyPrimaryDeviceForSleepGate(primaryPeripheralId: deviceManager.primaryDevice?.peripheralIdentifier)
+        applyPrimaryDeviceForSleepGate(primary: deviceManager.primaryDevice)
     }
 
     func beginSession(anchor: Date, sessionId: UUID) {

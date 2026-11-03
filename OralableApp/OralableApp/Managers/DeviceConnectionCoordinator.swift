@@ -42,9 +42,16 @@ extension DeviceManager {
                 connectedDevices.append(discoveredDevices[index])
             }
 
-            // Set as primary if none set
-            if primaryDevice == nil {
-                primaryDevice = discoveredDevices[index]
+            // Oralable claims an empty slot or one held by a non-Oralable (ANR).
+            // A non-Oralable fills the slot only when nothing else is primary.
+            let candidate = discoveredDevices[index]
+            let previousPrimaryId = primaryDevice?.peripheralIdentifier
+            primaryDevice = PrimaryDeviceSlotPolicy.primaryAfterConnect(
+                candidate: candidate,
+                currentPrimary: primaryDevice
+            )
+            if primaryDevice?.peripheralIdentifier != previousPrimaryId {
+                primaryFirmwareDeviceStatus = nil
             }
 
             // Remember this device for auto-reconnect
@@ -275,9 +282,14 @@ extension DeviceManager {
 
         connectedDevices.removeAll { $0.peripheralIdentifier == peripheral.identifier }
 
-        if primaryDevice?.peripheralIdentifier == peripheral.identifier {
-            primaryDevice = connectedDevices.first
-        }
+        // Do not promote ANR (or any non-Oralable) into the clinical primary slot.
+        // That promotion wiped the REV10 sleep calibration and left the Oralable
+        // secondary after it reconnected.
+        primaryDevice = PrimaryDeviceSlotPolicy.primaryAfterDisconnect(
+            disconnectedPeripheralId: peripheral.identifier,
+            connectedDevices: connectedDevices,
+            currentPrimary: primaryDevice
+        )
 
         // Reconnection handling is centralized in BLEBackgroundWorker's BLE event subscription.
         // Avoid invoking worker handlers here to prevent duplicate reconnection scheduling.
