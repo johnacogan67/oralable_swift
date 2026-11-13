@@ -148,8 +148,11 @@ class DemoDataManager: ObservableObject {
             let spo2 = Double(values[columns["spo2"] ?? 9]) ?? 0
             let battery = Int(values[columns["battery"] ?? 10]) ?? 0
 
-            // Calculate accelerometer magnitude
-            let accelMagnitude = sqrt(Double(accelX * accelX + accelY * accelY + accelZ * accelZ))
+            // Square in Double. Raw counts are ~16384/g, and Int16 multiplication traps past 181.
+            let ax = Double(accelX)
+            let ay = Double(accelY)
+            let az = Double(accelZ)
+            let accelMagnitude = sqrt(ax * ax + ay * ay + az * az)
 
             let point = SerializableSensorData(
                 timestamp: timestamp,
