@@ -50,7 +50,7 @@
 		<string>bluetooth-le</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Oralable</string>
+	<string>MAM</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleGetInfoString</key>
