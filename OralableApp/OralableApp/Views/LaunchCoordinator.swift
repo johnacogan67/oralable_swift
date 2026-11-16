@@ -5,25 +5,14 @@
 //  Coordinates app launch flow based on authentication state.
 //
 //  Flow Logic:
-//  1. If authenticated and pairing + first fit complete → MainTabView
-//  2. If authenticated and trial mode (pairing skipped) → TrialSetupDashboardView
-//  3. If authenticated otherwise → FirstLaunchOnboardingView
-//  4. If first launch (unauthenticated) → OnboardingView
-//  5. Otherwise → LoginView
+//  1. If authenticated and paired (Beacon default) → MainTabView
+//  2. If authenticated, Protocol A Setup required + complete → MainTabView
+//  3. If authenticated, paired, Protocol A required but incomplete → SingleProtocolASetupView
+//  4. If authenticated and trial mode (pairing skipped) → TrialSetupDashboardView
+//  5. If authenticated otherwise → FirstLaunchOnboardingView
+//  6. If first launch (unauthenticated) → OnboardingView
+//  7. Otherwise → LoginView
 //
-//  Gold-standard setup / MainTab transition:
-//  CalibrationWizardView runs inside TemporalisFitGuideView. On successful calibration,
-//  TemporalisFitGuideView presents SetupSuccessView before any call to markFirstFitCompleted().
-//  Only after the user taps “Go to dashboard” does onCalibrationSucceeded run, FirstLaunchManager
-//  finalizes setup (trial + provisional flags cleared), and this coordinator reveals MainTabView.
-//
-//  Purpose:
-//  Single point of control for the initial view hierarchy.
-//  Responds to authentication state changes reactively.
-//
-//  Created by John A Cogan on 23/11/2025.
-//
-
 
 import SwiftUI
 
@@ -33,35 +22,12 @@ struct LaunchCoordinator: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var sessionHistoryStore: SessionHistoryStore
     @EnvironmentObject var firstLaunchManager: FirstLaunchManager
+    @ObservedObject private var featureFlags = FeatureFlags.shared
 
     var body: some View {
         Group {
-            // IMPORTANT: Check authentication BEFORE first launch
-            // Once authenticated, show first-fit onboarding until Temporalis calibration completes.
             if authenticationManager.isAuthenticated {
-                if firstLaunchManager.hasCompletedFirstFit,
-                   firstLaunchManager.hasPairedOralablePrimary {
-                    MainTabView()
-                        .onAppear {
-                            Logger.shared.info("🟢 LaunchCoordinator: Showing MainTabView (authenticated, setup complete)")
-                        }
-                } else if FeatureFlags.shared.vitalsPhaseEnabled,
-                          firstLaunchManager.hasPairedOralablePrimary {
-                    MainTabView()
-                        .onAppear {
-                            Logger.shared.info("🟢 LaunchCoordinator: MainTabView (vitals phase, paired)")
-                        }
-                } else if firstLaunchManager.isTrialSetupMode {
-                    TrialSetupDashboardView(firstLaunchManager: firstLaunchManager)
-                        .onAppear {
-                            Logger.shared.info("🟠 LaunchCoordinator: Trial setup dashboard (pairing skipped)")
-                        }
-                } else {
-                    FirstLaunchOnboardingView(firstLaunchManager: firstLaunchManager)
-                        .onAppear {
-                            Logger.shared.info("🟡 LaunchCoordinator: Showing FirstLaunchOnboardingView (setup)")
-                        }
-                }
+                authenticatedRoot
             } else if authenticationManager.isFirstLaunch {
                 OnboardingView()
                     .onAppear {
@@ -76,25 +42,85 @@ struct LaunchCoordinator: View {
         }
         .onAppear {
             Logger.shared.info("🔵 LaunchCoordinator appeared - isAuthenticated: \(authenticationManager.isAuthenticated), isFirstLaunch: \(authenticationManager.isFirstLaunch)")
-            if authenticationManager.isAuthenticated,
-               FeatureFlags.shared.vitalsPhaseEnabled,
-               firstLaunchManager.hasPairedOralablePrimary,
-               !firstLaunchManager.hasCompletedFirstFit {
-                firstLaunchManager.markFirstFitCompleted()
-            }
-            if authenticationManager.isAuthenticated,
-               firstLaunchManager.hasCompletedFirstFit,
-               !firstLaunchManager.hasPairedOralablePrimary {
-                firstLaunchManager.markOralablePaired()
-            }
-            if authenticationManager.isAuthenticated,
-               !firstLaunchManager.hasCompletedFirstFit,
-               sessionHistoryStore.temporalisSleepCalibration != nil {
-                firstLaunchManager.markOralablePaired()
-                firstLaunchManager.markFirstFitCompleted()
-            }
-            // Attempt to auto-reconnect to remembered devices on app launch
+            reconcileLegacyGatesOnAppear()
             deviceManager.attemptAutoReconnect()
+        }
+    }
+
+    @ViewBuilder
+    private var authenticatedRoot: some View {
+        let paired = firstLaunchManager.hasPairedOralablePrimary
+        let requireA = featureFlags.requireProtocolASetup
+        let protocolADone = firstLaunchManager.hasCompletedProtocolASetup
+        let fitDone = firstLaunchManager.hasCompletedFirstFit
+
+        if requireA {
+            if paired, protocolADone {
+                MainTabView()
+                    .onAppear {
+                        Logger.shared.info("🟢 LaunchCoordinator: MainTabView (Protocol A Setup complete)")
+                    }
+            } else if firstLaunchManager.isTrialSetupMode {
+                TrialSetupDashboardView(firstLaunchManager: firstLaunchManager)
+                    .onAppear {
+                        Logger.shared.info("🟠 LaunchCoordinator: Trial setup dashboard (pairing skipped)")
+                    }
+            } else if paired, !protocolADone {
+                SingleProtocolASetupView(firstLaunchManager: firstLaunchManager)
+                    .onAppear {
+                        Logger.shared.info("🟡 LaunchCoordinator: SingleProtocolASetupView (Setup Mode)")
+                    }
+            } else {
+                FirstLaunchOnboardingView(firstLaunchManager: firstLaunchManager)
+                    .onAppear {
+                        Logger.shared.info("🟡 LaunchCoordinator: FirstLaunchOnboardingView (pair)")
+                    }
+            }
+        } else if fitDone, paired {
+            MainTabView()
+                .onAppear {
+                    Logger.shared.info("🟢 LaunchCoordinator: Showing MainTabView (authenticated, setup complete)")
+                }
+        } else if featureFlags.vitalsPhaseEnabled, paired {
+            MainTabView()
+                .onAppear {
+                    Logger.shared.info("🟢 LaunchCoordinator: MainTabView (vitals phase, paired)")
+                }
+        } else if firstLaunchManager.isTrialSetupMode {
+            TrialSetupDashboardView(firstLaunchManager: firstLaunchManager)
+                .onAppear {
+                    Logger.shared.info("🟠 LaunchCoordinator: Trial setup dashboard (pairing skipped)")
+                }
+        } else {
+            FirstLaunchOnboardingView(firstLaunchManager: firstLaunchManager)
+                .onAppear {
+                    Logger.shared.info("🟡 LaunchCoordinator: Showing FirstLaunchOnboardingView (setup)")
+                }
+        }
+    }
+
+    private func reconcileLegacyGatesOnAppear() {
+        guard authenticationManager.isAuthenticated else { return }
+
+        // Auto-complete Temporalis fit only when Protocol A Setup gate is off.
+        if !featureFlags.requireProtocolASetup,
+           featureFlags.vitalsPhaseEnabled,
+           firstLaunchManager.hasPairedOralablePrimary,
+           !firstLaunchManager.hasCompletedFirstFit {
+            firstLaunchManager.markFirstFitCompleted()
+        }
+
+        if firstLaunchManager.hasCompletedFirstFit,
+           !firstLaunchManager.hasPairedOralablePrimary {
+            firstLaunchManager.markOralablePaired()
+        }
+
+        // Legacy calibration restore — do not skip Protocol A when that gate is on.
+        if !featureFlags.requireProtocolASetup,
+           !firstLaunchManager.hasCompletedFirstFit,
+           sessionHistoryStore.temporalisSleepCalibration != nil {
+            firstLaunchManager.markOralablePaired()
+            firstLaunchManager.markFirstFitCompleted()
         }
     }
 }

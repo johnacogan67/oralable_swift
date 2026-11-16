@@ -21,11 +21,11 @@ This `docs/` folder in `oralable_swift` is a **frozen / local copy** for app-doc
 
 | Generation | BOM | PCB | Module (U5) | Battery | Firmware |
 |------------|-----|-----|-------------|---------|----------|
-| **Gen1** (shipping / pilot) | `PCB00003-TGM-BOM-REV8` | **REV10** pilot (REV8 prod data) | Kaga **ES2832AA2** · nRF52832 | CG-320B ~15 mAh | **1.0.84** target (min 1.0.63) · app **4.3.3** (build **5**) |
-| **Gen2** (upcoming) | `PCB00003-TGM-BOM-REV9` | **REV11** | Kaga **ES4L15BA1** · nRF54L15 | LP260820 ~30 mAh | **2.0.x** target |
+| **Gen 2** (current · bring-up · kits not shipped) | `PCB00003-TGM-BOM-REV9` | **REV11** | Kaga **ES4L15BA1** · nRF54L15 | **LP270829** 35 mAh | **2.0.x** target (not flashed) · app **4.3.3** (build **5**) |
+| **Gen 1** (frozen) | `PCB00003-TGM-BOM-REV8` | **REV10** | Kaga **ES2832AA2** · nRF52832 | CG-320B ~15 mAh | **1.0.85** frozen. Source of the port. |
 
-- **Phase 0 / Phase 1+** = software on **Gen1** (same BOM REV8 / REV10). Phases do **not** change the BOM.
-- Charge: Oralable magnetic case (LTC4124 / LTC6990) — **not** WPC Qi.
+- **Phase 0 / Phase 1+** = software on **Gen 2** (BOM REV9 / REV11). Gen 1 is frozen.
+- Charge: Oralable charging case (LTC4124 / LTC6990) — **not** WPC Qi; no magnets on the charger.
 - Truth docs: `cursor_oralable/docs/VITALS_PHASE_GEN1_GEN2.md`, `GEN1_GEN2_MIGRATION.md`, `PRODUCT_ROADMAP.md`, `IP_NORTH_STAR.md`.
 - **Strategy:** Stage A wellness wearable → Stage B medical (later). Ed/Pedro = patient app only.
 - **Internal cost/timeline (do not put € ranges on public pages):** `cursor_oralable/docs/data_room/COST_AND_TIMELINE.md`
@@ -36,5 +36,6 @@ This `docs/` folder in `oralable_swift` is a **frozen / local copy** for app-doc
 2. Optionally mirror the same HTML into this `docs/` folder if you still want a local copy.  
 3. Alternate draft trees (not live Netlify source): `../oralable-website/`, `../docs-v2/`.
 
-**Pilot kits (July 2026):** Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · firmware **1.0.84** · app **4.3.3** (build **5**) (STAT blink = charging; Automatic dock; IR-pulse worn; pad/desk recover).  
-**Module:** Kaga ES2832AA2 (nRF52832), not Taiyo Yuden EYSHSNZWZ.
+**Kits (14 Oct 2026):** Gen 2 · BOM REV9 · PCB REV11 · ES4L15BA1 · cell LP270829 · firmware **2.0.x** not flashed · app **4.3.3** (build **5**) · **not shipped**. First install is `flash_and_rtt.sh`, same as Gen 1.  
+**Public copy:** kits not yet shipped; firmware in bring-up; no “Beacon trials underway”; no diagnostics / FDA-CE claims.  
+**Module:** Kaga ES4L15BA1 (nRF54L15). Gen 1 ES2832AA2 is frozen.

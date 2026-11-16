@@ -15,9 +15,9 @@ enum FirmwareGate {
     /// Alias for UI copy and existing call sites.
     static let minimumOralableSemanticVersion = minRequiredVersion
 
-    /// Latest Gen1 target: sense on BLE, green pad LEDs, 5% floor, IR-pulse worn,
-    /// pad/zombie recover, desk/bench abandon (worn=0 + ACC flat 10 min).
-    static let recommendedOralableSemanticVersion = "1.0.84"
+    /// Latest Gen1 target. A Gen2 2.0.x candidate clears the numeric minimum only;
+    /// it still requires separately recorded hardware compatibility evidence.
+    static let recommendedOralableSemanticVersion = "1.0.85"
 
     /// Firmware with explicit user device mode opcode (`00B` 0x09).
     static let minimumPlacementModeVersion = "1.0.62"
@@ -49,6 +49,16 @@ enum FirmwareGate {
     /// `true` iff `reported` is **strictly less than** `minRequiredVersion`.
     static func isOralableVersionOutdated(_ reported: String) -> Bool {
         compare(reported, isLessThan: minRequiredVersion)
+    }
+
+    /// Gen2 firmware is allowed to reach research validation but is never a
+    /// production-compatibility assertion. G2-P6 evidence governs that claim.
+    static func requiresGen2CompatibilityEvidence(_ reported: String?) -> Bool {
+        guard let reported, !reported.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        guard let major = numericParts(reported).first else { return false }
+        return major >= 2
     }
 
     /// Lexicographic numeric semver compare (major.minor.patch); ignores common pre-release suffix after '-'.

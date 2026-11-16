@@ -71,6 +71,12 @@ struct ShareView: View {
                     protocolBValidationSection
                 }
 
+                if !featureFlags.vitalsPhaseEnabled
+                    || featureFlags.requireProtocolASetup
+                    || dependencies.sessionHistoryStore.protocolASetupExport != nil {
+                    protocolASetupSection
+                }
+
                 // Share CSV section - ALWAYS SHOWN
                 shareCSVSection
 
@@ -164,7 +170,96 @@ struct ShareView: View {
             return Text("Export \(eventCount) detected events (fast, small file)")
         case .continuous:
             let recordCount = sensorDataProcessor.sensorDataHistory.count
-            return Text("Export \(recordCount) in-memory samples (~3 min at 50 Hz). For Protocol B validation use the BLE log export above.")
+            return Text("In-memory dump: \(recordCount) samples (~3 min at 50 Hz). For a Beacon night use Clinical report → Export night pack.")
+        }
+    }
+
+    // MARK: - Protocol A Setup pack (Setup Mode → General Mode)
+    private var protocolASetupSection: some View {
+        Section {
+            if let record = dependencies.sessionHistoryStore.protocolASetupExport {
+                HStack {
+                    Text("Latest pack")
+                        .foregroundColor(designSystem.colors.textSecondary)
+                    Spacer()
+                    Text(record.sessionTimestamp)
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundColor(designSystem.colors.textPrimary)
+                }
+                HStack {
+                    Text("Samples")
+                        .foregroundColor(designSystem.colors.textSecondary)
+                    Spacer()
+                    Text("\(record.sampleCount)")
+                        .font(.system(.body, design: .monospaced))
+                }
+
+                exportActionRow(
+                    title: isSharing ? "Sharing…" : "Share Protocol A Setup pack",
+                    subtitle: "EDF + sidecar (AirDrop, Mail, Files)",
+                    systemImage: "square.and.arrow.up",
+                    isBusy: isSharing,
+                    action: shareProtocolASetupPack
+                )
+
+                exportActionRow(
+                    title: "Save Protocol A pack to Files",
+                    subtitle: "Documents/ProtocolASetup on device",
+                    systemImage: "folder",
+                    isBusy: isSharing,
+                    action: saveProtocolASetupPackToFiles
+                )
+            } else {
+                Text("No Protocol A Setup pack yet. Complete Setup Mode once to create an EDF export.")
+                    .font(designSystem.typography.footnote)
+                    .foregroundColor(designSystem.colors.textSecondary)
+            }
+        } header: {
+            Text("Protocol A Setup")
+        } footer: {
+            Text("Training protocol (~6 min). Optional research QC — not required for a Beacon night. Wellness only.")
+        }
+    }
+
+    private func shareProtocolASetupPack() {
+        Task {
+            await presentProtocolASetupExport { urls in
+                SharePresentationSupport.presentShareSheet(items: urls)
+            }
+        }
+    }
+
+    private func saveProtocolASetupPackToFiles() {
+        Task {
+            await presentProtocolASetupExport { urls in
+                SharePresentationSupport.presentSaveToFiles(urls: urls)
+            }
+        }
+    }
+
+    private func presentProtocolASetupExport(present: @escaping ([URL]) -> Void) async {
+        await MainActor.run {
+            isSharing = true
+            shareProgress = "Loading Protocol A pack…"
+        }
+        defer {
+            Task { @MainActor in
+                isSharing = false
+                shareProgress = ""
+            }
+        }
+        guard let urls = await MainActor.run(body: {
+            dependencies.sessionHistoryStore.protocolASetupShareURLs()
+        }), !urls.isEmpty else {
+            await MainActor.run {
+                errorMessage = "Protocol A Setup files are missing. Re-run Setup or check Files → Oralable → ProtocolASetup."
+                showError = true
+            }
+            return
+        }
+        await MainActor.run {
+            Logger.shared.info("[ShareView] Protocol A Setup share \(urls.map(\.lastPathComponent).joined(separator: ", "))")
+            present(urls)
         }
     }
 
@@ -180,7 +275,7 @@ struct ShareView: View {
                         Text("Prepare Protocol B session")
                             .font(designSystem.typography.body)
                             .foregroundColor(designSystem.colors.textPrimary)
-                        Text("Sets Worn on cheek — mount clip, then connect")
+                        Text("Sets Worn on temple — pad or tape, then connect")
                             .font(designSystem.typography.footnote)
                             .foregroundColor(designSystem.colors.textSecondary)
                     }
@@ -333,7 +428,9 @@ struct ShareView: View {
         Section {
             if featureFlags.showOvernightHypnogram {
                 VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
-                    Text("State hypnogram — very useful overnight measure")
+                    Text(overnightReport?.isSimulated == true
+                        ? "Simulated night. Device labels only — not a recorded night. Not AHI."
+                        : "State hypnogram — very useful overnight measure")
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
                     StateHypnogramView(
@@ -355,10 +452,10 @@ struct ShareView: View {
                         .foregroundColor(designSystem.colors.info)
                         .frame(width: designSystem.spacing.xl)
                     VStack(alignment: .leading, spacing: designSystem.spacing.xxs) {
-                        Text("Export PDF — Oralable MAM: Clinical Temporalis Report")
+                        Text("Export night pack — Clinical Temporalis PDF")
                             .font(designSystem.typography.body)
                             .foregroundColor(designSystem.colors.textPrimary)
-                        Text("Bout hypnogram, smoking-gun dual rail, event CSV, TFI / SASHB")
+                        Text("PDF + full-night CSV (flush rebuilt). Beacon ≥4 h. Wellness — not AHI.")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.textSecondary)
                     }
@@ -407,7 +504,8 @@ struct ShareView: View {
             tfiPercent: built.tfiPercent,
             generatedAt: Date(),
             hourlySegments: hourly,
-            nightAnalysis: analysis
+            nightAnalysis: analysis,
+            isSimulated: built.isSimulated
         )
         do {
             var calURL: URL?
@@ -417,12 +515,17 @@ struct ShareView: View {
             let items = try ClinicalReportGenerator.writeResearchShareItems(
                 payload: payload,
                 calibrationRawCSV: calURL,
-                includeEventCSV: analysis != nil
+                includeEventCSV: analysis != nil,
+                nightSamples: built.samples
             )
             SharePresentationSupport.presentShareSheet(items: items)
             if analysis == nil {
                 errorMessage =
-                    "PDF exported with hourly rollups only. No sample stream found for bout-level charts — keep recording longer, or ensure memory-flush / session CSV data is present."
+                    "PDF exported with hourly rollups only. No sample stream found for bout-level charts — keep recording, or wait for memory-flush CSVs."
+                showError = true
+            } else if !built.isBeaconFeasible {
+                errorMessage =
+                    "Night pack exported. Wear \(built.wearHoursText). Beacon evaluable is ≥4 h (6 h better). This night still counts for QC if you send the PDF."
                 showError = true
             }
         } catch {

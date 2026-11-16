@@ -439,6 +439,110 @@ final class BLEBackgroundWorkerTests: XCTestCase {
         XCTAssertEqual(sut.connectionHealth[deviceId], .healthy)
     }
 
+    func testCleanDisconnectKeepsScheduledRetry() async {
+        let testConfig = BLEBackgroundWorkerConfig(
+            maxReconnectionAttempts: 4,
+            baseReconnectionDelay: 0.05,
+            maxReconnectionDelay: 1.0,
+            jitterFactor: 0.0,
+            connectionTimeout: 0.12
+        )
+        let worker = BLEBackgroundWorker(bleService: mockBLEService, config: testConfig)
+        worker.configure(bleService: mockBLEService)
+        worker.start()
+
+        let deviceId = UUID()
+        mockBLEService.addDiscoverableDevice(id: deviceId, name: "Test Device")
+        let peripheral = mockBLEService.discoveredPeripherals[deviceId]!
+        mockBLEService.injectedDelays["connect"] = 10.0
+
+        worker.scheduleReconnection(for: deviceId, peripheral: peripheral, immediate: true)
+
+        try? await Task.sleep(nanoseconds: 800_000_000)
+
+        XCTAssertGreaterThanOrEqual(
+            mockBLEService.methodCallCounts["connect"] ?? 0,
+            2,
+            "A clean disconnect from the connect watchdog must not cancel the next retry"
+        )
+
+        worker.stop()
+    }
+
+    func testDiscoveryFlapKeepsAttemptCountUntilLinkReady() async {
+        sut.start()
+        let deviceId = UUID()
+        mockBLEService.addDiscoverableDevice(id: deviceId, name: "Test Device")
+        let peripheral = mockBLEService.discoveredPeripherals[deviceId]!
+
+        var attempts: [Int] = []
+        sut.eventPublisher
+            .sink { event in
+                if case .reconnectionAttemptStarted(_, let attempt, _) = event {
+                    attempts.append(attempt)
+                }
+            }
+            .store(in: &cancellables)
+
+        let connected = XCTestExpectation(description: "ACL up")
+        sut.eventPublisher
+            .sink { event in
+                if case .reconnectionSucceeded = event {
+                    connected.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        sut.scheduleReconnection(for: deviceId, peripheral: peripheral, immediate: true)
+        await fulfillment(of: [connected], timeout: 2.0)
+
+        mockBLEService.simulateDisconnection(
+            from: deviceId,
+            error: BLEError.connectionTimeout(peripheralId: deviceId, timeoutSeconds: 1)
+        )
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(attempts, [1, 2], "A drop before GATT ready should back off, not restart at attempt 1")
+
+        sut.noteLinkReady(for: deviceId)
+        mockBLEService.simulateDisconnection(
+            from: deviceId,
+            error: BLEError.connectionTimeout(peripheralId: deviceId, timeoutSeconds: 1)
+        )
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(attempts, [1, 2, 1], "A ready link should start the next drop at attempt 1")
+    }
+
+    func testRecordingSessionLeavesConnectPending() async {
+        let testConfig = BLEBackgroundWorkerConfig(
+            maxReconnectionAttempts: 4,
+            baseReconnectionDelay: 0.05,
+            jitterFactor: 0.0,
+            connectionTimeout: 0.12
+        )
+        let worker = BLEBackgroundWorker(bleService: mockBLEService, config: testConfig)
+        worker.configure(bleService: mockBLEService)
+        worker.setUnlimitedReconnectActive(true)
+        worker.start()
+
+        let deviceId = UUID()
+        mockBLEService.addDiscoverableDevice(id: deviceId, name: "Test Device")
+        let peripheral = mockBLEService.discoveredPeripherals[deviceId]!
+        mockBLEService.injectedDelays["connect"] = 10.0
+
+        worker.scheduleReconnection(for: deviceId, peripheral: peripheral, immediate: true)
+        try? await Task.sleep(nanoseconds: 500_000_000)
+
+        XCTAssertEqual(mockBLEService.methodCallCounts["connect"] ?? 0, 1)
+        XCTAssertFalse(
+            mockBLEService.disconnectCalled,
+            "An overnight session should leave the CoreBluetooth connect pending"
+        )
+
+        worker.stop()
+    }
+
     // MARK: - Event Publisher Tests
 
     func testEventPublisherEmitsWorkerStarted() async {

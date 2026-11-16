@@ -46,6 +46,7 @@ struct DashboardView: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var appStateManager: AppStateManager
     @EnvironmentObject var dashboardViewModel: DashboardViewModel
+    @EnvironmentObject var recordingSessionManager: RecordingSessionManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
 
     /// When true, Temporalis TFI + HOI chart are omitted (shown in the Health summary strip instead).
@@ -56,12 +57,16 @@ struct DashboardView: View {
 
     @State private var showingProfile = false
     @State private var showingDeviceDiscovery = false
+    @State private var showingDualProtocolA = false
     @State private var dismissedErrorDescription: String?
     @State private var overnightReport: OvernightNightReportBuilder.Result?
 
     var body: some View {
         dashboardContent(viewModel: dashboardViewModel)
         .onAppear { refreshOvernightReport() }
+        .onChange(of: recordingSessionManager.sessions.map(\.id)) { _ in
+            refreshOvernightReport()
+        }
         .onChange(of: deviceManager.lastError?.errorDescription) { newErrorDescription in
             // Reset dismissed state when a new different error arrives
             if newErrorDescription != dismissedErrorDescription {
@@ -156,6 +161,35 @@ struct DashboardView: View {
 
                     // Dual device connection status indicator (now includes Movement)
                     deviceStatusIndicator(viewModel: viewModel)
+
+                    if featureFlags.showDualProtocolA && !featureFlags.vitalsPhaseEnabled {
+                        Button {
+                            showingDualProtocolA = true
+                        } label: {
+                            HStack(spacing: designSystem.spacing.sm) {
+                                Image(systemName: "waveform.path.ecg")
+                                    .foregroundColor(designSystem.colors.textPrimary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Dual Protocol A")
+                                        .font(designSystem.typography.bodySmall)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(designSystem.colors.textPrimary)
+                                    Text("Research · Oralable + ANR · ~6 min cues")
+                                        .font(designSystem.typography.caption)
+                                        .foregroundColor(designSystem.colors.textSecondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(designSystem.colors.textTertiary)
+                            }
+                            .padding(.horizontal, designSystem.spacing.buttonPadding)
+                            .padding(.vertical, designSystem.spacing.sm)
+                            .background(designSystem.colors.backgroundSecondary)
+                            .cornerRadius(designSystem.cornerRadius.button)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Dual Protocol A research session")
+                    }
 
                     if featureFlags.vitalsPhaseEnabled && viewModel.oralableConnected {
                         VitalsDeviceStatusCard(
@@ -332,11 +366,17 @@ struct DashboardView: View {
                             icon: batteryIcon(level: viewModel.batteryLevel, charging: viewModel.isCharging),
                             title: "Battery",
                             value: viewModel.batteryLevel > 0 ? "\(Int(viewModel.batteryLevel))" : "N/A",
-                            unit: viewModel.batteryLevel > 0 ? "%" : "",
+                            unit: batteryUnit(level: viewModel.batteryLevel),
                             color: batteryColor(level: viewModel.batteryLevel),
                             sparklineData: [],
                             showChevron: false
                         )
+                        if let usage = deviceManager.primaryBatteryUsage {
+                            Text(usage.summary)
+                                .font(designSystem.typography.captionSmall)
+                                .foregroundColor(designSystem.colors.textTertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
                 .padding(.horizontal, designSystem.spacing.md)
@@ -373,6 +413,12 @@ struct DashboardView: View {
                     .environmentObject(designSystem)
                     .environmentObject(dependencies.authenticationManager)
                     .environmentObject(dependencies.subscriptionManager)
+            }
+            .sheet(isPresented: $showingDualProtocolA) {
+                DualProtocolASessionView()
+                    .environmentObject(deviceManager)
+                    .environmentObject(designSystem)
+                    .environmentObject(dashboardViewModel)
             }
         }
     }
@@ -487,7 +533,8 @@ struct DashboardView: View {
             }
 
             // ANR M40 Device - only show if previously paired (not in demo mode)
-            if persistenceManager.hasANRDevicePaired() && !featureFlags.demoModeEnabled {
+            if !featureFlags.vitalsPhaseEnabled,
+               persistenceManager.hasANRDevicePaired() && !featureFlags.demoModeEnabled {
                 HStack {
                     Circle()
                         .fill(viewModel.anrConnected ? designSystem.colors.success : designSystem.colors.gray400)
@@ -514,6 +561,14 @@ struct DashboardView: View {
 
     // MARK: - Helper Functions
     
+    private func batteryUnit(level: Double) -> String {
+        guard level > 0 else { return "" }
+        if let mv = deviceManager.primaryBatteryMillivolts {
+            return "% · \(mv) mV"
+        }
+        return "%"
+    }
+
     private func batteryIcon(level: Double, charging: Bool) -> String {
         if charging { return "battery.100.bolt" }
         if level <= 0 { return "battery.0" }  // N/A or unavailable

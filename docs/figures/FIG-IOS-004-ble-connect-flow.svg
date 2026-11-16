@@ -1,8 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
-  <rect width="960" height="540" fill="#F3F4F6"/>
-  <rect x="24" y="24" width="912" height="492" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="12 8" rx="8"/>
-  <text x="480" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#374151">FIG-IOS-004</text>
-  <text x="480" y="270" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#111827">BLE connect flow screenshot</text>
-  <text x="480" y="330" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#6B7280">PLACEHOLDER — replace with final art</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#FAFAF8"/>
+  <text x="40" y="36" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">FIG-IOS-004 · draft wireframe · FW 1.0.84 · nRF Connect–aligned CCC</text>
+  <text x="40" y="64" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#111111">BLE connect — Devices tab</text>
+  <text x="40" y="88" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">disconnected → connecting → enablingNotifications → ready. Gate FW ≥ 1.0.63; recommend 1.0.84.</text>
+
+  <!-- Phone 1 Scan -->
+  <rect x="40" y="120" width="240" height="470" rx="36" fill="#111111"/>
+  <rect x="48" y="128" width="224" height="454" rx="28" fill="#FFFFFF"/>
+  <rect x="124" y="138" width="68" height="10" rx="5" fill="#111111"/>
+  <text x="64" y="172" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Devices</text>
+  <text x="200" y="172" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#2563EB">Scan</text>
+  <text x="64" y="204" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">MY DEVICES</text>
+  <rect x="64" y="214" width="192" height="48" rx="8" fill="#F3F4F6"/>
+  <text x="76" y="234" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Oralable</text>
+  <text x="76" y="250" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">Remembered · not connected</text>
+  <text x="64" y="292" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">OTHER DEVICES</text>
+  <rect x="64" y="302" width="192" height="48" rx="8" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="76" y="322" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Oralable</text>
+  <text x="76" y="338" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">TGM 3A0FF000</text>
+  <text x="108" y="560" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#9CA3AF">1 · Scan</text>
+
+  <polygon points="292,350 312,340 312,360" fill="#9CA3AF"/>
+
+  <!-- Phone 2 Connecting -->
+  <rect x="330" y="120" width="240" height="470" rx="36" fill="#111111"/>
+  <rect x="338" y="128" width="224" height="454" rx="28" fill="#FFFFFF"/>
+  <rect x="414" y="138" width="68" height="10" rx="5" fill="#111111"/>
+  <text x="354" y="172" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Devices</text>
+  <rect x="354" y="214" width="192" height="72" rx="8" fill="#FEF9C3"/>
+  <text x="366" y="240" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Oralable</text>
+  <text x="366" y="258" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#CA8A04">Connecting…</text>
+  <text x="366" y="274" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">Firmware gate · CCC enable</text>
+  <text x="354" y="330" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">CCC order (await each confirm)</text>
+  <text x="354" y="350" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">battery 004</text>
+  <text x="354" y="368" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">status 009</text>
+  <text x="354" y="386" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">PPG 001</text>
+  <text x="354" y="404" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">ACC 002</text>
+  <text x="354" y="422" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">temp 003</text>
+  <text x="390" y="560" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#9CA3AF">2 · Connecting</text>
+
+  <polygon points="582,350 602,340 602,360" fill="#9CA3AF"/>
+
+  <!-- Phone 3 Ready -->
+  <rect x="620" y="120" width="240" height="470" rx="36" fill="#111111"/>
+  <rect x="628" y="128" width="224" height="454" rx="28" fill="#FFFFFF"/>
+  <rect x="704" y="138" width="68" height="10" rx="5" fill="#111111"/>
+  <text x="644" y="172" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Devices</text>
+  <rect x="644" y="214" width="192" height="72" rx="8" fill="#DCFCE7"/>
+  <text x="656" y="240" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Oralable</text>
+  <text x="656" y="258" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#16A34A">Ready</text>
+  <text x="656" y="274" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">FW 1.0.84 · PPG + ACC streaming</text>
+  <text x="644" y="320" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">Tap row → DeviceDetailView</text>
+  <text x="644" y="338" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">Forget · Disconnect</text>
+  <text x="680" y="560" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#9CA3AF">3 · Ready</text>
+
+  <!-- Notes -->
+  <rect x="890" y="120" width="270" height="470" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="910" y="152" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Ready when</text>
+  <text x="910" y="176" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">PPG + ACC + status + battery</text>
+  <text x="910" y="194" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">CCC confirms are set.</text>
+  <text x="910" y="230" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">If FW &lt; 1.0.63</text>
+  <text x="910" y="250" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">FirmwareGate blocks the link.</text>
+  <text x="910" y="286" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Worn stream</text>
+  <text x="910" y="306" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">Sensors run only while BLE is up</text>
+  <text x="910" y="322" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">(FW 1.0.71+). A drop stops PPG/ACC.</text>
+  <text x="910" y="358" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Code</text>
+  <text x="910" y="378" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">DevicesView</text>
+  <text x="910" y="394" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">DeviceDiscoveryView</text>
+  <text x="910" y="410" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">DeviceConnectionCoordinator</text>
+  <text x="910" y="550" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#9CA3AF">DRAFT wireframe</text>
 </svg>

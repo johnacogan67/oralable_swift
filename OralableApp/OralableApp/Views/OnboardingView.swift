@@ -28,31 +28,31 @@ struct OnboardingView: View {
 
     private let onboardingPages = [
         OnboardingPage(
-            icon: nil,  // No icon - uses tagline instead
+            icon: nil,
             tagline: "Word of mouth",
-            title: "Muscle Activity Monitor",
-            description: "Monitor muscle activity for wellness, therapy, sports, and research",
+            title: "One night on the temple",
+            description: "Charge on the Oralable case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis.",
             color: .black
         ),
         OnboardingPage(
             icon: "heart.fill",
             tagline: nil,
             title: "Integrate with Apple Health",
-            description: "Sync heart rate and SpO2 data with Apple Health for comprehensive health tracking",
+            description: "When you allow it, Oralable can save heart rate and blood oxygen samples to Apple Health.",
             color: .black
         ),
         OnboardingPage(
             icon: "chart.line.uptrend.xyaxis",
             tagline: nil,
-            title: "Understand Your Patterns",
-            description: "Gain insights into your muscle activity with detailed analytics",
+            title: "See last night",
+            description: "Morning view: wear hours, heart rate, blood oxygen, and a state map of the night.",
             color: .black
         ),
         OnboardingPage(
-            icon: "person.2.fill",
+            icon: "square.and.arrow.up",
             tagline: nil,
-            title: "Share with Your Provider",
-            description: "Collaborate with your healthcare professional by securely sharing your data",
+            title: "Share the night report",
+            description: "Export a PDF and full-night CSV for the clinic. This build does not share with a dentist app.",
             color: .black
         )
     ]

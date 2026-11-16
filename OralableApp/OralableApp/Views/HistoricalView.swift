@@ -78,12 +78,13 @@ enum HistoryMetricTab: String, CaseIterable {
 
 struct HistoricalView: View {
     @EnvironmentObject var designSystem: DesignSystem
+    @ObservedObject private var featureFlags = FeatureFlags.shared
 
     // Time period tab (Hour/Day)
     @State var selectedTimePeriod: HistoricalTimePeriod = .day
 
     // Selected metric tab
-    @State var selectedTab: HistoryMetricTab = .emg
+    @State var selectedTab: HistoryMetricTab = .ir
 
     // Navigation date
     @State var selectedDate: Date = Date()
@@ -148,8 +149,17 @@ struct HistoricalView: View {
         }
         if hasTempData { tabs.append(.temp) }
 
-        // If no data for any tab, return all tabs (show empty states)
-        return tabs.isEmpty ? HistoryMetricTab.allCases : tabs
+        if featureFlags.vitalsPhaseEnabled {
+            tabs.removeAll { $0 == .emg }
+        }
+
+        // If no data for any tab, return Oralable vitals tabs (not EMG)
+        if tabs.isEmpty {
+            return featureFlags.vitalsPhaseEnabled
+                ? [.ir, .move, .temp]
+                : HistoryMetricTab.allCases
+        }
+        return tabs
     }
 
     /// X-axis domain based on selected time period

@@ -31,8 +31,55 @@ final class OvernightNightReportBuilderTests: XCTestCase {
         XCTAssertFalse(result.isEvaluable)
     }
 
-    func testEvaluableWearRequiresSixHours() {
-        XCTAssertEqual(OvernightNightReportBuilder.evaluableWearSeconds, 6 * 3600)
+    func testEvaluableWearRequiresOneHour() {
+        XCTAssertEqual(OvernightNightReportBuilder.evaluableWearSeconds, 1 * 3600)
+        XCTAssertEqual(OvernightNightReportBuilder.beaconFeasibleWearSeconds, 4 * 3600)
+        XCTAssertEqual(OvernightNightReportBuilder.figureWearSeconds, 6 * 3600)
+    }
+
+    func testFourHourNightIsBeaconFeasibleWithoutFigureQuality() {
+        let window = OvernightNightReportBuilder.SessionWindow(
+            start: Date(timeIntervalSince1970: 0),
+            end: Date(timeIntervalSince1970: 4 * 3600),
+            sessionFileURL: nil
+        )
+        let kpis = OvernightKPIs(
+            wearS: 4 * 3600,
+            tonicMin: 1,
+            phasicMin: 1,
+            rescueMin: 0,
+            recoveryMin: 0,
+            quietMin: 200,
+            longestTonicS: 10,
+            phasicBoutCount: 1,
+            rescueCount: 0,
+            rescueTotalS: 0,
+            recoveryMedianS: 0,
+            recoveryMaxS: 0,
+            sashb: 10,
+            spo2Mean: 96,
+            spo2Min: 92
+        )
+        let analysis = OvernightNightAnalysis(
+            kpis: kpis,
+            bouts: [],
+            hourly: [],
+            timeline: [
+                OvernightTimelinePoint(elapsedS: 0, state: .quiet, ir: 1, spo2: 97, motionPower: 0)
+            ],
+            sampleCount: 1
+        )
+        let result = OvernightNightReportBuilder.Result(
+            window: window,
+            samples: [],
+            analysis: analysis,
+            hourlySegments: [],
+            tfiPercent: 40
+        )
+        XCTAssertTrue(result.isEvaluable)
+        XCTAssertTrue(result.isBeaconFeasible)
+        XCTAssertFalse(result.isFigureQuality)
+        XCTAssertEqual(OvernightBandCalculator.chips(from: result).filter { $0.level == .insufficient }.count, 0)
     }
 
     func testBandChipsInsufficientWhenNotEvaluable() {
@@ -98,6 +145,19 @@ final class OvernightNightReportBuilderTests: XCTestCase {
         XCTAssertEqual(chips[0].level, .moderate) // TFI 50
         XCTAssertEqual(chips[1].level, .moderate) // ~100 %·s/h
         XCTAssertEqual(chips[2].level, .low) // ~0.57 /h
+    }
+
+    func testNightReportCSVWritesHeaderAndRow() throws {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+        let samples = [
+            NightReportSample(timestamp: t0, ir: 200_000, accelX: 1, accelY: 2, accelZ: 16_384, spo2: 97, temperature: 36.5)
+        ]
+        let url = try ResearchRawDataExport.writeNightReportCSV(samples: samples, nightDate: t0)
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(text.contains("iso8601_timestamp"))
+        XCTAssertTrue(text.contains("200000.0") || text.contains("200000"))
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("Oralable_NIGHT_"))
+        XCTAssertGreaterThan(text.split(whereSeparator: \.isNewline).count, 1)
     }
 
     private static func makeFixtureSamples(hours: Double) -> [NightReportSample] {

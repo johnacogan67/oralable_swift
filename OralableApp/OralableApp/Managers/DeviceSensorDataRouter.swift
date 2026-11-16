@@ -46,6 +46,20 @@ extension DeviceManager {
                     self?.handleFirmwareDeviceStatus(status, from: oralable)
                 }
                 .store(in: &cancellables)
+            oralable.$batteryMillivolts
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] millivolts in
+                    guard self?.primaryDevice?.peripheralIdentifier == oralable.peripheral?.identifier else { return }
+                    self?.primaryBatteryMillivolts = millivolts
+                }
+                .store(in: &cancellables)
+            oralable.$batteryUsageEstimate
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] estimate in
+                    guard self?.primaryDevice?.peripheralIdentifier == oralable.peripheral?.identifier else { return }
+                    self?.primaryBatteryUsage = estimate
+                }
+                .store(in: &cancellables)
         }
 
         Logger.shared.debug("[DeviceManager] Batch subscription created")

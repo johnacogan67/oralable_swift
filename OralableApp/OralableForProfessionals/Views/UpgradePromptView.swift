@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import OralableCore
 
 struct UpgradePromptView: View {
     @EnvironmentObject var subscriptionManager: ProfessionalSubscriptionManager
@@ -132,9 +133,9 @@ struct UpgradePromptView: View {
         let productID: String
         switch selectedTier {
         case .professional:
-            productID = "com.jacdental.oralable.professional.professional.monthly"
+            productID = OralableAppServiceContract.StoreKit.professionalMonthly
         case .practice:
-            productID = "com.jacdental.oralable.professional.practice.monthly"
+            productID = OralableAppServiceContract.StoreKit.practiceMonthly
         case .starter:
             return // Can't purchase free tier
         }

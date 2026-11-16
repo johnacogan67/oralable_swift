@@ -140,6 +140,13 @@ struct RecordingSession: Identifiable, Codable {
         // Temperature is only captured by Oralable device
         return deviceType == .oralable && sensorDataCount > 0
     }
+
+    /// Tag for one-time Setup Mode Protocol A (~6 min training pack).
+    static let protocolASetupTag = "protocol_a_setup"
+
+    var isProtocolASetup: Bool {
+        tags.contains(Self.protocolASetupTag)
+    }
 }
 
 /// Recording session status
@@ -209,6 +216,33 @@ class RecordingSessionManager: ObservableObject {
     }
 
     // MARK: - Session Management
+
+    /// Insert a finished session (e.g. Protocol A Setup) without the live start/stop path.
+    /// Skips CloudKit upload — Setup packs are local wellness exports.
+    @discardableResult
+    func registerCompletedSession(_ session: RecordingSession) -> Bool {
+        if let path = session.dataFilePath,
+           sessions.contains(where: { $0.dataFilePath == path }) {
+            Logger.shared.debug("[RecordingSessionManager] Skip duplicate completed session path: \(path.lastPathComponent)")
+            return false
+        }
+        if sessions.contains(where: { $0.id == session.id }) {
+            return false
+        }
+        var finished = session
+        if finished.endTime == nil {
+            finished.endTime = Date()
+        }
+        if finished.status != .completed && finished.status != .failed {
+            finished.status = .completed
+        }
+        sessions.insert(finished, at: 0)
+        saveSessions()
+        Logger.shared.info(
+            "[RecordingSessionManager] Registered completed session \(finished.id) tags=\(finished.tags.joined(separator: ","))"
+        )
+        return true
+    }
 
     /// Start a new recording session
     func startSession(deviceID: String?, deviceName: String?, deviceType: DeviceType? = nil) throws -> RecordingSession {

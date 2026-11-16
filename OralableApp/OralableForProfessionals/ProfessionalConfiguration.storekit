@@ -83,7 +83,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Professional plan - manage up to 50 participant connections",
+              "description" : "Internal fixture for a deferred product. No public availability or feature claim.",
               "displayName" : "Professional Monthly",
               "locale" : "en_US"
             }
@@ -108,7 +108,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Professional plan - manage up to 50 participant connections (Save 17% with annual billing)",
+              "description" : "Internal fixture for a deferred product. No public availability or feature claim.",
               "displayName" : "Professional Yearly",
               "locale" : "en_US"
             }
@@ -133,7 +133,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Practice plan - unlimited participant connections",
+              "description" : "Internal fixture for a deferred product. No public availability or feature claim.",
               "displayName" : "Practice Monthly",
               "locale" : "en_US"
             }
@@ -158,7 +158,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Practice plan - unlimited participant connections (Save 17% with annual billing)",
+              "description" : "Internal fixture for a deferred product. No public availability or feature claim.",
               "displayName" : "Practice Yearly",
               "locale" : "en_US"
             }

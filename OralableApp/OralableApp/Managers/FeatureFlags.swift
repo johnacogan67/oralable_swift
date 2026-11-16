@@ -55,13 +55,17 @@ class FeatureFlags: ObservableObject {
         static let vitalsPhaseEnabled = "feature.pilot.vitalsPhaseEnabled"
         static let debugRebootIntervalMinutes = "feature.pilot.debugRebootIntervalMinutes"
         static let showOvernightHypnogram = "feature.dashboard.showOvernightHypnogram"
+        /// v2 key (v1 retired). Default OFF — enable in Developer Settings for research.
+        static let showDualProtocolA = "feature.research.showDualProtocolA.v2"
+        /// v2: Beacon default OFF (pair → dashboard). v1 defaulted ON and locked clinic loaners behind ~6 min cues.
+        static let requireProtocolASetup = "feature.setup.requireProtocolASetup.v2"
     }
 
     // MARK: - Default Configuration
     // Default dashboard: PPG IR only (pre-launch minimal)
     private enum Defaults {
         // Dashboard Cards - ALL OFF by default for pre-launch (PPG IR always shown)
-        static let showEMGCard = false         // Hidden by default
+        static let showEMGCard = false         // Phase 0 / App Store off; research dual-BLE later (ANR_M40_CONCORDANCE)
         static let showHeartRateCard = false   // Hidden by default
         static let showBatteryCard = false     // Hidden by default
         static let showMovementCard = false
@@ -69,7 +73,7 @@ class FeatureFlags: ObservableObject {
         static let showSpO2Card = false
 
         // Share Features
-        static let showShareWithProfessional = true
+        static let showShareWithProfessional = false
         static let showShareWithResearcher = false
 
         // Settings Features
@@ -98,6 +102,12 @@ class FeatureFlags: ObservableObject {
 
         /// Bench-only firmware warm reboot interval (minutes). 0 = off.
         static let debugRebootIntervalMinutes: UInt16 = 0
+
+        /// Dual Protocol A (~6 min Mac-parity cues + ANR). OFF — Beacon / vitals stay Oralable-only.
+        static let showDualProtocolA = false
+
+        /// Protocol A Setup is optional research QC. Beacon clinic loaner: pair → temple → night.
+        static let requireProtocolASetup = false
     }
 
     /// Explicit device placement for firmware status / `00B` 0x09 (manual override of auto dock).
@@ -112,8 +122,8 @@ class FeatureFlags: ObservableObject {
         var title: String {
             switch self {
             case .auto: return "Automatic"
-            case .onCharger: return "On wireless charger"
-            case .offDockIdle: return "Off charger (not worn)"
+            case .onCharger: return "On Oralable case"
+            case .offDockIdle: return "Off case (not worn)"
             case .worn: return "Worn on temple"
             }
         }
@@ -121,13 +131,13 @@ class FeatureFlags: ObservableObject {
         var detail: String {
             switch self {
             case .auto:
-                return "FW 1.0.70+: LTC4124 STAT blink = charging / on case; steady STAT = charge taper. Prefer on Oralable case. Pre-1.0.70: use manual modes."
+                return "FW 1.0.70+: STAT blink = on case / charging. Flash green = still below hold (~4.20 V / 80%). Brief green pulse ~every 10 s = hold. MAM LED is off while the phone is linked. Status never shows red. Pre-1.0.70: use manual modes."
             case .onCharger:
-                return "Oralable case only. Red LED: flash while charging (STAT blink), solid on taper. No body streaming."
+                return "Oralable case only. No phone: flash green while below hold (~4.20 V). Brief green pulse ~every 10 s when in hold. Status never shows red. While linked, the MAM LED is off and sensors stay off."
             case .offDockIdle:
-                return "On table or off case — green flash/solid by battery level."
+                return "On table or off case — status LED stays dark. While linked, the MAM LED is off."
             case .worn:
-                return "On temple only — red/IR glow is PPG sensing (not the charger LED). Use Off charger when the clip is on a table."
+                return "On temple with pad or tape (no headband). Sensors run while the phone is linked. Red/IR is PPG, not a status light. Use Off case when the MAM is on a table."
             }
         }
     }
@@ -222,6 +232,16 @@ class FeatureFlags: ObservableObject {
         didSet { defaults.set(showOvernightHypnogram, forKey: Keys.showOvernightHypnogram) }
     }
 
+    /// Research Dual Protocol A (Oralable + ANR, ~6 min Mac-parity cues). Default OFF.
+    @Published var showDualProtocolA: Bool {
+        didSet { defaults.set(showDualProtocolA, forKey: Keys.showDualProtocolA) }
+    }
+
+    /// When true, pair alone does not unlock MainTab — single-MAM Protocol A Setup must complete.
+    @Published var requireProtocolASetup: Bool {
+        didSet { defaults.set(requireProtocolASetup, forKey: Keys.requireProtocolASetup) }
+    }
+
     /// Set by Share → Prepare Protocol B session; promotes off-dock → worn on next connect.
     @Published var protocolBSessionPrepared: Bool = false
 
@@ -254,6 +274,8 @@ class FeatureFlags: ObservableObject {
         self.vitalsPhaseEnabled = defaults.object(forKey: Keys.vitalsPhaseEnabled) as? Bool ?? Defaults.vitalsPhaseEnabled
         self.debugRebootIntervalMinutes = defaults.object(forKey: Keys.debugRebootIntervalMinutes) as? UInt16 ?? Defaults.debugRebootIntervalMinutes
         self.showOvernightHypnogram = defaults.object(forKey: Keys.showOvernightHypnogram) as? Bool ?? Defaults.showOvernightHypnogram
+        self.showDualProtocolA = defaults.object(forKey: Keys.showDualProtocolA) as? Bool ?? Defaults.showDualProtocolA
+        self.requireProtocolASetup = defaults.object(forKey: Keys.requireProtocolASetup) as? Bool ?? Defaults.requireProtocolASetup
 
         if vitalsPhaseEnabled {
             applyVitalsPhaseConfig()
@@ -276,7 +298,8 @@ class FeatureFlags: ObservableObject {
         showPilotStudy = false
         showDetectionSettings = false
         showOvernightHypnogram = true
-        Logger.shared.info("[FeatureFlags] Applied vitals phase config (HR + SpO2)")
+        showDualProtocolA = false
+        Logger.shared.info("[FeatureFlags] Applied vitals phase config (HR + SpO2, Dual A off)")
     }
 
     /// Pre-launch configuration (PPG IR only)
@@ -290,9 +313,10 @@ class FeatureFlags: ObservableObject {
         showSpO2Card = false
         showAdvancedMetrics = false
         showOvernightHypnogram = false
+        showDualProtocolA = false
 
         // Share Features
-        showShareWithProfessional = true
+        showShareWithProfessional = false
         showShareWithResearcher = false
         showCloudKitShare = false
 
@@ -317,6 +341,7 @@ class FeatureFlags: ObservableObject {
         showDetectionSettings = true
         showCloudKitShare = true
         showOvernightHypnogram = true
+        showDualProtocolA = true
         Logger.shared.info("[FeatureFlags] Applied full config")
     }
 
@@ -349,9 +374,10 @@ class FeatureFlags: ObservableObject {
         showBatteryCard = false
         showAdvancedMetrics = false
         showOvernightHypnogram = false
+        showDualProtocolA = false
 
         // Share Features
-        showShareWithProfessional = true
+        showShareWithProfessional = false
         showShareWithResearcher = false
         showCloudKitShare = false
 
@@ -376,6 +402,7 @@ class FeatureFlags: ObservableObject {
         showDetectionSettings = true
         showCloudKitShare = true
         showOvernightHypnogram = true
+        showDualProtocolA = true
         Logger.shared.info("[FeatureFlags] Applied research config")
     }
 
@@ -384,6 +411,8 @@ class FeatureFlags: ObservableObject {
         applyPreLaunchConfig()
         demoModeEnabled = false
         devicePlacementMode = .offDockIdle
+        showDualProtocolA = Defaults.showDualProtocolA
+        requireProtocolASetup = Defaults.requireProtocolASetup
     }
 
     // MARK: - Debug Description
@@ -405,6 +434,8 @@ class FeatureFlags: ObservableObject {
         - Demo Mode: \(demoModeEnabled)
         - Pilot Study: \(showPilotStudy)
         - Overnight Hypnogram: \(showOvernightHypnogram)
+        - Dual Protocol A: \(showDualProtocolA)
+        - Require Protocol A Setup: \(requireProtocolASetup)
         """
     }
 }

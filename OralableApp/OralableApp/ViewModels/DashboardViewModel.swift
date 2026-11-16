@@ -421,8 +421,15 @@ class DashboardViewModel: ObservableObject {
 
         deviceManager.$primaryFirmwareDeviceStatus
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.updateWornStatusFromFirmware()
+            .sink { [weak self] status in
+                guard let self else { return }
+                self.updateWornStatusFromFirmware()
+                if let pct = self.deviceManager.primaryBatteryPercent() {
+                    self.batteryLevel = Double(pct)
+                }
+                if let status {
+                    self.isCharging = status.chargeActive
+                }
             }
             .store(in: &cancellables)
 

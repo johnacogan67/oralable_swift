@@ -39,6 +39,8 @@ struct ClinicalReportPayload {
     var hourlySegments: [HourlyTemporalisSegment] = []
     /// Sample-level overnight analysis (Mac night-report parity). Nil → hourly-only fallback.
     var nightAnalysis: OvernightNightAnalysis? = nil
+    /// Developer script. Not a recorded night.
+    var isSimulated: Bool = false
 }
 
 enum ClinicalReportGenerator {
@@ -151,21 +153,30 @@ enum ClinicalReportGenerator {
             let kpiLines: [String]
             if let a = analysis {
                 let k = a.kpis
-                kpiLines = [
+                var lines = [
                     "Wear: \(fmt1(k.wearS / 60.0)) min (\(a.sampleCount) samples)   |   TFI: \(fmt1(payload.tfiPercent))%",
+                    "Beacon: evaluable ≥4 h worn (6 h better for hypnogram figure). Bands from ≥1 h. Not AHI.",
                     "Tonic: \(fmt1(k.tonicMin)) min (longest \(fmt1(k.longestTonicS)) s)   |   Phasic: \(fmt1(k.phasicMin)) min (\(k.phasicBoutCount) bouts)",
                     "Rescue: \(k.rescueCount) events (\(fmt1(k.rescueTotalS)) s)   |   Recovery med/max: \(fmt1(k.recoveryMedianS))/\(fmt1(k.recoveryMaxS)) s",
                     "SASHB: \(fmt1(k.sashb)) %·s   |   SpO₂ μ/min: \(fmt1(k.spo2Mean))/\(fmt1(k.spo2Min))%",
                     "Smoking-gun r (hourly): \(payload.spO2ClenchCorrelation.map { fmt($0) } ?? "insufficient data")"
                 ]
+                if payload.isSimulated {
+                    lines.insert("Simulated night. Not a recorded night. Not AHI.", at: 0)
+                }
+                kpiLines = lines
             } else {
-                kpiLines = [
+                var lines = [
                     "Wear: \(fmt1(hourlyKPIs.wearHours)) h   |   TFI: \(fmt1(payload.tfiPercent > 0 ? payload.tfiPercent : hourlyKPIs.meanTFI))%",
                     "Tonic: \(fmt1(hourlyKPIs.tonicMin)) min   |   Phasic: \(fmt1(hourlyKPIs.phasicMin)) min",
                     "Rescue: \(hourlyKPIs.rescueEvents) events (\(fmt1(hourlyKPIs.rescueMin)) min)   |   SASHB: \(fmt1(hourlyKPIs.sashbTotal)) %·s",
                     "Smoking-gun r (hourly SASHB vs rescue): \(payload.spO2ClenchCorrelation.map { fmt($0) } ?? "insufficient data")",
                     "(Bout-level analysis unavailable — showing hourly rollups only)"
                 ]
+                if payload.isSimulated {
+                    lines.insert("Simulated night. Not a recorded night. Not AHI.", at: 0)
+                }
+                kpiLines = lines
             }
             for line in kpiLines {
                 line.draw(at: CGPoint(x: 48, y: y), withAttributes: body)
@@ -645,12 +656,19 @@ enum ClinicalReportGenerator {
     static func writeResearchShareItems(
         payload: ClinicalReportPayload,
         calibrationRawCSV: URL?,
-        includeEventCSV: Bool = true
+        includeEventCSV: Bool = true,
+        nightSamples: [NightReportSample] = []
     ) throws -> [URL] {
         let pdfURL = try writeToTemporaryFile(payload: payload)
         var items: [URL] = [pdfURL]
         if includeEventCSV, let analysis = payload.nightAnalysis, !analysis.bouts.isEmpty {
             items.append(try writeEventCSV(analysis: analysis))
+        }
+        if !nightSamples.isEmpty {
+            items.append(try ResearchRawDataExport.writeNightReportCSV(
+                samples: nightSamples,
+                nightDate: payload.dateOfStudy
+            ))
         }
         if let csv = calibrationRawCSV, FileManager.default.fileExists(atPath: csv.path) {
             items.append(csv)

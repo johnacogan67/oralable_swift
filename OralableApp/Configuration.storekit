@@ -83,7 +83,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited professional shares, advanced analytics, and unlimited data export",
+              "description" : "Internal StoreKit test fixture. Public product availability and features require release approval.",
               "displayName" : "Oralable Premium Monthly",
               "locale" : "en_US"
             }
@@ -108,7 +108,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited professional shares, advanced analytics, and unlimited data export (Save 17% with annual billing)",
+              "description" : "Internal StoreKit test fixture. Public product availability and features require release approval.",
               "displayName" : "Oralable Premium Yearly",
               "locale" : "en_US"
             }

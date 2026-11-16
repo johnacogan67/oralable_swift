@@ -39,12 +39,12 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     // MARK: - BLE UUIDs
 
     // TGM Service
-    let tgmServiceUUID = CBUUID(string: "3A0FF000-98C4-46B2-94AF-1AEE0FD4C48E")
+    let tgmServiceUUID = CBUUID(string: BLEConstants.TGM.serviceUUID)
 
     // Characteristics
-    let sensorDataCharUUID = CBUUID(string: "3A0FF001-98C4-46B2-94AF-1AEE0FD4C48E")      // PPG
-    let accelerometerCharUUID = CBUUID(string: "3A0FF002-98C4-46B2-94AF-1AEE0FD4C48E")    // Accelerometer
-    let commandCharUUID = CBUUID(string: "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")          // Temperature/Command
+    let sensorDataCharUUID = CBUUID(string: BLEConstants.TGM.sensorDataCharUUID)      // PPG
+    let accelerometerCharUUID = CBUUID(string: BLEConstants.TGM.accelerometerCharUUID)    // Accelerometer
+    let commandCharUUID = CBUUID(string: BLEConstants.TGM.temperatureCharUUID)        // Legacy client name; firmware characteristic is temperature.
     let tgmBatteryCharUUID = CBUUID(string: BLEConstants.TGM.batteryCharUUID)
     let deviceIdCharUUID = CBUUID(string: BLEConstants.TGM.deviceIdCharUUID)
     let firmwareVersionCharUUID = CBUUID(string: BLEConstants.TGM.firmwareVersionCharUUID)
@@ -53,9 +53,11 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     let statusCharUUID = CBUUID(string: BLEConstants.TGM.statusCharUUID)
 
     /// Firmware diagnostics (`3A0FF00A`–`00C`) on ≥ 1.0.37.
-    let firmwareLogCharUUID = CBUUID(string: "3A0FF00A-98C4-46B2-94AF-1AEE0FD4C48E")
-    let firmwareConfigCharUUID = CBUUID(string: "3A0FF00B-98C4-46B2-94AF-1AEE0FD4C48E")
-    let firmwareConfigStateCharUUID = CBUUID(string: "3A0FF00C-98C4-46B2-94AF-1AEE0FD4C48E")
+    let firmwareLogCharUUID = CBUUID(string: BLEConstants.TGM.firmwareLogCharUUID)
+    let firmwareConfigCharUUID = CBUUID(string: BLEConstants.TGM.firmwareConfigCharUUID)
+    let firmwareConfigStateCharUUID = CBUUID(string: BLEConstants.TGM.firmwareConfigStateCharUUID)
+    /// Usage model. Missing on firmware before 1.0.86.
+    let batteryUsageCharUUID = CBUUID(string: BLEConstants.TGM.batteryUsageCharUUID)
 
     /// Stagger between CCC enables (matches nRF Connect manual pacing).
     static let cccStaggerShortNs: UInt64 = 300_000_000
@@ -92,6 +94,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     @Published var latestReadings: [SensorType: SensorReading] = [:]
     @Published var batteryLevel: Int?
+    @Published var batteryMillivolts: Int?
+    @Published var batteryUsageEstimate: BatteryUsageEstimate?
     @Published var firmwareDeviceStatus: TGMDeviceStatus?
     @Published var deviceIdValue: UInt64?
 
@@ -109,6 +113,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var firmwareLogCharacteristic: CBCharacteristic?
     var firmwareConfigCharacteristic: CBCharacteristic?
     var firmwareConfigStateCharacteristic: CBCharacteristic?
+    var batteryUsageCharacteristic: CBCharacteristic?
     var batteryLevelCharacteristic: CBCharacteristic?
 
     // MARK: - Connection State Machine (Fix 3)
@@ -141,6 +146,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
     var accelerometerNotificationContinuation: CheckedContinuation<Void, Error>?
     var statusNotificationContinuation: CheckedContinuation<Void, Error>?
     var batteryNotificationContinuation: CheckedContinuation<Void, Error>?
+    var batteryUsageNotificationContinuation: CheckedContinuation<Void, Error>?
     var temperatureNotificationContinuation: CheckedContinuation<Void, Error>?
     var writeCompletionContinuation: CheckedContinuation<Void, Error>?
     var firmwareReadContinuation: CheckedContinuation<String, Error>?
@@ -188,7 +194,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         self.deviceInfo = DeviceInfo(
             id: peripheral.identifier,
             type: .oralable,
-            name: peripheral.name ?? "Oralable",
+            name: peripheral.name ?? BLEConstants.TGM.userFacingDeviceName,
             peripheralIdentifier: peripheral.identifier,
             connectionState: .disconnected
         )
@@ -245,6 +251,8 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         statusNotificationContinuation = nil
         batteryNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         batteryNotificationContinuation = nil
+        batteryUsageNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
+        batteryUsageNotificationContinuation = nil
         temperatureNotificationContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
         temperatureNotificationContinuation = nil
         writeCompletionContinuation?.resume(throwing: DeviceError.connectionFailed("Device disconnected"))
@@ -269,6 +277,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await enableNotifications()
         try await enableAccelerometerNotifications()
         try await enableTemperatureNotifications()
+        await enableBatteryUsageNotificationsIfPresent()
     }
 
     func stopDataStream() async {
@@ -565,6 +574,27 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
         try await enableAccelerometerNotifications()
         try await Task.sleep(nanoseconds: Self.cccStaggerLongNs)
         try await enableTemperatureNotifications()
+        try await Task.sleep(nanoseconds: Self.cccStaggerShortNs)
+        await enableBatteryUsageNotificationsIfPresent()
+    }
+
+    /// Optional. Firmware before 1.0.86 has no `3A0FF00D`. A failure here does not drop the link.
+    func enableBatteryUsageNotificationsIfPresent() async {
+        guard let peripheral,
+              let characteristic = batteryUsageCharacteristic,
+              !characteristic.isNotifying else {
+            return
+        }
+        guard batteryUsageNotificationContinuation == nil else { return }
+        Logger.shared.info("[OralableDevice] Enabling battery usage notifications (3A0FF00D)...")
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                self.batteryUsageNotificationContinuation = continuation
+                self.setNotifyValue(true, for: characteristic, on: peripheral)
+            }
+        } catch {
+            Logger.shared.warning("[OralableDevice] Battery usage notify skipped: \(error.localizedDescription)")
+        }
     }
 
     /// Reads `3A0FF006` firmware string (must run after characteristic discovery).

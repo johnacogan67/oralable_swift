@@ -32,7 +32,7 @@ struct VitalsDeviceStatusCard: View {
     }
 
     private var statusLED: DeviceStatusLEDRepresentation? {
-        firmwareStatus?.statusLED(userPlacementMode: placementMode.rawValue)
+        firmwareStatus?.statusLED(userPlacementMode: placementMode.rawValue, bleConnected: true)
     }
 
     var body: some View {
@@ -42,10 +42,30 @@ struct VitalsDeviceStatusCard: View {
                 Text(operationalState.title)
                     .font(designSystem.typography.headline)
                 Spacer()
-                if let pct = firmwareStatus?.batteryPercent {
-                    Text("\(pct)%")
-                        .font(designSystem.typography.bodySmall)
-                        .foregroundColor(designSystem.colors.textSecondary)
+                if let pct = deviceManager.primaryBatteryPercent() {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        HStack(spacing: designSystem.spacing.xs) {
+                            Image(systemName: (firmwareStatus?.chargeActive == true)
+                                  ? "battery.100.bolt"
+                                  : "battery.100")
+                                .font(designSystem.typography.labelSmall)
+                                .foregroundColor(
+                                    (firmwareStatus?.chargeActive == true)
+                                        ? designSystem.colors.success
+                                        : designSystem.colors.textSecondary
+                                )
+                            Text(batteryHeadline(percent: pct))
+                                .font(designSystem.typography.bodySmall)
+                                .foregroundColor(designSystem.colors.textSecondary)
+                        }
+                        if let usage = deviceManager.primaryBatteryUsage {
+                            Text(usage.summary)
+                                .font(designSystem.typography.captionSmall)
+                                .foregroundColor(designSystem.colors.textTertiary)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                    .accessibilityLabel(batteryAccessibility(percent: pct))
                 }
             }
 
@@ -65,10 +85,11 @@ struct VitalsDeviceStatusCard: View {
             }
 
             if let fw = deviceManager.primaryFirmwareVersion() {
+                let last = deviceManager.firmwareVersionIsFromLastConnection
                 Text(
                     FirmwareGate.supportsAutomaticDockDetect(fw)
-                        ? "FW \(fw) — STAT blink drives dock/charge."
-                        : "FW \(fw) — recommend \(FirmwareGate.recommendedOralableSemanticVersion) for Automatic dock."
+                        ? "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ".") LED off while linked. Sensors run only on BLE."
+                        : "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)\(last ? " — last connection." : ".") Recommend \(FirmwareGate.recommendedOralableSemanticVersion) for Automatic dock and green charge LEDs."
                 )
                 .font(designSystem.typography.captionSmall)
                 .foregroundColor(
@@ -113,11 +134,11 @@ struct VitalsDeviceStatusCard: View {
             }
 
             if placementMode == .offDockIdle {
-                Text("Green LED on device (dimmed for battery). App mirror above shows live state.")
+                Text("MAM LED is off while linked. After disconnect off the case the status LED stays dark.")
                     .font(designSystem.typography.captionSmall)
-                    .foregroundColor(designSystem.colors.warning)
+                    .foregroundColor(designSystem.colors.textSecondary)
             } else if placementMode == .onCharger || placementMode == .auto {
-                Text("Red LED on Oralable case: flash while charging (STAT blink), solid on charge taper. Battery % is a rough voltage estimate.")
+                Text("MAM LED is off while linked. After disconnect on the case: flash green = still charging, brief green pulse ~every 10 s = hold (~4.20 V). Status never shows red.")
                     .font(designSystem.typography.captionSmall)
                     .foregroundColor(designSystem.colors.textSecondary)
             }
@@ -127,6 +148,24 @@ struct VitalsDeviceStatusCard: View {
         .cornerRadius(designSystem.cornerRadius.card)
         .designShadow(.small)
         .accessibilityElement(children: .combine)
+    }
+
+    private func batteryHeadline(percent: Int) -> String {
+        if let mv = deviceManager.primaryBatteryMillivolts {
+            return "\(percent)% · \(mv) mV"
+        }
+        return "\(percent)%"
+    }
+
+    private func batteryAccessibility(percent: Int) -> String {
+        var label = "Battery \(percent) percent"
+        if let mv = deviceManager.primaryBatteryMillivolts {
+            label += ", \(mv) millivolts"
+        }
+        if let usage = deviceManager.primaryBatteryUsage {
+            label += ", \(usage.summary)"
+        }
+        return label
     }
 
     private var statusDot: some View {

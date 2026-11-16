@@ -24,7 +24,7 @@
     <!-- Disclaimer -->
     <div class="disclaimer">
         <p><strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.</p>
-        <p><strong>Clinical validation trials</strong> are underway at <strong>Beacon Hospital</strong> as part of our research program. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
+        <p>A <strong>Beacon Hospital</strong> research program is planned. Clinic kits have not yet shipped. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
     </div>
 
     <!-- Navigation -->
@@ -48,37 +48,37 @@
     <section class="section">
         <div class="container-narrow">
             <h1 class="section-title">Specifications</h1>
-            <p class="section-subtitle">Oralable Gen1 shipping kits — PCB00003 · PCB REV10 · BOM REV8 · Kaga ES2832AA2</p>
+            <p class="section-subtitle">Oralable Gen 2 — PCB00003 · PCB REV11 · BOM REV9 · Kaga ES4L15BA1 · firmware in bring-up · kits not yet shipped</p>
 
             <h2 style="font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 24px;">Hardware identity</h2>
             <table class="specs-table">
                 <tr>
                     <td>Hardware generation</td>
-                    <td><strong>Gen1</strong> (pilot / shipping)</td>
+                    <td><strong>Gen 2</strong> (bring-up · kits not shipped)</td>
                 </tr>
                 <tr>
                     <td>BOM</td>
-                    <td>PCB00003-TGM-<strong>BOM-REV8</strong></td>
+                    <td>PCB00003-TGM-<strong>BOM-REV9</strong></td>
                 </tr>
                 <tr>
                     <td>PCB production / assembly</td>
-                    <td><strong>REV10</strong> pilot (REV8 production data family)</td>
+                    <td><strong>REV11</strong></td>
                 </tr>
                 <tr>
                     <td>Board target (firmware)</td>
-                    <td><code>pcb00003</code> · nRF52832</td>
+                    <td><code>pcb00003_gen2</code> · nRF54L15 (port of the Gen 1 app)</td>
                 </tr>
                 <tr>
                     <td>BLE module (U5)</td>
-                    <td>Kaga <strong>ES2832AA2</strong></td>
+                    <td>Kaga <strong>ES4L15BA1</strong></td>
                 </tr>
                 <tr>
                     <td>Battery</td>
-                    <td>CG-320B ~15&nbsp;mAh (typical Gen1 build)</td>
+                    <td>LP270829 35&nbsp;mAh</td>
                 </tr>
                 <tr>
-                    <td>Firmware (pilot ship)</td>
-                    <td><strong>1.0.82</strong> (minimum 1.0.63)</td>
+                    <td>Firmware (pilot)</td>
+                    <td><strong>2.0.x</strong> target (not flashed). Installed the same way as Gen 1, over SWD then RTT.</td>
                 </tr>
                 <tr>
                     <td>Software phase (now)</td>
@@ -86,7 +86,7 @@
                 </tr>
                 <tr>
                     <td>Overnight UI (patient app)</td>
-                    <td>State hypnogram (Dashboard + Share) · Clinical Temporalis PDF · ≥6&nbsp;h for overnight bands</td>
+                    <td>State hypnogram (Dashboard + Share) · Clinical Temporalis PDF · bands unlock after ≥1&nbsp;h worn; aim ≥6&nbsp;h for a full night view</td>
                 </tr>
             </table>
 
@@ -145,19 +145,19 @@
                 </tr>
                 <tr>
                     <td>Processor</td>
-                    <td>nRF52832 (Nordic Semiconductor)</td>
+                    <td>nRF54L15 (Nordic Semiconductor)</td>
                 </tr>
                 <tr>
                     <td>BLE module (U5)</td>
-                    <td>Kaga ES2832AA2 (nRF52832)</td>
+                    <td>Kaga ES4L15BA1 (nRF54L15)</td>
                 </tr>
                 <tr>
                     <td>Range</td>
                     <td>~10 meters (typical indoor)</td>
                 </tr>
                 <tr>
-                    <td>Firmware (Gen1 pilot)</td>
-                    <td>1.0.82 (minimum 1.0.63)</td>
+                    <td>Firmware</td>
+                    <td>2.0.x target (not flashed). Kits not shipped.</td>
                 </tr>
             </table>
 
@@ -166,7 +166,7 @@
             <table class="specs-table">
                 <tr>
                     <td>Battery</td>
-                    <td>LiPo rechargeable (~15 mAh typical Gen1 build)</td>
+                    <td>LiPo rechargeable (LP270829, 35 mAh)</td>
                 </tr>
                 <tr>
                     <td>Runtime</td>
@@ -174,7 +174,11 @@
                 </tr>
                 <tr>
                     <td>Charging</td>
-                    <td>Oralable magnetic charging case (USB-C powered); clip charges inductively in the case</td>
+                    <td>Oralable charging case (USB-C). Seat the clip so the coils align. Not Qi / MagSafe / a phone wireless pad</td>
+                </tr>
+                <tr>
+                    <td>Status LED</td>
+                    <td>Green only. On the case, no phone: flashing green while charging; a short green pulse when hold is reached. Off the case, not connected: dark. Never red or blue</td>
                 </tr>
                 <tr>
                     <td>Charge Time</td>
@@ -212,7 +216,7 @@
                 </tr>
                 <tr>
                     <td>Worn / dock sensing</td>
-                    <td>Die temperature + status characteristic (manual placement mode on Gen1 pilot)</td>
+                    <td>Automatic worn = IR pulse (not die temperature). Status LEDs are green-only</td>
                 </tr>
                 <tr>
                     <td>Muscle-event algorithms</td>
@@ -233,7 +237,7 @@
                 </tr>
                 <tr>
                     <td>App</td>
-                    <td>Free on App Store (Oralable)</td>
+                    <td>Oralable <strong>4.3.3</strong> (build 5) on the App Store / TestFlight</td>
                 </tr>
                 <tr>
                     <td>OTA updates</td>
@@ -242,7 +246,7 @@
             </table>
 
             <div style="margin-top: 40px; color: var(--color-text-secondary); font-size: 14px;">
-                <p style="margin-bottom: 8px;"><strong>Gen2 (upcoming — not shipping):</strong> new hardware generation — see <a href="about.html">About · Hardware ↔ BOM map</a>.</p>
+                <p style="margin-bottom: 8px;"><strong>Gen 1 is frozen</strong> (REV10, ES2832AA2). It is not the device partners or patients are shown. Firmware for Gen 2 is a port of that app and is not on the boards yet.</p>
                 <table class="specs-table" style="margin-top: 12px;">
                     <tr>
                         <td>Hardware generation</td>
@@ -262,11 +266,11 @@
                     </tr>
                     <tr>
                         <td>Battery</td>
-                        <td>LP260820 ~30&nbsp;mAh</td>
+                        <td>LP270829 35&nbsp;mAh (arrived)</td>
                     </tr>
                     <tr>
                         <td>Firmware (target)</td>
-                        <td><strong>2.0.x-gen2</strong> (not in pilot kits)</td>
+                        <td><strong>2.0.x</strong> (bring-up; not flashed)</td>
                     </tr>
                     <tr>
                         <td>App / GATT</td>

@@ -9,8 +9,12 @@ import Foundation
 
 /// Builds overnight analysis from the current / latest recording window.
 enum OvernightNightReportBuilder {
-    /// Minimum wear for evaluable overnight bands / morning card (OVERNIGHT_NIGHT_REPORT).
-    nonisolated static let evaluableWearSeconds: TimeInterval = 6 * 3600
+    /// Minimum wear for overnight **bands** on the morning card.
+    nonisolated static let evaluableWearSeconds: TimeInterval = 1 * 3600
+    /// Beacon feasibility night (Ed / Paper A wear QC). Do not treat as “insufficient.”
+    nonisolated static let beaconFeasibleWearSeconds: TimeInterval = 4 * 3600
+    /// Hypnogram figure / band recalibration (Paper A stretch).
+    nonisolated static let figureWearSeconds: TimeInterval = 6 * 3600
 
     struct SessionWindow: Sendable, Equatable {
         var start: Date
@@ -24,6 +28,8 @@ enum OvernightNightReportBuilder {
         var analysis: OvernightNightAnalysis?
         var hourlySegments: [HourlyTemporalisSegment]
         var tfiPercent: Double
+        /// Developer script. Not a recorded night.
+        var isSimulated: Bool = false
 
         var wearSeconds: TimeInterval {
             analysis?.kpis.wearS ?? max(0, window.end.timeIntervalSince(window.start))
@@ -31,6 +37,18 @@ enum OvernightNightReportBuilder {
 
         var isEvaluable: Bool {
             wearSeconds >= OvernightNightReportBuilder.evaluableWearSeconds
+        }
+
+        var isBeaconFeasible: Bool {
+            wearSeconds >= OvernightNightReportBuilder.beaconFeasibleWearSeconds
+        }
+
+        var isFigureQuality: Bool {
+            wearSeconds >= OvernightNightReportBuilder.figureWearSeconds
+        }
+
+        var wearHoursText: String {
+            String(format: "%.1f h worn", wearSeconds / 3600.0)
         }
     }
 
@@ -40,6 +58,20 @@ enum OvernightNightReportBuilder {
         sessions: [RecordingSession],
         liveHistory: [SensorData]
     ) -> SessionWindow {
+        let simulated = sessions
+            .filter {
+                $0.status == .completed
+                    && $0.tags.contains(SimulatedWornNight.sessionTag)
+                    && $0.dataFilePath != nil
+                    && $0.endTime != nil
+            }
+            .max { ($0.endTime ?? $0.startTime) < ($1.endTime ?? $1.startTime) }
+        if let simulated, let end = simulated.endTime, let file = simulated.dataFilePath {
+            let liveStartedAfter = currentSession.map { $0.startTime > end } ?? false
+            if !liveStartedAfter {
+                return SessionWindow(start: simulated.startTime, end: end, sessionFileURL: file)
+            }
+        }
         let start: Date = {
             if let t = currentSession?.startTime { return t }
             if let t = automaticSessionStart { return t }
@@ -101,12 +133,17 @@ enum OvernightNightReportBuilder {
             sessions: sessions,
             liveHistory: liveHistory
         )
-        return build(
+        var result = build(
             window: window,
             liveHistory: liveHistory,
             hourlySegments: hourly,
             tfiPercent: tfiPercent
         )
+        result.isSimulated = sessions.contains { session in
+            session.tags.contains(SimulatedWornNight.sessionTag)
+                && session.dataFilePath == result.window.sessionFileURL
+        }
+        return result
     }
 }
 

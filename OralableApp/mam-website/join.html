@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAM — ask</title>
+    <meta name="description" content="A short survey for a person who clenches, or for a clinic. This page opens an email. It does not keep your answers.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="banner">
+        <p>The MAM Extraoral Wearable and Oralable app are designed for general wellness, sleep tracking, and jaw-load awareness. They are not medical devices and do not provide medical diagnosis or treatment. US Provisional Patent 64/033,978.</p>
+    </div>
+
+    <nav class="nav">
+        <a class="nav-mark" href="index.html">MAM</a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="clinics.html">Clinics</a></li>
+            <li><a href="product.html">Product</a></li>
+            <li><a href="join.html" aria-current="page">Ask</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Which best describes you?</h1>
+        <p class="lede">One path for a person who clenches. One path for a clinic. This page does not keep the answers, and it does not enter a gift-card draw.</p>
+        <p class="hint">Prices are in euro, with the dollar beside them. Dollar figures use the <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html">European Central Bank rate of 20 October 2026</a>, €1 = $1.1215, rounded to the nearest dollar. Pressure is in megapascals, with pounds per square inch beside it.</p>
+        <noscript>
+            <p>This form needs JavaScript to open the email. It still does not store answers.</p>
+        </noscript>
+
+        <form id="ask">
+            <input type="hidden" id="from" name="from" value="">
+
+            <fieldset>
+                <legend>Which best describes you?</legend>
+                <label class="choice">
+                    <input type="radio" name="role" value="patient" required>
+                    Person with jaw clenching
+                </label>
+                <label class="choice">
+                    <input type="radio" name="role" value="clinic">
+                    Dentist, prosthodontist, or sleep specialist
+                </label>
+            </fieldset>
+
+            <fieldset id="track-patient" hidden disabled>
+                <legend>Are you unknowingly micro-fracturing your teeth while you sleep?</legend>
+                <p class="hint">About three minutes. Jaw pain, nightguards, and restorative costs.</p>
+
+                <fieldset>
+                    <legend>How often do you wake up with jaw stiffness, morning headaches, or facial tension?</legend>
+                    <label class="choice"><input type="radio" name="stiffness" value="Daily" required> Daily</label>
+                    <label class="choice"><input type="radio" name="stiffness" value="3–5 times a week"> 3–5 times a week</label>
+                    <label class="choice"><input type="radio" name="stiffness" value="1–2 times a week"> 1–2 times a week</label>
+                    <label class="choice"><input type="radio" name="stiffness" value="Rarely"> Rarely</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>What is your current nightguard status?</legend>
+                    <label class="choice"><input type="radio" name="nightguard" value="Custom dental guard" required> Custom dental guard</label>
+                    <label class="choice"><input type="radio" name="nightguard" value="Over-the-counter guard"> Over-the-counter guard</label>
+                    <label class="choice"><input type="radio" name="nightguard" value="Stopped wearing"> Stopped wearing one, because of gagging or discomfort</label>
+                    <label class="choice"><input type="radio" name="nightguard" value="Never worn"> Never worn</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Have you had tooth damage from night clenching?</legend>
+                    <label class="choice"><input type="checkbox" name="damage" value="Flattened enamel"> Flattened enamel</label>
+                    <label class="choice"><input type="checkbox" name="damage" value="Micro-fissures or chipped teeth"> Micro-fissures or chipped teeth</label>
+                    <label class="choice"><input type="checkbox" name="damage" value="Sensitivity"> Sensitivity</label>
+                    <label class="choice"><input type="checkbox" name="damage" value="Loose teeth"> Loose teeth</label>
+                    <label class="choice"><input type="checkbox" name="damage" value="Restorative crowns or implants"> Restorative crowns or implants</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>On a scale of 1 to 5, how concerned are you about permanent enamel damage, or about a restorative bill of €3,000–€10,000 <span class="equiv">($3,365–$11,215)</span>?</legend>
+                    <div class="scale">
+                        <label class="choice"><input type="radio" name="concern" value="1" required> 1 Not concerned</label>
+                        <label class="choice"><input type="radio" name="concern" value="2"> 2</label>
+                        <label class="choice"><input type="radio" name="concern" value="3"> 3</label>
+                        <label class="choice"><input type="radio" name="concern" value="4"> 4</label>
+                        <label class="choice"><input type="radio" name="concern" value="5"> 5 Extremely anxious</label>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How valuable would an iOS app be that sets overnight jaw clenching next to Apple Health sleep and heart-rate variability?</legend>
+                    <label class="choice"><input type="radio" name="health-value" value="Extremely valuable" required> Extremely valuable</label>
+                    <label class="choice"><input type="radio" name="health-value" value="Somewhat valuable"> Somewhat valuable</label>
+                    <label class="choice"><input type="radio" name="health-value" value="Neutral"> Neutral</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How interested are you in a soft temple wearable that tracks jaw load, without a mouthguard or gagging?</legend>
+                    <label class="choice"><input type="radio" name="interest" value="Very interested" required> Very interested</label>
+                    <label class="choice"><input type="radio" name="interest" value="Moderately interested"> Moderately interested</label>
+                    <label class="choice"><input type="radio" name="interest" value="Not interested"> Not interested</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Would you like early access to the iOS app, or to join the patient feasibility list?</legend>
+                    <label>
+                        Name
+                        <input type="text" name="name" autocomplete="name" required>
+                    </label>
+                    <label>
+                        Email
+                        <input type="email" name="email" autocomplete="email" required>
+                    </label>
+                    <p class="hint">The written survey mentions a €50 <span class="equiv">($56)</span> gift-card draw. This page does not run that draw. After you send the email, the TestFlight note is on the <a href="app-demo-setup.html">setup page</a>.</p>
+                </fieldset>
+            </fieldset>
+
+            <fieldset id="track-clinic" hidden disabled>
+                <legend>Protecting high-value restorations. A three-minute survey on extraoral jaw-load tracking.</legend>
+                <p class="hint">About three minutes. The wearable records jaw-muscle load. It does not set the splint.</p>
+
+                <fieldset>
+                    <legend>What is your primary clinical area?</legend>
+                    <label class="choice"><input type="radio" name="specialty" value="General dentistry" required> General dentistry</label>
+                    <label class="choice"><input type="radio" name="specialty" value="Prosthodontics"> Prosthodontics</label>
+                    <label class="choice"><input type="radio" name="specialty" value="Dental sleep or TMJ"> Dental sleep or TMJ</label>
+                    <label class="choice"><input type="radio" name="specialty" value="Orthodontics"> Orthodontics</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How many custom splints or mandibular advancement appliances do you fit in a month?</legend>
+                    <label class="choice"><input type="radio" name="splints" value="1-5" required> 1–5 a month</label>
+                    <label class="choice"><input type="radio" name="splints" value="6-15"> 6–15 a month</label>
+                    <label class="choice"><input type="radio" name="splints" value="15+"> 15+ a month</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How often do night-time jaw pressures, up to 1.7 MPa <span class="equiv">(250 lb/sq.in.)</span>, cause crowns, veneers, or implants to fail early?</legend>
+                    <label class="choice"><input type="radio" name="failure" value="Frequently" required> Frequently, a constant risk</label>
+                    <label class="choice"><input type="radio" name="failure" value="Occasionally"> Occasionally</label>
+                    <label class="choice"><input type="radio" name="failure" value="Rarely"> Rarely</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How do you check whether a splint or mandibular advancement device reduces muscle load, rather than only shielding the enamel?</legend>
+                    <label class="choice"><input type="radio" name="verify" value="Self-report" required> Self-report</label>
+                    <label class="choice"><input type="radio" name="verify" value="Wear marks"> Wear marks</label>
+                    <label class="choice"><input type="radio" name="verify" value="Intraoral sensor"> Intraoral sensor</label>
+                    <label class="choice"><input type="radio" name="verify" value="No objective way"> No objective way</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>How valuable would 50 Hz extraoral optical myography be (temporalis fatigue index, heart rate, and blood oxygen)?</legend>
+                    <label class="choice"><input type="radio" name="omg-value" value="High" required> High</label>
+                    <label class="choice"><input type="radio" name="omg-value" value="Moderate"> Moderate</label>
+                    <label class="choice"><input type="radio" name="omg-value" value="Low"> Low</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>A kit lease is €150 a month <span class="equiv">($168)</span>, plus €100 <span class="equiv">($112)</span> for each automated report. How attractive is that?</legend>
+                    <label class="choice"><input type="radio" name="model" value="Very attractive" required> Very attractive. I would try a demo kit.</label>
+                    <label class="choice"><input type="radio" name="model" value="Moderately attractive"> Moderately attractive</label>
+                    <label class="choice"><input type="radio" name="model" value="Unattractive"> Unattractive</label>
+                </fieldset>
+
+                <fieldset>
+                    <legend>What do you want next?</legend>
+                    <label class="choice"><input type="radio" name="goal" value="call" required> 15-minute call (€75 <span class="equiv">/ $84</span>)</label>
+                    <label class="choice"><input type="radio" name="goal" value="kit"> 14-day clinic kit</label>
+                    <label class="choice"><input type="radio" name="goal" value="both"> Both</label>
+                    <label>
+                        Clinician name
+                        <input type="text" name="name" autocomplete="name" required>
+                    </label>
+                    <label>
+                        Practice name and location
+                        <input type="text" name="practice" required>
+                    </label>
+                    <label>
+                        Email
+                        <input type="email" name="email" autocomplete="email" required>
+                    </label>
+                    <label>
+                        Direct line
+                        <input type="tel" name="phone" autocomplete="tel">
+                    </label>
+                </fieldset>
+            </fieldset>
+
+            <div class="form-actions">
+                <button class="button" type="submit">Open the email</button>
+            </div>
+            <p class="hint">Submit opens a blank email with the answers in the body. This page does not keep them. There is no calendar embed on this copy.</p>
+        </form>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <p>The MAM Extraoral Wearable and Oralable app are designed for general wellness, sleep tracking, and jaw-load awareness. They are not medical devices and do not provide medical diagnosis or treatment. US Provisional Patent 64/033,978.</p>
+            <p>© 2026 MAM Diagnostics Ltd.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            var form = document.getElementById("ask");
+            var patient = document.getElementById("track-patient");
+            var clinic = document.getElementById("track-clinic");
+            var fromInput = document.getElementById("from");
+            var params = new URLSearchParams(window.location.search);
+            var fromLabels = {
+                testflight: "TestFlight",
+                feasibility: "feasibility list",
+                note: "collaboration note"
+            };
+            var sourceLabels = {
+                forum_bruxism: "Bruxism forum",
+                forum_tmj: "TMJ forum",
+                clinician_rkaas: "Clinician forum"
+            };
+
+            function checkedValue(root, name) {
+                var el = root.querySelector('input[name="' + name + '"]:checked');
+                return el ? el.value : "";
+            }
+
+            function setTrack(track) {
+                var isPatient = track === "patient";
+                var isClinic = track === "clinic";
+                patient.hidden = !isPatient;
+                patient.disabled = !isPatient;
+                clinic.hidden = !isClinic;
+                clinic.disabled = !isClinic;
+                var role = form.querySelector('input[name="role"][value="' + track + '"]');
+                if (role) role.checked = true;
+            }
+
+            form.addEventListener("change", function (event) {
+                if (event.target.name === "role") setTrack(event.target.value);
+            });
+
+            var track = params.get("track");
+            if (track === "patient" || track === "clinic") setTrack(track);
+
+            var goal = params.get("goal");
+            if (goal) {
+                var goalField = clinic.querySelector('input[name="goal"][value="' + goal + '"]');
+                if (goalField) goalField.checked = true;
+            }
+
+            var from = params.get("from");
+            if (fromLabels[from]) fromInput.value = from;
+
+            var source = params.get("source") || "";
+            if (!/^[a-z0-9_]{1,40}$/.test(source)) source = "";
+
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                if (!form.reportValidity()) return;
+
+                var role = form.role.value;
+                var lines = [];
+                var subject;
+
+                if (role === "patient") {
+                    var damage = Array.prototype.map.call(
+                        patient.querySelectorAll('input[name="damage"]:checked'),
+                        function (el) { return el.value; }
+                    );
+                    var concern = checkedValue(patient, "concern");
+                    var high = damage.length > 0 || Number(concern) >= 4;
+                    subject = high ? "High priority — MAM patient" : "MAM patient";
+                    lines.push("Role: Person with jaw clenching");
+                    lines.push("Morning stiffness: " + checkedValue(patient, "stiffness"));
+                    lines.push("Nightguard: " + checkedValue(patient, "nightguard"));
+                    lines.push("Tooth damage: " + (damage.length ? damage.join("; ") : "None ticked"));
+                    lines.push("Concern (1–5): " + concern);
+                    lines.push("Apple Health value: " + checkedValue(patient, "health-value"));
+                    lines.push("Temple wearable interest: " + checkedValue(patient, "interest"));
+                    lines.push("Name: " + patient.querySelector('[name="name"]').value.trim());
+                    lines.push("Email: " + patient.querySelector('[name="email"]').value.trim());
+                    lines.push("Gift-card draw: not run by this page.");
+                } else {
+                    var splints = checkedValue(clinic, "splints");
+                    var goalValue = checkedValue(clinic, "goal");
+                    subject = (splints === "6-15" || splints === "15+") ? "Fast reply — MAM clinic" : "MAM clinic";
+                    lines.push("Role: Clinic");
+                    lines.push("Practice area: " + checkedValue(clinic, "specialty"));
+                    lines.push("Splints a month: " + splints);
+                    lines.push("Restoration failure seen: " + checkedValue(clinic, "failure"));
+                    lines.push("How load is checked now: " + checkedValue(clinic, "verify"));
+                    lines.push("Value of optical myography: " + checkedValue(clinic, "omg-value"));
+                    lines.push("Lease model: " + checkedValue(clinic, "model"));
+                    lines.push("Next step: " + goalValue);
+                    lines.push("Name: " + clinic.querySelector('[name="name"]').value.trim());
+                    lines.push("Practice: " + clinic.querySelector('[name="practice"]').value.trim());
+                    lines.push("Email: " + clinic.querySelector('[name="email"]').value.trim());
+                    lines.push("Direct line: " + clinic.querySelector('[name="phone"]').value.trim());
+                    if (goalValue === "call" || goalValue === "both") {
+                        lines.push("€75 ($84) call: offer only. The fee is paid only if the call is agreed later.");
+                    }
+                }
+
+                if (fromLabels[fromInput.value]) {
+                    lines.push("Asked from: " + fromLabels[fromInput.value]);
+                }
+                if (source) {
+                    lines.push("Source: " + (sourceLabels[source] || source));
+                }
+
+                window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(lines.join("\n"));
+            });
+        }());
+    </script>
+</body>
+</html>

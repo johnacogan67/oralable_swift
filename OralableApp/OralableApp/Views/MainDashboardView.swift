@@ -3,7 +3,7 @@
 //  OralableApp
 //
 //  Sleep-study gate: overnight entry requires Temporalis fit guide + 10-minute calibration
-//  for the currently connected REV10. Also links to legacy debug menu.
+//  for the currently connected Oralable. Also links to legacy debug menu.
 //
 
 import SwiftUI
@@ -49,7 +49,26 @@ struct MainDashboardView: View {
                     Text("Sessions recorded: \(recordingSessionManager.sessions.count)")
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
-                    Text("REV10 connected: \(rev10PrimaryConnected ? "Yes" : "No")")
+
+                    if let pa = sessionHistoryStore.protocolASetupExport {
+                        Text("Protocol A Setup: \(pa.sessionTimestamp) · \(pa.sampleCount) samples")
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+
+                    NavigationLink {
+                        SessionHistoryView(sessionManager: recordingSessionManager)
+                    } label: {
+                        Label("Session history", systemImage: "list.bullet.rectangle")
+                            .font(designSystem.typography.labelMedium)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(designSystem.colors.backgroundTertiary)
+                            .foregroundColor(designSystem.colors.textPrimary)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
+                    Text("Oralable connected: \(rev10PrimaryConnected ? "Yes" : "No")")
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
 
@@ -74,7 +93,7 @@ struct MainDashboardView: View {
                     .opacity(rev10PrimaryConnected ? 1 : 0.45)
 
                     if !rev10PrimaryConnected {
-                        Text("Connect your Oralable REV10 as the primary device to run the fit guide.")
+                        Text("Connect your Oralable as the primary device to run the fit guide.")
                             .font(designSystem.typography.caption)
                             .foregroundColor(designSystem.colors.textSecondary)
                     }
@@ -166,12 +185,12 @@ struct MainDashboardView: View {
                 startOvernightWithWornPlacement()
             }
         } message: {
-            Text("Sets device placement to Worn on cheek on the clip and keeps automatic recording while BLE stays connected. Lock the phone with the clip on your cheek.")
+            Text("Sets placement to Worn on temple. Pad or tape the clip on the temple (no headband). Keep the phone nearby while BLE stays connected.")
         }
     }
 
     private func startOvernightWithWornPlacement() {
         deviceManager.applyWornPlacementForBodySession()
-        Logger.shared.info("[MainDashboardView] Overnight started — placement set to Worn on cheek")
+        Logger.shared.info("[MainDashboardView] Overnight started — placement set to Worn on temple")
     }
 }

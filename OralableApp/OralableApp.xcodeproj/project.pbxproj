@@ -736,7 +736,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OralableApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MAM;
+				INFOPLIST_KEY_CFBundleDisplayName = "MAM Diagnostics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
@@ -751,7 +751,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 4.3.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.oralable.mam;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -771,7 +771,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OralableApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MAM;
+				INFOPLIST_KEY_CFBundleDisplayName = "MAM Diagnostics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
@@ -786,7 +786,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 4.3.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.oralable.mam;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -925,7 +925,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jacdentalsolutions.OralableAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -944,7 +944,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jacdentalsolutions.OralableAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -961,7 +961,7 @@
 				DEVELOPMENT_TEAM = THKF822TTP;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jacdentalsolutions.OralableAppUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -978,7 +978,7 @@
 				DEVELOPMENT_TEAM = THKF822TTP;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jacdentalsolutions.OralableAppUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -1001,7 +1001,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = OralableForProfessionals/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Oralable For Professionals";
+				INFOPLIST_KEY_CFBundleDisplayName = "Oralable for Professionals";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1044,7 +1044,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = OralableForProfessionals/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Oralable For Professionals";
+				INFOPLIST_KEY_CFBundleDisplayName = "Oralable for Professionals";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1084,7 +1084,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.OralableForDentistsTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.professionals.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1107,7 +1107,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.OralableForProfessionalsTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.professionals.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1129,7 +1129,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.OralableForDentistsUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.professionals.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1151,7 +1151,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.OralableForProfessionalsUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jacdental.oralable.professionals.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

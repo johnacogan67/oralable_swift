@@ -14,7 +14,7 @@ final class NRFConnectCompatibilityTests: XCTestCase {
 
     func testFirmwareGateRequires163() {
         XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.63")
-        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.84")
+        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.85")
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.63-nrfconnect"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.64"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.65-nrfconnect"))
@@ -29,8 +29,12 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.72"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.73"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.82"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.84"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.84"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.85"))
         XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.62"))
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("2.0.0"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.0"))
+        XCTAssertTrue(FirmwareGate.supportsAutomaticDockDetect("2.0.0"))
     }
 
     func testTGMBaselineCharacteristicUUIDs() {
@@ -112,6 +116,25 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         logger.connected()
         XCTAssertTrue(logger.csvContent().hasPrefix("Timestamp,Source,Level,Line\n"))
         logger.clear()
+    }
+
+    /// Mac Protocol A + nRF Connect CCC order (battery first, then streaming).
+    /// iOS: `enableDeferredDiscoverySubscriptions` (battery) then
+    /// `enableNRFAlignedStreamingNotifications` (status → PPG → ACC → temp).
+    func testNRFAlignedStreamingCCCOrderDocumented() {
+        XCTAssertEqual(BLEConstants.TGM.batteryCharUUID, "3A0FF004-98C4-46B2-94AF-1AEE0FD4C48E")
+        XCTAssertEqual(BLEConstants.TGM.statusCharUUID, "3A0FF009-98C4-46B2-94AF-1AEE0FD4C48E")
+        XCTAssertEqual(BLEConstants.TGM.sensorDataCharUUID, "3A0FF001-98C4-46B2-94AF-1AEE0FD4C48E")
+        XCTAssertEqual(BLEConstants.TGM.accelerometerCharUUID, "3A0FF002-98C4-46B2-94AF-1AEE0FD4C48E")
+        XCTAssertEqual(BLEConstants.TGM.commandCharUUID, "3A0FF003-98C4-46B2-94AF-1AEE0FD4C48E")
+        let order = [
+            BLEConstants.TGM.batteryCharUUID,
+            BLEConstants.TGM.statusCharUUID,
+            BLEConstants.TGM.sensorDataCharUUID,
+            BLEConstants.TGM.accelerometerCharUUID,
+            BLEConstants.TGM.commandCharUUID
+        ]
+        XCTAssertEqual(order.count, 5)
     }
 
     func testAutomaticRecordingSessionSkipsInferenceOffBody() {

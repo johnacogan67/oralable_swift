@@ -57,7 +57,7 @@ enum DeviceError: LocalizedError {
     // General errors
     case unknownError(String)
 
-    /// REV10 firmware is below the minimum required for research-safe capture.
+    /// Firmware is below the minimum required for research-safe capture.
     case firmwareUpdateRequired(requiredMinimum: String, reported: String?)
 
     var errorDescription: String? {
@@ -144,7 +144,7 @@ enum DeviceError: LocalizedError {
         case .authenticationRequired, .authenticationFailed:
             return "Sign in with your Apple ID to access this feature."
         case .firmwareUpdateRequired:
-            return "Update your Oralable REV10 to the latest firmware using Oralable’s researcher release channel, then try again."
+            return "Update your Oralable to the latest firmware using Oralable’s researcher release channel, then try again."
         case .operationNotSupported:
             return "This feature is not available for your device model."
         default:

@@ -130,7 +130,7 @@ struct SettingsView: View {
                     }
 
                     if featureFlags.devicePlacementMode == .offDockIdle {
-                        Text("Bench / idle is for off the case. On the Oralable case pick On wireless charger (or Automatic on 1.0.70+), then disconnect and reconnect. No phone: flash green = charging, solid green = taper / hold or already charged. Status never shows red. While linked the MAM LED is off.")
+                        Text("Bench / idle is for off the case. On the Oralable case pick On Oralable case (or Automatic on 1.0.70+), then disconnect and reconnect. No phone: flash green = still charging, brief green pulse ~every 10 s = hold (~4.20 V). Status never shows red. While linked the MAM LED is off.")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.warning)
                     }
@@ -145,12 +145,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Device placement")
                 } footer: {
-                    Text("Gen1 pcb00003: Automatic dock is FW 1.0.70+. Current target is \(FirmwareGate.recommendedOralableSemanticVersion) (sensors only while linked; green charge LEDs when the phone is away). Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. Below ~5% the MAM turns PPG/ACC off; BLE and charge stay up.")
+                    Text("Beacon kits: Gen1 pcb00003, FW \(FirmwareGate.recommendedOralableSemanticVersion). Pad or tape on the temple — no headband, no ANR. Automatic dock is FW 1.0.70+. Sensors only while linked; green charge LEDs when the phone is away. Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. Below ~5% the MAM turns PPG/ACC off; BLE and charge stay up.")
                 }
 
                 if featureFlags.vitalsPhaseEnabled {
                     Section {
-                        Text("Phase 0 vitals mode is active: heart rate and SpO₂ only. No cheek calibration or Protocol B.")
+                        Text("Beacon clinic loaner: Gen1 Oralable. Heart rate and SpO₂ on the temple with pad or tape. One night. Charge on the Oralable case. No ANR. Protocol A Setup is optional research QC.")
                             .font(designSystem.typography.bodySmall)
                             .foregroundColor(designSystem.colors.textSecondary)
                     } header: {
@@ -182,11 +182,11 @@ struct SettingsView: View {
 
                     if appleHealthManager.isHealthDataAvailable {
                         if let last = appleHealthManager.lastSuccessfulSpO2SyncAt {
-                            Text("Last successful sync: \(last.formatted(date: .abbreviated, time: .shortened))")
+                            Text("Last Health write: \(last.formatted(date: .abbreviated, time: .shortened))")
                                 .font(designSystem.typography.bodySmall)
                                 .foregroundColor(designSystem.colors.textSecondary)
                         } else {
-                            Text("No SpO₂ written to Health yet")
+                            Text("No heart rate or blood oxygen written to Health yet")
                                 .font(designSystem.typography.bodySmall)
                                 .foregroundColor(designSystem.colors.textSecondary)
                         }
@@ -196,15 +196,34 @@ struct SettingsView: View {
                             .foregroundColor(designSystem.colors.textSecondary)
                     }
 
-                    NavigationLink {
-                        ProfessionalShareView()
-                    } label: {
-                        Label("Share with clinician", systemImage: "stethoscope")
+                    if featureFlags.showCloudKitShare {
+                        NavigationLink {
+                            ProfessionalShareView()
+                        } label: {
+                            Label("Share with clinician", systemImage: "stethoscope")
+                        }
                     }
                 } header: {
-                    Text("Clinical data")
+                    Text("Health")
                 } footer: {
-                    Text("Enable sync to authorize Health access. Session-average SpO₂ is saved from the Temporalis HOI export action. Use clinician sharing to generate a secure code and export package for Oralable for Professionals.")
+                    Text("Enable sync to authorize Health. Heart rate and blood oxygen samples are saved from Temporalis export. Oralable night states are not written as Apple Sleep Stages.")
+                }
+
+                Section {
+                    NavigationLink {
+                        SessionHistoryView(sessionManager: dependencies.recordingSessionManager)
+                    } label: {
+                        Label("Session history", systemImage: "list.bullet.rectangle")
+                    }
+                    if let pa = dependencies.sessionHistoryStore.protocolASetupExport {
+                        Text("Latest Protocol A Setup: \(pa.sessionTimestamp)")
+                            .font(designSystem.typography.caption)
+                            .foregroundColor(designSystem.colors.textSecondary)
+                    }
+                } header: {
+                    Text("Data")
+                } footer: {
+                    Text("Includes Protocol A Setup and recorded sessions. Re-share the Setup pack from the Share tab.")
                 }
 
                 if !featureFlags.vitalsPhaseEnabled {
@@ -258,7 +277,7 @@ struct SettingsView: View {
                     }
                 }
             } message: {
-                Text("Worn mode turns on the red PPG LED for vitals sensing. Only confirm when the clip is on your temple and battery is at least \(DeviceManager.wornPlacementMinimumBatteryPercent)%. On a table, use Off charger (not worn). The status LED stays dark off the pad.")
+                Text("Worn mode turns on the red PPG LED for vitals sensing. Only confirm when the clip is on your temple (pad or tape, no headband) and battery is at least \(DeviceManager.wornPlacementMinimumBatteryPercent)%. On a table, use Off case (not worn). The status LED stays dark off the pad.")
             }
             .alert("Charge before temple mode", isPresented: $showLowBatteryForWornAlert) {
                 Button("OK", role: .cancel) {}
@@ -268,7 +287,7 @@ struct SettingsView: View {
             .alert("Placement saved", isPresented: $showPlacementDeferredAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Gen1 clips drop BLE if placement is pushed while connected. Your choice is saved — disconnect (or kill the session), set placement before you connect, then reconnect once. On the Oralable case use On wireless charger (or Automatic on FW 1.0.70+) before connecting.")
+                Text("Gen1 clips drop BLE if placement is pushed while connected. Your choice is saved — disconnect (or kill the session), set placement before you connect, then reconnect once. On the Oralable case use On Oralable case (or Automatic on FW 1.0.70+) before connecting.")
             }
         }
     }

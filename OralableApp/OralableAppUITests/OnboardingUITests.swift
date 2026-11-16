@@ -39,7 +39,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // First page title should be visible
-        let welcomeTitle = app.staticTexts["Muscle Activity Monitor"]
+        let welcomeTitle = app.staticTexts["One night on the temple"]
         if welcomeTitle.waitForExistence(timeout: 5) {
             XCTAssertTrue(welcomeTitle.exists, "Welcome title should be displayed")
         }
@@ -63,7 +63,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Wait for onboarding to appear
-        let firstPageTitle = app.staticTexts["Muscle Activity Monitor"]
+        let firstPageTitle = app.staticTexts["One night on the temple"]
         guard firstPageTitle.waitForExistence(timeout: 5) else {
             // May already be logged in
             return
@@ -84,7 +84,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Wait for onboarding to appear
-        let firstPageTitle = app.staticTexts["Muscle Activity Monitor"]
+        let firstPageTitle = app.staticTexts["One night on the temple"]
         guard firstPageTitle.waitForExistence(timeout: 5) else {
             return
         }
@@ -99,7 +99,7 @@ final class OnboardingUITests: XCTestCase {
         app.swipeRight()
 
         // First page should be visible again
-        let firstPageVisible = app.staticTexts["Muscle Activity Monitor"]
+        let firstPageVisible = app.staticTexts["One night on the temple"]
         if firstPageVisible.waitForExistence(timeout: 3) {
             XCTAssertTrue(firstPageVisible.exists, "Should be able to swipe back to first page")
         }
@@ -110,17 +110,17 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Wait for onboarding
-        let firstPage = app.staticTexts["Muscle Activity Monitor"]
+        let firstPage = app.staticTexts["One night on the temple"]
         guard firstPage.waitForExistence(timeout: 5) else {
             return
         }
 
         // Navigate through all pages
         let pageTitles = [
-            "Muscle Activity Monitor",
+            "One night on the temple",
             "Integrate with Apple Health",
-            "Understand Your Patterns",
-            "Share with Your Provider"
+            "See last night",
+            "Share the night report"
         ]
 
         for i in 0..<(pageTitles.count - 1) {
@@ -129,7 +129,7 @@ final class OnboardingUITests: XCTestCase {
         }
 
         // Last page should be visible
-        let lastPage = app.staticTexts["Share with Your Provider"]
+        let lastPage = app.staticTexts["Share the night report"]
         if lastPage.waitForExistence(timeout: 3) {
             XCTAssertTrue(lastPage.exists, "Should reach last onboarding page")
         }
@@ -219,7 +219,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Check main title accessibility
-        let title = app.staticTexts["Muscle Activity Monitor"]
+        let title = app.staticTexts["One night on the temple"]
         if title.waitForExistence(timeout: 5) {
             XCTAssertNotNil(title.label, "Title should have accessibility label")
         }
@@ -255,7 +255,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Navigate to Health page
-        let firstPage = app.staticTexts["Muscle Activity Monitor"]
+        let firstPage = app.staticTexts["One night on the temple"]
         guard firstPage.waitForExistence(timeout: 5) else {
             return
         }
@@ -274,7 +274,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Navigate to provider sharing page (4th page)
-        let firstPage = app.staticTexts["Muscle Activity Monitor"]
+        let firstPage = app.staticTexts["One night on the temple"]
         guard firstPage.waitForExistence(timeout: 5) else {
             return
         }
@@ -300,7 +300,7 @@ final class OnboardingUITests: XCTestCase {
             app.launch()
 
             // Wait for onboarding to load
-            let title = app.staticTexts["Muscle Activity Monitor"]
+            let title = app.staticTexts["One night on the temple"]
             _ = title.waitForExistence(timeout: 10)
         }
     }
@@ -314,7 +314,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Onboarding should not be visible
-        let onboardingTitle = app.staticTexts["Muscle Activity Monitor"]
+        let onboardingTitle = app.staticTexts["One night on the temple"]
 
         // Give time to load
         Thread.sleep(forTimeInterval: 2)

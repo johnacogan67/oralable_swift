@@ -268,9 +268,19 @@ extension OralableDevice {
         }
 
         firmwareDeviceStatus = status
-        if status.batteryPercent > 0 {
-            batteryLevel = Int(status.batteryPercent)
-        }
+        let pct = Int(status.batteryPercent)
+        batteryLevel = pct
+
+        // Publish so DeviceManagerAdapter → DashboardViewModel top-bar battery updates
+        // (status notify alone previously never emitted a .battery reading).
+        let reading = SensorReading(
+            sensorType: .battery,
+            value: Double(pct),
+            timestamp: Date(),
+            deviceId: peripheral?.identifier.uuidString
+        )
+        latestReadings[.battery] = reading
+        readingsBatchSubject.send([reading])
 
         Logger.shared.info("[OralableDevice] 📟 Status: worn=\(status.worn) on_dock=\(status.onDock) charge_active=\(status.chargeActive) state=\(status.deviceState) bat=\(status.batteryPercent)%")
     }
@@ -285,6 +295,7 @@ extension OralableDevice {
 
         if let mv = OralableCore.BLEDataParser.parseBatteryMillivolts(data) {
             millivolts = mv
+            batteryMillivolts = Int(mv)
             percentage = BatteryConversion.voltageToPercentageInt(millivolts: mv)
         } else if let batteryData = OralableCore.BLEDataParser.parseTGMBatteryData(data) {
             percentage = batteryData.percentage
@@ -338,6 +349,7 @@ extension OralableDevice {
         guard let percentage else { return }
 
         if let mv = millivolts {
+            batteryMillivolts = Int(mv)
             let chem = BatteryConversion.chemistryPercentageInt(millivolts: mv)
             Logger.shared.info("[OralableDevice] 🔋 Battery: \(mv)mV gauge=\(percentage)% chem=\(chem)%")
             if percentage == 0 && chem > 0 {
@@ -367,6 +379,18 @@ extension OralableDevice {
 
         latestReadings[.battery] = reading
         readingsBatchSubject.send([reading])
+    }
+
+    func parseBatteryUsage(_ data: Data) {
+        guard let estimate = OralableCore.BLEDataParser.parseBatteryUsage(data) else {
+            Logger.shared.warning("[OralableDevice] Battery usage packet rejected (\(data.count) bytes)")
+            return
+        }
+        batteryUsageEstimate = estimate
+        if estimate.voltageMillivolts > 0 {
+            batteryMillivolts = estimate.voltageMillivolts
+        }
+        Logger.shared.info("[OralableDevice] \(estimate.summary) · \(estimate.voltageMillivolts) mV gauge=\(estimate.gaugePercent)%")
     }
 
     /// Parse standard battery level using OralableCore.BLEDataParser

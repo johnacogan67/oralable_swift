@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#FAFAF8"/>
+  <text x="40" y="32" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">FIG-IOS-009 · draft wireframe · Oralable 4.3.3 · four tabs + History</text>
+  <text x="40" y="58" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#111111">Patient app screen map</text>
+  <text x="40" y="80" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">Default flags: Protocol A Setup off · overnight hypnogram on · CloudKit / extra metric cards off.</text>
+
+  <g transform="translate(24,100)">
+    <rect width="176" height="336" rx="26" fill="#111111"/>
+    <rect x="5" y="5" width="166" height="326" rx="20" fill="#FFFFFF"/>
+    <rect x="62" y="12" width="52" height="7" rx="3" fill="#111111"/>
+    <rect x="62" y="42" width="52" height="52" rx="10" fill="#111111"/>
+    <text x="22" y="118" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" fill="#111111">Word of mouth</text>
+    <text x="22" y="136" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">Muscle Activity Monitor</text>
+    <text x="66" y="168" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">● ○ ○ ○</text>
+    <rect x="22" y="196" width="132" height="24" rx="6" fill="#111111"/>
+    <text x="38" y="212" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#FFFFFF">Sign in with Apple</text>
+    <text x="76" y="238" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">Skip</text>
+    <text x="50" y="318" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">Onboarding</text>
+  </g>
+
+  <g transform="translate(212,100)">
+    <rect width="176" height="336" rx="26" fill="#4B5563"/>
+    <rect x="5" y="5" width="166" height="326" rx="20" fill="#F3F4F6"/>
+    <rect x="62" y="12" width="52" height="7" rx="3" fill="#9CA3AF"/>
+    <text x="16" y="44" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" fill="#6B7280">Protocol A Setup</text>
+    <rect x="16" y="54" width="144" height="48" rx="6" fill="#E5E7EB"/>
+    <text x="22" y="72" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#6B7280">Seat on temple. ~6 min.</text>
+    <text x="22" y="86" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Five taps at 1:00. Keep BLE.</text>
+    <rect x="16" y="110" width="144" height="24" rx="6" fill="#E5E7EB"/>
+    <text x="22" y="126" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#6B7280">● Oralable connected</text>
+    <rect x="16" y="142" width="144" height="34" rx="6" fill="#E5E7EB"/>
+    <text x="22" y="158" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#6B7280">IR preflight ≥8% drop</text>
+    <text x="22" y="170" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">then 360 s cues</text>
+    <rect x="16" y="184" width="144" height="22" rx="6" fill="#9CA3AF"/>
+    <text x="72" y="199" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#FFFFFF">Start</text>
+    <text x="36" y="318" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">Optional · flag off</text>
+  </g>
+
+  <g transform="translate(400,100)">
+    <rect width="176" height="336" rx="26" fill="#111111"/>
+    <rect x="5" y="5" width="166" height="326" rx="20" fill="#FFFFFF"/>
+    <rect x="62" y="12" width="52" height="7" rx="3" fill="#111111"/>
+    <text x="16" y="44" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#111111">Dashboard</text>
+    <circle cx="20" cy="58" r="3.5" fill="#16A34A"/>
+    <text x="28" y="62" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#111111">Vitals ready  87%</text>
+    <text x="16" y="82" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111111">72 BPM</text>
+    <text x="90" y="82" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111111">97%</text>
+    <rect x="16" y="92" width="144" height="44" rx="6" fill="#F3F4F6"/>
+    <text x="22" y="108" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#111111">Last night</text>
+    <polyline points="22,124 34,120 46,126 58,116 70,122 82,118 94,124 106,120 118,124 144,122" fill="none" stroke="#111111" stroke-width="1"/>
+    <rect x="16" y="144" width="144" height="32" rx="6" fill="#FFFFFF" stroke="#7C3AED"/>
+    <text x="22" y="164" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#7C3AED">PPG IR  ▸</text>
+    <line x1="5" y1="280" x2="171" y2="280" stroke="#E5E7EB"/>
+    <text x="12" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" font-weight="bold" fill="#111111">Dash</text>
+    <text x="50" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Dev</text>
+    <text x="86" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Share</text>
+    <text x="126" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Set</text>
+    <text x="56" y="318" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">Home tab</text>
+  </g>
+
+  <polygon points="578,260 594,252 594,268" fill="#7C3AED"/>
+
+  <g transform="translate(600,100)">
+    <rect width="176" height="336" rx="26" fill="#111111"/>
+    <rect x="5" y="5" width="166" height="326" rx="20" fill="#FFFFFF"/>
+    <rect x="62" y="12" width="52" height="7" rx="3" fill="#111111"/>
+    <text x="16" y="28" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#6B7280">&lt; Dashboard</text>
+    <text x="16" y="46" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">History</text>
+    <rect x="16" y="54" width="144" height="22" rx="6" fill="#F3F4F6"/>
+    <rect x="18" y="56" width="70" height="18" rx="4" fill="#111111"/>
+    <text x="38" y="69" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#FFFFFF">Night</text>
+    <text x="112" y="69" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#6B7280">Day</text>
+    <text x="16" y="92" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#111111">&lt;  Mon 21 Sep 2026  &gt;</text>
+    <text x="44" y="104" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">8 h worn · not 6 min IR</text>
+    <text x="16" y="118" font-family="Helvetica, Arial, sans-serif" font-size="7" font-weight="bold" fill="#111111">State hypnogram</text>
+<rect x="16" y="122" width="144" height="88" rx="5" fill="#F9FAFB"/>
+<text x="18" y="134.7" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Rescue</text>
+<text x="18" y="152.3" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Tonic</text>
+<text x="18" y="169.9" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Phasic</text>
+<text x="18" y="187.5" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Recov.</text>
+<text x="18" y="205.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Quiet</text>
+<rect x="44.0" y="193.4" width="22.4" height="12.3" fill="#D4D4D4"/>
+<rect x="70.6" y="193.4" width="19.6" height="12.3" fill="#D4D4D4"/>
+<rect x="94.4" y="193.4" width="15.4" height="12.3" fill="#D4D4D4"/>
+<rect x="114.0" y="193.4" width="18.2" height="12.3" fill="#D4D4D4"/>
+<rect x="136.4" y="193.4" width="19.6" height="12.3" fill="#D4D4D4"/>
+<rect x="49.6" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="59.4" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="74.8" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="83.2" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="101.4" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="109.8" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="125.2" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="132.2" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="144.8" y="175.8" width="1.5" height="12.3" fill="#E8B86E"/>
+<rect x="91.6" y="158.2" width="7.7" height="13.2" rx="1" fill="#4FC778"/>
+<rect x="48.2" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="53.8" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="58.0" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="65.0" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="72.0" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="77.6" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="81.8" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="100.0" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="105.6" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="111.2" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="118.2" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="122.4" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="129.4" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="139.2" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="143.4" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="149.0" y="140.6" width="1.4" height="12.3" fill="#4068E0"/>
+<rect x="83.9" y="140.6" width="4.9" height="12.3" rx="1" fill="#4068E0"/>
+<rect x="51.7" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="62.9" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="74.1" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="86.7" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="107.7" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="120.3" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="132.9" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="146.9" y="123.0" width="1.5" height="12.3" fill="#8C0000"/>
+<rect x="125.9" y="123.0" width="3.9" height="12.3" rx="1" fill="#8C0000"/>
+<text x="44.0" y="209.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">22</text>
+<text x="72.0" y="209.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">00</text>
+<text x="100.0" y="209.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">02</text>
+<text x="128.0" y="209.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">04</text>
+<text x="156.0" y="209.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">06</text>
+    <rect x="16" y="224" width="44" height="32" rx="4" fill="#F3F4F6"/>
+    <text x="20" y="236" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#6B7280">Jaw</text>
+    <text x="20" y="248" font-family="Helvetica, Arial, sans-serif" font-size="8" font-weight="bold" fill="#16A34A">Low</text>
+    <rect x="64" y="224" width="44" height="32" rx="4" fill="#F3F4F6"/>
+    <text x="68" y="236" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#6B7280">O2</text>
+    <text x="68" y="248" font-family="Helvetica, Arial, sans-serif" font-size="8" font-weight="bold" fill="#CA8A04">Mod</text>
+    <rect x="112" y="224" width="48" height="32" rx="4" fill="#F3F4F6"/>
+    <text x="116" y="236" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#6B7280">Rescue</text>
+    <text x="116" y="248" font-family="Helvetica, Arial, sans-serif" font-size="8" font-weight="bold" fill="#16A34A">Low</text>
+    <line x1="5" y1="280" x2="171" y2="280" stroke="#E5E7EB"/>
+    <text x="12" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" font-weight="bold" fill="#111111">Dash</text>
+    <text x="50" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Dev</text>
+    <text x="86" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Share</text>
+    <text x="126" y="298" font-family="Helvetica, Arial, sans-serif" font-size="6" fill="#9CA3AF">Set</text>
+    <text x="28" y="318" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">StateHypnogramView</text>
+  </g>
+
+  <text x="800" y="128" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Launch (before tabs)</text>
+  <text x="800" y="152" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">1. OnboardingView — 4 pages + Apple</text>
+  <text x="800" y="172" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">2. FirstLaunchOnboardingView — pair</text>
+  <text x="800" y="192" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">3. MainTabView — General Mode</text>
+  <text x="800" y="216" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Protocol A Setup only if flag ON (~6 min).</text>
+  <text x="800" y="234" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Beacon default: pair then dashboard.</text>
+  <text x="800" y="252" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Developer Settings can require Setup.</text>
+  <text x="800" y="280" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">TrialSetupDashboardView if user skips pair.</text>
+  <text x="800" y="312" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Dashboard drill-down</text>
+  <text x="800" y="332" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#7C3AED">Dashboard: live PPG IR</text>
+  <text x="800" y="352" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">FIG-CO-025 lanes: Rescue, Tonic,</text>
+  <text x="800" y="370" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Phasic, Recovery, Quiet.</text>
+  <text x="800" y="388" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Gen2 night axis 22:00–06:00 (8 h).</text>
+  <text x="800" y="406" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Not IR ADC. Not AHI. Not 6 min elapsed s.</text>
+  <text x="800" y="428" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">OvernightMorningCardView</text>
+
+  <g transform="translate(40,490)">
+    <rect width="200" height="360" rx="28" fill="#111111"/>
+    <rect x="6" y="6" width="188" height="348" rx="22" fill="#FFFFFF"/>
+    <rect x="70" y="14" width="60" height="8" rx="4" fill="#111111"/>
+    <text x="18" y="48" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Devices</text>
+    <text x="150" y="48" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#2563EB">Scan</text>
+    <text x="18" y="72" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">MY DEVICES</text>
+    <rect x="18" y="80" width="164" height="40" rx="6" fill="#DCFCE7"/>
+    <text x="26" y="98" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#111111">Oralable · Ready</text>
+    <text x="26" y="112" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#16A34A">FW 1.0.84</text>
+    <text x="18" y="140" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">OTHER DEVICES</text>
+    <rect x="18" y="148" width="164" height="32" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="168" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">Scan results…</text>
+    <line x1="6" y1="300" x2="194" y2="300" stroke="#E5E7EB"/>
+    <text x="14" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Dash</text>
+    <text x="58" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" font-weight="bold" fill="#111111">Dev</text>
+    <text x="100" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Share</text>
+    <text x="144" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Set</text>
+    <text x="62" y="340" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">Tab 2</text>
+  </g>
+
+  <g transform="translate(270,490)">
+    <rect width="200" height="360" rx="28" fill="#111111"/>
+    <rect x="6" y="6" width="188" height="348" rx="22" fill="#FFFFFF"/>
+    <rect x="70" y="14" width="60" height="8" rx="4" fill="#111111"/>
+    <text x="18" y="48" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Share</text>
+    <rect x="18" y="64" width="164" height="36" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="86" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Protocol A Setup</text>
+    <rect x="18" y="108" width="164" height="36" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="130" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Share CSV</text>
+    <rect x="18" y="152" width="164" height="44" rx="6" fill="#111111"/>
+    <text x="26" y="172" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#FFFFFF">Clinical Temporalis PDF</text>
+    <text x="26" y="186" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#D1D5DB">Hypnogram-first night report</text>
+    <text x="18" y="220" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">CloudKit share hidden</text>
+    <line x1="6" y1="300" x2="194" y2="300" stroke="#E5E7EB"/>
+    <text x="14" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Dash</text>
+    <text x="58" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Dev</text>
+    <text x="100" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" font-weight="bold" fill="#111111">Share</text>
+    <text x="144" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Set</text>
+    <text x="62" y="340" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">Tab 3</text>
+  </g>
+
+  <g transform="translate(500,490)">
+    <rect width="200" height="360" rx="28" fill="#111111"/>
+    <rect x="6" y="6" width="188" height="348" rx="22" fill="#FFFFFF"/>
+    <rect x="70" y="14" width="60" height="8" rx="4" fill="#111111"/>
+    <text x="18" y="48" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Settings</text>
+    <text x="18" y="72" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">DEVICE PLACEMENT</text>
+    <rect x="18" y="80" width="164" height="28" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="98" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Automatic ▾</text>
+    <text x="18" y="128" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">HEALTH</text>
+    <rect x="18" y="136" width="164" height="24" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="152" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Apple Health</text>
+    <rect x="18" y="166" width="164" height="24" rx="6" fill="#F3F4F6"/>
+    <text x="26" y="182" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Session history ▸</text>
+    <text x="18" y="210" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">ABOUT</text>
+    <text x="18" y="228" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#111111">Version 4.3.3  (tap 7×)</text>
+    <line x1="6" y1="300" x2="194" y2="300" stroke="#E5E7EB"/>
+    <text x="14" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Dash</text>
+    <text x="58" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Dev</text>
+    <text x="100" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" fill="#9CA3AF">Share</text>
+    <text x="144" y="320" font-family="Helvetica, Arial, sans-serif" font-size="7" font-weight="bold" fill="#111111">Set</text>
+    <text x="62" y="340" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">Tab 4</text>
+  </g>
+
+  <text x="760" y="540" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">MainTabView</text>
+  <text x="760" y="564" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Dashboard · Devices · Share · Settings</text>
+  <text x="760" y="592" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">HomeView → DashboardView (or SimplifiedDashboardView).</text>
+  <text x="760" y="624" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">No manual record control. Drill-down:</text>
+  <text x="760" y="644" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Dashboard live IR. History = StateHypnogramView.</text>
+  <text x="760" y="676" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Profile sheet from dashboard avatar.</text>
+  <text x="760" y="720" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#9CA3AF">DRAFT wireframe · not App Store art · not a screenshot.</text>
+</svg>

@@ -1,8 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
-  <rect width="960" height="540" fill="#F3F4F6"/>
-  <rect x="24" y="24" width="912" height="492" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="12 8" rx="8"/>
-  <text x="480" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#374151">FIG-IOS-002</text>
-  <text x="480" y="270" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#111827">Placement picker UI</text>
-  <text x="480" y="330" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#6B7280">PLACEHOLDER — replace with final art</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#FAFAF8"/>
+  <text x="40" y="36" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">FIG-IOS-002 · draft wireframe · Oralable 4.3.3 · Phase 0</text>
+  <text x="40" y="64" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#111111">Placement picker — set before Connect</text>
+  <text x="40" y="88" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">Gen1 cannot change placement safely during an active link. Temple is the site.</text>
+
+  <!-- Phone: DeviceDiscoveryView placement -->
+  <rect x="48" y="110" width="280" height="540" rx="40" fill="#111111"/>
+  <rect x="56" y="118" width="264" height="524" rx="32" fill="#FFFFFF"/>
+  <rect x="148" y="128" width="80" height="12" rx="6" fill="#111111"/>
+  <text x="72" y="168" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#111111">Add a device</text>
+  <text x="72" y="188" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">Choose sensor, then scan.</text>
+
+  <text x="72" y="220" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Where is the MAM right now?</text>
+  <text x="72" y="238" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">Pick this before you tap Connect.</text>
+
+  <!-- Radio rows -->
+  <circle cx="84" cy="262" r="7" fill="none" stroke="#111111" stroke-width="1.5"/>
+  <circle cx="84" cy="262" r="4" fill="#111111"/>
+  <text x="100" y="266" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Automatic</text>
+
+  <circle cx="84" cy="292" r="7" fill="none" stroke="#9CA3AF" stroke-width="1.5"/>
+  <text x="100" y="296" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">On wireless charger</text>
+
+  <circle cx="84" cy="322" r="7" fill="none" stroke="#9CA3AF" stroke-width="1.5"/>
+  <text x="100" y="326" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Off charger (not worn)</text>
+
+  <circle cx="84" cy="352" r="7" fill="none" stroke="#9CA3AF" stroke-width="1.5"/>
+  <text x="100" y="356" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Worn on temple</text>
+  <text x="100" y="370" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">Hidden on compact discovery (showWornOption false).</text>
+
+  <text x="72" y="404" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">FW 1.0.70+: STAT blink = charging. Flash green = below hold; brief pulse ~every 10 s = hold. LED off while linked. Status never shows red.</text>
+
+  <rect x="72" y="430" width="228" height="72" rx="10" fill="#F3F4F6"/>
+  <text x="84" y="454" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Oralable</text>
+  <text x="84" y="472" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">TGM 3A0FF000 · FW 1.0.84</text>
+  <rect x="84" y="480" width="72" height="16" rx="8" fill="#111111"/>
+  <text x="102" y="492" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#FFFFFF">Connect</text>
+
+  <text x="116" y="630" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">DeviceDiscoveryView</text>
+
+  <!-- Temple sketch -->
+  <ellipse cx="560" cy="280" rx="70" ry="90" fill="none" stroke="#111111" stroke-width="2"/>
+  <path d="M520,240 Q560,200 600,240" fill="none" stroke="#111111" stroke-width="1.5"/>
+  <circle cx="538" cy="270" r="4" fill="#111111"/>
+  <rect x="575" y="248" width="28" height="18" rx="4" fill="#111111"/>
+  <text x="490" y="400" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Anterior temporalis</text>
+  <text x="490" y="420" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">PPG toward skin. Extraoral — not intraoral.</text>
+
+  <!-- Mode table -->
+  <rect x="720" y="120" width="440" height="500" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="744" y="152" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111111">DevicePlacementMode</text>
+  <text x="744" y="186" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Automatic</text>
+  <text x="744" y="204" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">STAT from firmware. Default for Phase 0.</text>
+  <text x="744" y="236" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">On wireless charger</text>
+  <text x="744" y="254" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Case + USB-C. Sensors off on the pad.</text>
+  <text x="744" y="286" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Off charger (not worn)</text>
+  <text x="744" y="304" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Table / desk. Status LED stays dark.</text>
+  <text x="744" y="336" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Worn on temple</text>
+  <text x="744" y="354" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Sensors run while the phone is linked. Battery gate applies.</text>
+  <line x1="744" y1="378" x2="1136" y2="378" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="744" y="408" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111111">Also in Settings</text>
+  <text x="744" y="428" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Section “Device placement”. Change while connected is deferred until reconnect.</text>
+  <text x="744" y="468" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Views: VitalsPlacementPickerSection · SettingsView.</text>
+  <text x="744" y="580" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#9CA3AF">DRAFT wireframe — not a screenshot.</text>
 </svg>

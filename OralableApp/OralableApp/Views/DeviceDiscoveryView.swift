@@ -23,12 +23,16 @@ struct DeviceDiscoveryView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: designSystem.spacing.md) {
-                    Text("Add a device")
+                    Text("Add Oralable")
                         .font(designSystem.typography.h3)
                         .foregroundColor(designSystem.colors.textPrimary)
                         .padding(.horizontal, 4)
 
-                    Text("Choose your sensor, then scan. We’ll connect using the right protocol for that product line.")
+                    Text(
+                        featureFlags.vitalsPhaseEnabled
+                            ? "Gen1 temple clip. Charge on the Oralable case, then scan. One night, pad or tape on the temple — no ANR, no headband."
+                            : "Choose your sensor, then scan. We’ll connect using the right protocol for that product line."
+                    )
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -51,7 +55,7 @@ struct DeviceDiscoveryView: View {
                     }
 
                     VStack(spacing: designSystem.spacing.lg) {
-                        ForEach(DeviceManagerFactory.Product.allCases) { product in
+                        ForEach(discoveryProducts) { product in
                             discoveryCard(for: product)
                         }
                     }
@@ -91,6 +95,12 @@ struct DeviceDiscoveryView: View {
         }
     }
 
+    private var discoveryProducts: [DeviceManagerFactory.Product] {
+        featureFlags.vitalsPhaseEnabled
+            ? DeviceManagerFactory.Product.beaconDiscoveryProducts
+            : Array(DeviceManagerFactory.Product.allCases)
+    }
+
     private func discoveryCard(for product: DeviceManagerFactory.Product) -> some View {
         let candidates = deviceManager.discoveredDevices.filter { $0.type == product.coreDeviceType }
         let found = candidates.first
@@ -118,9 +128,18 @@ struct DeviceDiscoveryView: View {
             }
 
             if product == .temporalisHeadband {
-                Text("50 Hz stream · Oralable REV10")
+                Text("50 Hz stream · \(BLEConstants.TGM.userFacingDeviceName)")
                     .font(designSystem.typography.captionSmall)
                     .foregroundColor(designSystem.colors.textTertiary)
+                if let fw = deviceManager.primaryFirmwareVersion() {
+                    Text(
+                        deviceManager.firmwareVersionIsFromLastConnection
+                            ? "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw) — last connection"
+                            : "\(BLEConstants.TGM.userFacingDeviceName) firmware \(fw)"
+                    )
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textTertiary)
+                }
             }
 
             if !product.isAvailableForPairing {
@@ -144,7 +163,7 @@ struct DeviceDiscoveryView: View {
                 } else {
                     if product.coreDeviceType == .oralable,
                        FirmwareGate.isBelowRecommendedOralableVersion(found.firmwareVersion) {
-                        Text("Firmware \(found.firmwareVersion ?? "?") works, but \(FirmwareGate.recommendedOralableSemanticVersion)+ adds Automatic dock (STAT blink). Manual placement still OK.")
+                        Text("Firmware \(found.firmwareVersion ?? "?") works, but \(FirmwareGate.recommendedOralableSemanticVersion)+ senses only while linked and uses green charge LEDs. Manual placement still OK.")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.warning)
                             .fixedSize(horizontal: false, vertical: true)
@@ -202,7 +221,7 @@ struct DeviceDiscoveryView: View {
                     Text("Firmware update required")
                         .font(designSystem.typography.headline)
                         .foregroundColor(designSystem.colors.textPrimary)
-                    Text("This Oralable REV10 must run firmware \(FirmwareGate.minimumOralableSemanticVersion) or newer for research capture. Update the headset, then tap Scan again.")
+                    Text("This MAM must run firmware \(FirmwareGate.minimumOralableSemanticVersion) or newer for research capture. Update the device, then tap Scan again.")
                         .font(designSystem.typography.caption)
                         .foregroundColor(designSystem.colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

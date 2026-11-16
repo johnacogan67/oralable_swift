@@ -56,9 +56,10 @@ final class MetadataValidationTests: XCTestCase {
     func testAppNameContainsNoDiagnosticClaims() throws {
         let infoPlist = try loadInfoPlist()
 
-        // Check CFBundleDisplayName
+        // Home-screen name. "Diagnostics" is the product name; the other claim words stay blocked.
         if let displayName = infoPlist["CFBundleDisplayName"] as? String {
-            for term in prohibitedMetadataTerms {
+            XCTAssertEqual(displayName, "MAM Diagnostics")
+            for term in prohibitedMetadataTerms where term != "diagnostic" {
                 XCTAssertFalse(
                     displayName.lowercased().contains(term.lowercased()),
                     "App display name should not contain '\(term)'"

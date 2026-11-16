@@ -34,6 +34,8 @@ struct NightReportSample: Sendable, Equatable {
     var accelY: Double
     var accelZ: Double
     var spo2: Double
+    /// Skin temperature °C; `.nan` when missing (Mac overnight parity — no temp gate).
+    var temperature: Double = .nan
 }
 
 struct OvernightBout: Sendable, Equatable {
@@ -129,6 +131,7 @@ enum OvernightStateClassifier {
         var ax = [Double](repeating: 0, count: n)
         var ay = [Double](repeating: 0, count: n)
         var az = [Double](repeating: 0, count: n)
+        var onSkin = [Bool](repeating: true, count: n)
         for (k, src) in idx.enumerated() {
             let s = sorted[src]
             elapsed[k] = elapsedAll[src]
@@ -137,6 +140,7 @@ enum OvernightStateClassifier {
             ax[k] = s.accelX
             ay[k] = s.accelY
             az[k] = s.accelZ
+            onSkin[k] = SensorCorroboration.isLikelyOnSkin(temperatureC: s.temperature)
         }
 
         let irV = normalizeIrDcToVolts(ir)
@@ -161,15 +165,20 @@ enum OvernightStateClassifier {
             dropPct: dropPct,
             motionPower: motionPower
         )
+        // Soft temp gate: off-skin samples (finite temp outside 32–38 °C) → quiet, no wear credit.
+        for i in 0..<states.count where !onSkin[i] {
+            states[i] = .quiet
+        }
 
         let bouts = extractBouts(states: states, elapsedS: elapsed, spo2: spo2, motion: motionPower)
         let kpis = computeKPIs(
             states: states,
             elapsedS: elapsed,
             spo2: spo2,
-            bouts: bouts
+            bouts: bouts,
+            onSkin: onSkin
         )
-        let hourly = hourlyBurden(states: states, elapsedS: elapsed, spo2: spo2)
+        let hourly = hourlyBurden(states: states, elapsedS: elapsed, spo2: spo2, onSkin: onSkin)
 
         let timelineStride = max(1, Int((classifyHz / max(1.0, timelineHz)).rounded()))
         var timeline: [OvernightTimelinePoint] = []
@@ -448,19 +457,29 @@ enum OvernightStateClassifier {
         states: [OvernightMamState],
         elapsedS: [Double],
         spo2: [Double],
-        bouts: [OvernightBout]
+        bouts: [OvernightBout],
+        onSkin: [Bool]
     ) -> OvernightKPIs {
         let minutes = stateMinutes(states: states, elapsedS: elapsedS)
-        let wearS = elapsedS.count >= 2 ? (elapsedS.last! - elapsedS.first!) : 0
+        var wearS = 0.0
+        if elapsedS.count >= 2 {
+            for i in 1..<elapsedS.count {
+                guard i < onSkin.count, onSkin[i] else { continue }
+                wearS += min(1.0, max(0, elapsedS[i] - elapsedS[i - 1]))
+            }
+        }
         let tonicBouts = bouts.filter { $0.state == .tonic }
         let phasicBouts = bouts.filter { $0.state == .phasic }
         let rescueBouts = bouts.filter { $0.state == .rescue }
         let recoveryAfter = rescueBouts.map(\.recoveryS).filter { $0 > 0 }
-        let spo2Ok = spo2.filter { $0.isFinite }
+        let spo2Ok: [Double] = zip(spo2, onSkin).compactMap { value, skin in
+            skin && value.isFinite ? value : nil
+        }
 
         var sashb = 0.0
         if elapsedS.count >= 2 {
             for i in 1..<elapsedS.count {
+                guard i < onSkin.count, onSkin[i] else { continue }
                 let dt = min(1.0, max(0, elapsedS[i] - elapsedS[i - 1]))
                 let p = spo2[i]
                 if p < spo2HypoxiaThreshold {
@@ -491,7 +510,8 @@ enum OvernightStateClassifier {
     private static func hourlyBurden(
         states: [OvernightMamState],
         elapsedS: [Double],
-        spo2: [Double]
+        spo2: [Double],
+        onSkin: [Bool]
     ) -> [OvernightHourlyBurden] {
         guard elapsedS.count >= 2 else { return [] }
         var dts = [Double](repeating: 0.02, count: elapsedS.count)
@@ -510,7 +530,7 @@ enum OvernightStateClassifier {
             case .rescue: bucket.rescue += m
             case .recovery: bucket.recovery += m
             }
-            if spo2[i] < spo2HypoxiaThreshold {
+            if i < onSkin.count, onSkin[i], spo2[i] < spo2HypoxiaThreshold {
                 bucket.sashb += (spo2HypoxiaThreshold - spo2[i]) * dts[i]
             }
             byHour[h] = bucket
@@ -545,13 +565,15 @@ enum OvernightStateClassifier {
 
 extension NightReportSample {
     init(sensor: SensorData) {
+        let temp = sensor.temperature.celsius
         self.init(
             timestamp: sensor.timestamp,
             ir: Double(sensor.ppg.ir),
             accelX: Double(sensor.accelerometer.x),
             accelY: Double(sensor.accelerometer.y),
             accelZ: Double(sensor.accelerometer.z),
-            spo2: sensor.spo2?.percentage ?? .nan
+            spo2: sensor.spo2?.percentage ?? .nan,
+            temperature: temp.isFinite && temp > 0 ? temp : .nan
         )
     }
 }

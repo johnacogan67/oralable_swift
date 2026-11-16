@@ -37,7 +37,7 @@ enum ValidationLogExportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyLog:
-            return "No BLE validation log captured yet. Connect the clip, set Worn on cheek, and stream for at least one minute."
+            return "No BLE validation log captured yet. Connect the clip, set Worn on temple, and stream for at least one minute."
         }
     }
 }

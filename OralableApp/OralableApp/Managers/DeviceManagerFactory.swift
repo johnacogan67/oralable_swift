@@ -44,9 +44,12 @@ enum DeviceManagerFactory {
             }
         }
 
+        /// Beacon / vitals: Oralable Gen1 only. ANR and intraoral stay lab.
+        static var beaconDiscoveryProducts: [Product] { [.temporalisHeadband] }
+
         var cardTitle: String {
             switch self {
-            case .temporalisHeadband: return "Temporalis Headband"
+            case .temporalisHeadband: return "Oralable MAM"
             case .anrMuscleSense: return "ANR Muscle Sense"
             case .intraoralBand: return "Intraoral (coming soon)"
             }
@@ -54,8 +57,8 @@ enum DeviceManagerFactory {
 
         var subtitle: String {
             switch self {
-            case .temporalisHeadband: return "Oralable REV10 · 50 Hz"
-            case .anrMuscleSense: return "Research EMG path"
+            case .temporalisHeadband: return "Gen1 temple clip · one night · HR and SpO₂"
+            case .anrMuscleSense: return "Lab EMG only — not Beacon"
             case .intraoralBand: return "Modular placeholder"
             }
         }
@@ -115,7 +118,7 @@ enum DeviceManagerFactory {
         _ = makeManagedCore(for: product, deviceManager: deviceManager)
         switch product {
         case .temporalisHeadband:
-            Logger.shared.info("[DeviceManagerFactory] Handshake: Oralable REV10 · adapter: OralableClinicalDeviceAdapter")
+            Logger.shared.info("[DeviceManagerFactory] Handshake: MAM · adapter: OralableClinicalDeviceAdapter")
         case .anrMuscleSense:
             deviceManager.anrMuscleManager.noteHandshakeStarted()
             Logger.shared.info("[DeviceManagerFactory] Handshake: ANR Muscle Sense · adapter: ANRMuscleClinicalDeviceAdapter")

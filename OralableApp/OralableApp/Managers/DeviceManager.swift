@@ -126,8 +126,16 @@ class DeviceManager: ObservableObject {
     /// Errors
     @Published var lastError: DeviceError?
 
-    /// Latest firmware status from primary Oralable device (3A0FF009).
+    /// Latest firmware status from primary MAM (TGM 3A0FF009).
     @Published var primaryFirmwareDeviceStatus: TGMDeviceStatus?
+    /// Latest millivolts from `3A0FF004`.
+    @Published var primaryBatteryMillivolts: Int?
+    /// Usage model from `3A0FF00D` (firmware 1.0.86+). Nil on older firmware.
+    @Published var primaryBatteryUsage: BatteryUsageEstimate?
+
+    /// Last GATT firmware string from any MAM connect, including a brief link.
+    @Published var lastKnownMAMFirmwareVersion: String?
+    @Published var lastKnownMAMConnectedAt: Date?
 
     /// REV10 peripherals that failed the minimum firmware gate (UUID matches `DeviceInfo.peripheralIdentifier`).
     @Published var oralableFirmwareBlockedPeripheralIds: Set<UUID> = []
@@ -219,6 +227,7 @@ class DeviceManager: ObservableObject {
         setupBLECallbacks()
         setupBackgroundWorker()
         setupAutomaticRecordingSession()
+        loadLastKnownMAMFirmware()
         Logger.shared.info("[DeviceManager] Initialization complete")
     }
 
@@ -236,6 +245,7 @@ class DeviceManager: ObservableObject {
         setupBLECallbacks()
         setupBackgroundWorker()
         setupAutomaticRecordingSession()
+        loadLastKnownMAMFirmware()
         Logger.shared.info("[DeviceManager] Initialization complete")
     }
 
@@ -543,6 +553,7 @@ class DeviceManager: ObservableObject {
             p.firmwareVersion = version
             primaryDevice = p
         }
+        persistLastKnownMAMFirmware(version)
     }
 
     /// Writes the unified ring buffer to a temp CSV and clears memory (paired with `SensorDataProcessor` flush).
@@ -553,7 +564,9 @@ class DeviceManager: ObservableObject {
             let name = "oralable_unified_flush_\(Int(Date().timeIntervalSince1970)).csv"
             let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
             try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
-            MemoryFlushStatus.shared.recordFlushSuccess()
+            Task { @MainActor in
+                MemoryFlushStatus.shared.recordFlushSuccess()
+            }
             Logger.shared.info("[DeviceManager] Unified buffer auto-flush: \(batch.count) samples → Application Support/\(name)")
         } catch {
             Logger.shared.warning("[DeviceManager] Unified buffer flush failed: \(error.localizedDescription)")
@@ -602,21 +615,29 @@ class DeviceManager: ObservableObject {
     static let wornPlacementMinimumBatteryPercent = 50
 
     /// Best available battery for the primary Oralable clip (status notify, then GATT battery).
+    /// Prefer a non-zero status %; if status is 0/missing, use GATT millivolt-derived level.
     func primaryBatteryPercent() -> Int? {
-        if let status = primaryFirmwareDeviceStatus {
-            return Int(status.batteryPercent)
+        let statusPct = primaryFirmwareDeviceStatus.map { Int($0.batteryPercent) }
+        if let statusPct, statusPct > 0 {
+            return statusPct
+        }
+        if let oralable = primaryBLEDevice as? OralableDevice, let level = oralable.batteryLevel, level > 0 {
+            return level
+        }
+        if let level = primaryDevice?.batteryLevel, level > 0 {
+            return level
+        }
+        if let statusPct {
+            return statusPct
         }
         if let oralable = primaryBLEDevice as? OralableDevice, let level = oralable.batteryLevel {
             return level
         }
-        if let level = primaryDevice?.batteryLevel {
-            return level
-        }
-        return nil
+        return primaryDevice?.batteryLevel
     }
 
-    /// Reported firmware string for the primary Oralable clip (GATT `3A0FF006`), if known.
-    func primaryFirmwareVersion() -> String? {
+    /// Reported firmware string for the primary MAM (GATT `3A0FF006`), or last known.
+    func liveFirmwareVersion() -> String? {
         if let v = (primaryBLEDevice as? OralableDevice)?.firmwareVersion?
             .trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
             return v
@@ -626,6 +647,43 @@ class DeviceManager: ObservableObject {
             return v
         }
         return nil
+    }
+
+    func primaryFirmwareVersion() -> String? {
+        liveFirmwareVersion() ?? lastKnownMAMFirmwareVersion
+    }
+
+    /// True when the displayed firmware came from a previous (possibly brief) connect.
+    var firmwareVersionIsFromLastConnection: Bool {
+        liveFirmwareVersion() == nil && lastKnownMAMFirmwareVersion != nil
+    }
+
+    private enum LastKnownMAMKeys {
+        static let firmware = "oralable.lastKnownMAMFirmwareVersion"
+        static let connectedAt = "oralable.lastKnownMAMConnectedAt"
+    }
+
+    private func loadLastKnownMAMFirmware() {
+        let defaults = UserDefaults.standard
+        if let stored = defaults.string(forKey: LastKnownMAMKeys.firmware)?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !stored.isEmpty {
+            lastKnownMAMFirmwareVersion = stored
+        }
+        if defaults.object(forKey: LastKnownMAMKeys.connectedAt) != nil {
+            lastKnownMAMConnectedAt = Date(
+                timeIntervalSince1970: defaults.double(forKey: LastKnownMAMKeys.connectedAt)
+            )
+        }
+    }
+
+    func persistLastKnownMAMFirmware(_ version: String) {
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        lastKnownMAMFirmwareVersion = trimmed
+        lastKnownMAMConnectedAt = Date()
+        UserDefaults.standard.set(trimmed, forKey: LastKnownMAMKeys.firmware)
+        UserDefaults.standard.set(lastKnownMAMConnectedAt!.timeIntervalSince1970, forKey: LastKnownMAMKeys.connectedAt)
+        Logger.shared.info("[DeviceManager] Persisted MAM firmware \(trimmed)")
     }
 
     /// Placement mode last written to firmware on the active primary clip (nil if unknown / disconnected).
@@ -668,7 +726,7 @@ class DeviceManager: ObservableObject {
         }
     }
 
-    /// Worn on cheek for on-body capture (overnight or structured session).
+    /// Worn on temple for on-body capture (overnight or structured session).
     func applyWornPlacementForBodySession() {
         FeatureFlags.shared.devicePlacementMode = .worn
         applyFirmwarePlacementMode(.worn)
@@ -734,13 +792,25 @@ class DeviceManager: ObservableObject {
 
     /// Append resampled / framed `SensorData` into the shared OralableCore buffer (50 Hz lane).
     func appendToUnifiedSensorStream(_ data: SensorData) {
-        Task { await unifiedSensorDataBuffer.append(data) }
+        Task {
+            let cap = await unifiedSensorDataBuffer.maxCapacity
+            let count = await unifiedSensorDataBuffer.count
+            if count + 1 > cap {
+                await flushUnifiedSensorBufferToTempFile()
+            }
+            await unifiedSensorDataBuffer.append(data)
+        }
     }
 
     /// Batch append into the unified buffer (single actor hop via `append(contentsOf:)`).
     func appendBatchToUnifiedSensorStream(_ data: [SensorData]) {
         guard !data.isEmpty else { return }
         Task {
+            let cap = await unifiedSensorDataBuffer.maxCapacity
+            let count = await unifiedSensorDataBuffer.count
+            if count + data.count > cap {
+                await flushUnifiedSensorBufferToTempFile()
+            }
             await unifiedSensorDataBuffer.append(contentsOf: data)
         }
     }
@@ -808,7 +878,7 @@ class DeviceManager: ObservableObject {
         if devices[uuid] == nil, let peripheral = bleService?.retrievePeripherals(withIdentifiers: [uuid]).first {
             let name = persistenceManager.getRememberedDevices().first(where: { $0.id == id })?.name
                 ?? peripheral.name
-                ?? "Oralable"
+                ?? BLEConstants.TGM.userFacingDeviceName
             handleDeviceDiscovered(peripheral: peripheral, name: name, rssi: -60)
         }
 

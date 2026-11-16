@@ -24,7 +24,7 @@
     <!-- Disclaimer -->
     <div class="disclaimer">
         <p><strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.</p>
-        <p><strong>Clinical validation trials</strong> are underway at <strong>Beacon Hospital</strong> as part of our research program. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
+        <p>A <strong>Beacon Hospital</strong> research program is planned. Clinic kits have not yet shipped. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
     </div>
 
     <!-- Navigation -->
@@ -60,13 +60,13 @@
 
             <h2 style="font-size: 28px; margin-bottom: 24px;">Our Story</h2>
             <p style="color: var(--color-text-secondary); margin-bottom: 24px;">
-                We deliberately shifted placement from the masseter to the temporalis region for sleep and bruxism science: temple-adjacent coupling preserves cleaner optode geometry and coupling stability overnight, giving us a path to <strong>100% signal integrity</strong> for hemodynamic occlusion–linked features (IR-DC / AC) in long recordings. That pivot underpins our Temporalis Fatigue Index (TFI), hypoxic burden (SASHB) rollups, and the McGill–aligned artifact program described on <a href="for-researchers.html">For Researchers</a>.
+                We moved placement from the masseter (cheek) to the temporalis (temple) so the optical window stays coupled overnight. Temple heart rate and SpO₂ are the product now. Jaw-load features follow on the same hardware. See <a href="for-researchers.html">For Researchers</a> for methods work with a McGill / RI-MUHC researcher.
             </p>
 
             <h2 style="font-size: 28px; margin-bottom: 24px;">Roadmap</h2>
             <p style="color: var(--color-text-secondary); margin-bottom: 16px; font-size: 15px;">
                 <strong>Gen1 / Gen2</strong> are hardware generations (Kaga module + BOM). <strong>Phase 0 / Phase 1+</strong> are software feature phases — they run on Gen1 hardware today and carry forward to Gen2.
-                Product path: <strong>Stage A wellness wearable first</strong>, then <strong>Stage B medical device</strong> later — implementing the new US patent filing as a working product (not claimed as a medical device today).
+                Product path: <strong>Stage A wellness wearable first</strong>, then a <strong>medical device</strong> path later. Foundation patents are granted in the US and EU. We do not claim medical clearance today.
             </p>
 
             <div class="section-box" style="margin-bottom: 32px;">
@@ -80,11 +80,11 @@
                         <th style="text-align: left;">Firmware</th>
                     </tr>
                     <tr>
-                        <td><strong>Gen1</strong> (shipping)</td>
+                        <td><strong>Gen1</strong> (pilot · kits gated)</td>
                         <td>PCB00003-TGM-<strong>BOM-REV8</strong></td>
                         <td><strong>REV10</strong> pilot (REV8 prod data)</td>
                         <td>Kaga <strong>ES2832AA2</strong> · nRF52832</td>
-                        <td><strong>1.0.82</strong> ship (min 1.0.63)</td>
+                        <td><strong>1.0.85</strong> (min 1.0.63)</td>
                     </tr>
                     <tr>
                         <td><strong>Gen2</strong> (upcoming)</td>
@@ -118,7 +118,7 @@
                         <p class="timeline-milestone done"><strong>Gen1 platform build</strong></p>
                         <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB00003 · ES2832AA2</p>
                         <ul class="timeline-features">
-                            <li>PCB00003 clip + Oralable magnetic charging case</li>
+                            <li>PCB00003 clip + Oralable charging case (USB-C · not Qi)</li>
                             <li>Kaga ES2832AA2 (nRF52832) · MAXM86161 PPG · LIS2DTW12 accel</li>
                             <li>iOS app + BLE TGM streaming (50&nbsp;Hz PPG/ACC)</li>
                             <li>Invitation beta / early adopters</li>
@@ -129,32 +129,32 @@
                 <div class="timeline-item">
                     <div class="timeline-year">H1 2026</div>
                     <div class="timeline-content">
-                        <p class="timeline-milestone done"><strong>Gen1 kits in the field</strong></p>
-                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW 1.0.6x</p>
+                        <p class="timeline-milestone done"><strong>Gen1 firmware lineage</strong></p>
+                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW 1.0.6x → 1.0.70</p>
                         <ul class="timeline-features">
-                            <li>App Store / early access presence</li>
-                            <li>Ed/Pedro-class kits: REV10 assemblies on BOM REV8</li>
-                            <li>Honest device state (charger / bench / worn) + LED status matrix</li>
+                            <li>App Store / TestFlight presence</li>
+                            <li>REV10 assemblies on BOM REV8 (not yet shipped to clinic)</li>
+                            <li>Honest device state (charger / bench / worn) + green-only LED</li>
                             <li>OTA DFU path for field updates</li>
                         </ul>
                     </div>
                 </div>
 
                 <div class="timeline-item">
-                    <div class="timeline-year">Mid 2026</div>
+                    <div class="timeline-year">Sep 2026</div>
                     <div class="timeline-content current">
                         <p class="timeline-milestone current"><strong>Vitals Phase 0 — Gen1 (You are here)</strong></p>
-                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW <strong>1.0.82</strong></p>
+                        <p class="timeline-hw">Hardware: Gen1 · BOM REV8 · PCB REV10 · ES2832AA2 · FW <strong>1.0.85</strong> · app <strong>4.3.3</strong> (build 5)</p>
                         <ul class="timeline-features">
                             <li>Temple / temporalis placement (no muscle-fit calibration)</li>
                             <li>Heart rate (green PPG) with signal-quality gating</li>
                             <li>SpO₂ (red / IR) with quality gating</li>
-                            <li>Battery &amp; charge status cards; Device LED mirror in app</li>
-                            <li>Manual placement modes for Gen1 charge-sense limitations</li>
-                            <li>Overnight <strong>state hypnogram</strong> in the patient app (Dashboard + Share) — device-inferred quiet / tonic / phasic / rescue / recovery patterns after a long wear night</li>
+                            <li>Battery &amp; charge cards; Device LED mirror in app</li>
+                            <li>Worn detect from IR pulse (not die temperature)</li>
+                            <li>Overnight <strong>state hypnogram</strong> in the patient app (Dashboard + Share) — device-inferred quiet / tonic / phasic / rescue / recovery after a long wear night</li>
                             <li>Clinical Temporalis PDF export (hypnogram-first; full detail pack)</li>
-                            <li>Beacon Hospital clinical program</li>
-                            <li><em>Not yet:</em> clench/grind detection, Protocol B, EMG-style muscle UI</li>
+                            <li>Beacon Hospital clinic kits <strong>gated</strong> — charge-to-temple on each unit before handoff (target: five Oralable-only kits)</li>
+                            <li><em>Not yet:</em> kits shipped, clench/grind product UI, Protocol B, professional app for Beacon</li>
                         </ul>
                     </div>
                 </div>
@@ -171,7 +171,7 @@
                             <li>Overnight bands + state hypnogram UX polish (already in patient app for long nights)</li>
                             <li>Actigraphy / jaw vibration from accelerometer</li>
                             <li>Protocol B / muscle calibration flows (when gates pass)</li>
-                            <li>Oralable for Professionals &amp; research export workflows</li>
+                            <li>Oralable for Professionals (after share gate — not Beacon Day-1)</li>
                             <li>Clinical PDF / handshake summaries (TFI, SASHB, events)</li>
                         </ul>
                     </div>
@@ -201,9 +201,8 @@
                         <p class="timeline-milestone future"><strong>Stage B — medical device path (later)</strong></p>
                         <p class="timeline-hw">Primary on Gen2 (BOM REV9 / REV11); Gen1 sunset after parity</p>
                         <ul class="timeline-features">
-                            <li><strong>Stage A first:</strong> patent-implementing <em>wellness wearable</em> (not claimed as a medical device today)</li>
-                            <li>Working embodiment of the <strong>new US patent submission</strong> (Temporalis OMG / IR-DC / TFI / SASHB)</li>
-                            <li>Foundation patents remain: granted US &amp; EU (details with counsel)</li>
+                            <li><strong>Stage A first:</strong> wellness wearable (not claimed as a medical device today)</li>
+                            <li>Foundation patents: granted US &amp; EU (details with counsel)</li>
                             <li>Expanded clinical validation → future <strong>510(k) / CE</strong> exploration</li>
                             <li>Academic / hospital partnerships</li>
                             <li>Gen1 sunset after Gen2 IR-DC, RF, and iOS soak parity</li>
@@ -240,7 +239,7 @@
 
             <div class="info-box" style="margin-top: 32px;">
                 <h3 style="margin-top: 0; margin-bottom: 15px;">What We're Not (Yet)</h3>
-                <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Oralable is currently a <strong>wellness device</strong>, not a medical device. <strong>Clinical validation trials are underway at Beacon Hospital</strong>; those studies inform our roadmap and do not change the regulatory status of the consumer product today. This means:</p>
+                <p style="color: var(--color-text-secondary); margin-bottom: 16px;">Oralable is currently a <strong>wellness device</strong>, not a medical device. A <strong>Beacon Hospital</strong> clinic program is planned; kits have not yet shipped. That work does not change the regulatory status of the consumer product today. This means:</p>
                 <ul style="color: var(--color-text-secondary); margin-bottom: 16px;">
                     <li>We do NOT diagnose any medical conditions</li>
                     <li>We do NOT provide medical advice</li>

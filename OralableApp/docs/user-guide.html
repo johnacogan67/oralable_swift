@@ -24,7 +24,7 @@
     <!-- Disclaimer -->
     <div class="disclaimer">
         <p><strong>Wellness Device:</strong> Oralable is not a medical device and is not intended to diagnose, treat, cure, or prevent any disease.</p>
-        <p><strong>Clinical validation trials</strong> are underway at <strong>Beacon Hospital</strong> as part of our research program. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
+        <p>A <strong>Beacon Hospital</strong> research program is planned. Clinic kits have not yet shipped. The consumer app and hardware remain wellness tools unless and until regulatory clearances apply.</p>
     </div>
 
     <!-- Navigation -->
@@ -69,17 +69,17 @@
                 <div class="app-cards" style="margin-bottom: 32px;">
                     <div class="app-card" style="background: var(--color-bg-primary);">
                         <h3 style="font-size: 18px;">Oralable (Consumer)</h3>
-                        <p class="description">For individuals monitoring their own muscle activity</p>
+                        <p class="description">Temple vitals and overnight sessions on your iPhone</p>
                         <ul>
                             <li>Connect to device</li>
                             <li>Record sessions</li>
                             <li>View your data</li>
-                            <li>Share with professionals</li>
+                            <li>Export CSV / PDF</li>
                         </ul>
                     </div>
                     <div class="app-card" style="background: var(--color-bg-primary);">
                         <h3 style="font-size: 18px;">Oralable for Professionals</h3>
-                        <p class="description">For therapists, researchers, and coaches</p>
+                        <p class="description">Later — CSV import for researchers and coaches. Not Beacon Day-1</p>
                         <ul>
                             <li>Import participant data</li>
                             <li>Manage multiple participants</li>
@@ -293,11 +293,11 @@
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Pairing Steps</h3>
             <ol class="steps">
-                <li><strong>Turn on</strong> your Oralable device (LED flashes)</li>
+                <li><strong>Turn on</strong> your Oralable device (green LED — never red or blue)</li>
                 <li>Go to the <strong>Devices</strong> tab</li>
                 <li>Tap <strong>Scan for Devices</strong></li>
                 <li>Select <strong>Oralable</strong> from the list</li>
-                <li>Wait for connection (LED solid)</li>
+                <li>Wait for connection (streaming starts; status LED follows firmware, not a solid red/blue)</li>
                 <li>Return to <strong>Dashboard</strong> to see live data</li>
             </ol>
 
@@ -315,7 +315,7 @@
             <!-- SECTION 4: DASHBOARD -->
             <h2 id="dashboard" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">4. Dashboard</h2>
 
-            <p style="color: var(--color-text-secondary);">The Dashboard displays real-time muscle activity from your connected device or Demo Mode.</p>
+            <p style="color: var(--color-text-secondary);">The Dashboard shows temple vitals (heart rate, SpO₂) and device state from your connected sensor or Demo Mode.</p>
 
             <div class="section-box">
                 <h4 style="margin-top: 0;">Dashboard Elements</h4>
@@ -327,29 +327,23 @@
                 </ul>
             </div>
 
-            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Understanding PPG Values</h3>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Dashboard readings (Phase 0)</h3>
             <ul style="color: var(--color-text-secondary);">
-                <li><strong>Higher values</strong> = More muscle tension</li>
-                <li><strong>Lower values</strong> = Relaxed muscles</li>
-                <li><strong>Spikes</strong> = Clenching or grinding events</li>
+                <li><strong>Heart rate / SpO₂</strong> — temple vitals when coupling is good</li>
+                <li><strong>IR pulse</strong> — used for worn detect and pulse quality</li>
+                <li>Clench / grind event labels in the patient UI come later (Phase 1+)</li>
             </ul>
 
             <!-- SECTION 5: RECORDING -->
             <h2 id="recording" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">5. Recording Sessions</h2>
 
-            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Device Positioning</h3>
-            <p style="color: var(--color-text-secondary);">The app shows different colors based on device status:</p>
-            <ul style="color: var(--color-text-secondary);">
-                <li><strong>Black background</strong> — Device not positioned (temperature below 32°C)</li>
-                <li><strong>Green background</strong> — Device positioned, muscles relaxed</li>
-                <li><strong>Red background</strong> — Device positioned, muscle activity detected</li>
-            </ul>
-            <p style="color: var(--color-text-secondary);">For accurate readings, ensure the sensor is in contact with your skin until the background turns green.</p>
+            <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Device positioning</h3>
+            <p style="color: var(--color-text-secondary);">The app reports honest device state: on the case, on the bench, or worn. Automatic worn uses the infrared pulse, not die temperature. Seat the optical window on the temple (anterior temporalis bulge when you clench) until the app shows worn and live PPG.</p>
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Placement &amp; recording (Vitals Phase 0)</h3>
             <p style="color: var(--color-text-secondary);">Current pilot focus is <strong>temple / temporalis</strong> heart rate and SpO₂ with honest device state in the app. Seat the clip on the temple, connect in the Oralable app, and allow automatic recording once the device is ready. Legacy 15-second muscle-calibration flows are not required for vitals Phase 0.</p>
             <ol class="steps">
-                <li>Charge the clip in the <strong>Oralable magnetic charging case</strong> (USB-C to the case)</li>
+                <li>Charge the clip in the <strong>Oralable charging case</strong> (USB-C to the case; not Qi / MagSafe)</li>
                 <li>Place the sensor for temple / temporalis coupling</li>
                 <li>Connect in the app and confirm device status (worn / battery / LED mirror)</li>
                 <li>Start or allow an automatic recording session</li>
@@ -376,8 +370,8 @@
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Recording Tips</h3>
             <ul style="color: var(--color-text-secondary);">
-                <li>Record for at least 5-10 minutes to capture patterns</li>
-                <li>For overnight bands and the state hypnogram, aim for <strong>≥6 hours</strong> worn (goal 8 hours)</li>
+                <li>Record for at least 5–10 minutes to capture patterns</li>
+                <li>Overnight bands unlock after about <strong>1 hour</strong> worn; aim for <strong>≥6 hours</strong> (goal 8) for a full night view. Beacon clinic nights target ≥4 hours</li>
                 <li>Keep device properly positioned</li>
                 <li>Note significant events for reference</li>
             </ul>
@@ -385,7 +379,7 @@
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Overnight state hypnogram</h3>
             <p style="color: var(--color-text-secondary);">After a long overnight wear, the patient app can show a <strong>state hypnogram</strong> — a barcode-style view of device-inferred quiet / tonic / phasic / rescue / recovery patterns across the night. It appears on the <strong>Dashboard</strong> (morning card) and as a preview on the <strong>Share</strong> tab. This is the primary overnight graphic for personal awareness.</p>
             <ul style="color: var(--color-text-secondary);">
-                <li>Open <strong>Dashboard</strong> after an overnight session to see band chips (when wear ≥6&nbsp;h) plus the hypnogram</li>
+                <li>Open <strong>Dashboard</strong> after an overnight session to see band chips (unlock after ≥1&nbsp;h worn) plus the hypnogram</li>
                 <li>Open <strong>Share</strong> → Clinical report section for the same hypnogram preview</li>
                 <li>Export <strong>Clinical Temporalis PDF</strong> for the full pack (hypnogram + hourly detail + event CSV)</li>
             </ul>
@@ -512,7 +506,7 @@
             <!-- SECTION 9: PROFESSIONAL APP -->
             <h2 id="professional" style="font-size: 28px; margin-top: 60px; padding-bottom: 10px; border-bottom: 2px solid var(--color-black);">9. Oralable for Professionals</h2>
 
-            <p style="color: var(--color-text-secondary);">Oralable for Professionals is for therapists, researchers, coaches, and other professionals working with Oralable users.</p>
+            <p style="color: var(--color-text-secondary);">Oralable for Professionals is planned after Phase 1+. It is not part of the current Beacon clinic kit. The notes below describe the intended workflow when it opens.</p>
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Getting Started</h3>
             <ol class="steps">
@@ -606,9 +600,9 @@
 
             <h3 style="font-size: 20px; margin-top: 30px; margin-bottom: 15px;">Coming Soon</h3>
             <ul style="color: var(--color-text-secondary);">
-                <li>Premium subscription</li>
-                <li>CloudKit share codes</li>
                 <li>Phase 1+ muscle / IR-DC UX</li>
+                <li>Oralable for Professionals (after share gate)</li>
+                <li>CloudKit share codes</li>
                 <li>Apple Health integration polish</li>
             </ul>
 

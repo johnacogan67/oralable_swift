@@ -58,8 +58,15 @@ class SensorDataProcessor: ObservableObject {
         return out
     }
 
-    /// Every ~60 minutes while recording: spill CSV to tmp and clear RAM.
-    @MainActor
+    /// Spill RAM to Application Support when the ring is full (~3 min at 50 Hz).
+    /// Dropping the oldest rows used to erase most of a Beacon night.
+    private func spillHistoryIfNeeded() {
+        if sensorDataHistory.count > maxHistoryCount {
+            flushLiveHistoryToTempFileIfNonEmpty()
+        }
+    }
+
+    /// Spill CSV to Application Support and clear RAM (overflow, 90 s tick, or background).
     func flushLiveHistoryToTempFileIfNonEmpty() {
         guard !sensorDataHistory.isEmpty else { return }
         let batch = sensorDataHistory
@@ -67,7 +74,9 @@ class SensorDataProcessor: ObservableObject {
             let name = "oralable_processor_flush_\(Int(Date().timeIntervalSince1970)).csv"
             let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
             try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
-            MemoryFlushStatus.shared.recordFlushSuccess()
+            Task { @MainActor in
+                MemoryFlushStatus.shared.recordFlushSuccess()
+            }
             Logger.shared.info("[SensorDataProcessor] Auto-flush: \(batch.count) rows → Application Support/\(name)")
         } catch {
             Logger.shared.warning("[SensorDataProcessor] Auto-flush failed: \(error.localizedDescription)")
@@ -104,9 +113,7 @@ class SensorDataProcessor: ObservableObject {
         if isCalibrationWindowActive {
             calibrationCaptureOralable.append(contentsOf: data.filter { $0.deviceType == .oralable })
         }
-        if sensorDataHistory.count > maxHistoryCount {
-            sensorDataHistory.removeFirst(sensorDataHistory.count - maxHistoryCount)
-        }
+        spillHistoryIfNeeded()
     }
 
     /// Inject a demo reading directly (for demo mode)
@@ -134,11 +141,7 @@ class SensorDataProcessor: ObservableObject {
             )
             
             sensorDataHistory.append(sensorData)
-            
-            // Trim history if needed
-            if sensorDataHistory.count > maxHistoryCount {
-                sensorDataHistory.removeFirst(sensorDataHistory.count - maxHistoryCount)
-            }
+            spillHistoryIfNeeded()
         }
     }
 
@@ -183,11 +186,7 @@ class SensorDataProcessor: ObservableObject {
             )
             
             sensorDataHistory.append(sensorData)
-            
-            // Trim history if needed
-            if sensorDataHistory.count > maxHistoryCount {
-                sensorDataHistory.removeFirst(sensorDataHistory.count - maxHistoryCount)
-            }
+            spillHistoryIfNeeded()
         }
     }
 }

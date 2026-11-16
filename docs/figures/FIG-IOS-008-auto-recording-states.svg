@@ -1,8 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
-  <rect width="960" height="540" fill="#F3F4F6"/>
-  <rect x="24" y="24" width="912" height="492" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="12 8" rx="8"/>
-  <text x="480" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#374151">FIG-IOS-008</text>
-  <text x="480" y="270" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#111827">Automatic recording states</text>
-  <text x="480" y="330" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#6B7280">PLACEHOLDER — replace with final art</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540">
+  <rect width="1200" height="540" fill="#FAFAF8"/>
+  <text x="40" y="36" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">FIG-IOS-008 · draft · MOBILE_APP_FLOWS §2.4 · AutomaticRecordingSession</text>
+  <text x="40" y="64" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#111111">Automatic recording — no Start button</text>
+  <text x="40" y="88" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">Dashboard shows streaming / positioned / activity. The user does not start or stop a session.</text>
+
+  <!-- States -->
+  <rect x="80" y="200" width="180" height="90" rx="12" fill="#FFFFFF" stroke="#111111" stroke-width="1.5"/>
+  <text x="170" y="242" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Idle</text>
+  <text x="170" y="264" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">unpaired / not worn</text>
+
+  <line x1="260" y1="230" x2="330" y2="230" stroke="#111111" stroke-width="1.5"/>
+  <text x="295" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">BLE ready</text>
+  <text x="295" y="248" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">+ worn stream</text>
+
+  <rect x="340" y="200" width="200" height="90" rx="12" fill="#111111"/>
+  <text x="440" y="242" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#FFFFFF">Recording</text>
+  <text x="440" y="264" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#D1D5DB">50 Hz into session</text>
+
+  <line x1="540" y1="230" x2="620" y2="230" stroke="#111111" stroke-width="1.5"/>
+  <text x="580" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">link drop</text>
+
+  <rect x="630" y="200" width="180" height="90" rx="12" fill="#FEF9C3" stroke="#CA8A04" stroke-width="1.5"/>
+  <text x="720" y="242" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Paused</text>
+  <text x="720" y="264" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">wait for reconnect</text>
+
+  <path d="M720,200 C720,150 440,150 440,200" fill="none" stroke="#111111" stroke-width="1.5"/>
+  <text x="580" y="142" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">reconnect → Recording</text>
+
+  <line x1="440" y1="290" x2="440" y2="350" stroke="#111111" stroke-width="1.5"/>
+  <text x="500" y="330" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">auto-flush threshold</text>
+
+  <rect x="340" y="350" width="200" height="70" rx="12" fill="#FFFFFF" stroke="#111111" stroke-width="1.5"/>
+  <text x="440" y="380" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111111">Flushing</text>
+  <text x="440" y="400" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#6B7280">CSV written → Recording</text>
+
+  <line x1="260" y1="245" x2="260" y2="385" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <line x1="260" y1="385" x2="340" y2="245" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="80" y="400" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">session end</text>
+  <text x="80" y="416" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">or unpair → Idle</text>
+
+  <rect x="860" y="160" width="300" height="280" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="880" y="192" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">UI indicator</text>
+  <text x="880" y="220" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">RecordingStateIndicator</text>
+  <text x="880" y="250" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Streaming — black</text>
+  <text x="880" y="272" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Positioned — green</text>
+  <text x="880" y="294" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Activity — red (event)</text>
+  <text x="880" y="326" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Hidden in vitals phase;</text>
+  <text x="880" y="344" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">status lives on VitalsDeviceStatusCard.</text>
+  <text x="880" y="380" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">Owner: OralableCore</text>
+  <text x="880" y="398" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">AutomaticRecordingSession</text>
+
+  <text x="40" y="510" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#9CA3AF">DRAFT. Do not show a record button on App Store shots of Phase 0.</text>
 </svg>

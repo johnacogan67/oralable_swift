@@ -18,14 +18,14 @@ public enum AlgorithmSpec {
     /// PPG sample rate in Hz
     public static let ppgSampleRate: Double = 50.0
 
-    /// Accelerometer sample rate in Hz
-    public static let accelSampleRate: Double = 100.0
+    /// Accelerometer sample rate in Hz. LIS2DTW12 CTRL1 0x43 is 50 Hz.
+    public static let accelSampleRate: Double = 50.0
 
     /// Sample interval for PPG in seconds
     public static let ppgSampleInterval: Double = 1.0 / ppgSampleRate  // 20ms
 
     /// Sample interval for accelerometer in seconds
-    public static let accelSampleInterval: Double = 1.0 / accelSampleRate  // 10ms
+    public static let accelSampleInterval: Double = 1.0 / accelSampleRate  // 20ms
 
     // MARK: - Packet Sizes
 

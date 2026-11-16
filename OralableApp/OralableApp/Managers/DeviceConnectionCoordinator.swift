@@ -164,6 +164,19 @@ extension DeviceManager {
                     )
                 }
 
+                // Ask for the long supervision timeout before the notify storm. The firmware
+                // request on connect is often still the short iOS default; waiting until 8s
+                // after ready never runs if the link dies during discovery.
+                do {
+                    try oralableDevice.requestFirmwareConnParamUpdate()
+                    Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Pre-notify conn param update")
+                } catch {
+                    Logger.shared.warning(
+                        "[DeviceManager][BLETrace \(traceId)] ⚠️ Pre-notify conn param update skipped: \(error.localizedDescription)"
+                    )
+                }
+                try await Task.sleep(nanoseconds: 400_000_000)
+
                 do {
                     try await withTimeout(seconds: 10) {
                         try await oralableDevice.enableDeferredDiscoverySubscriptions()
@@ -207,6 +220,10 @@ extension DeviceManager {
 
             // Device is now ready!
             updateDeviceReadiness(peripheral.identifier, to: .ready)
+            backgroundWorker.noteLinkReady(for: peripheral.identifier)
+            if device is OralableDevice {
+                clearStaleConnectionBanner()
+            }
             isConnecting = false
             Logger.shared.info("[DeviceManager][BLETrace \(traceId)] ✅ Device fully ready in \(Int(Date().timeIntervalSince(flowStartedAt) * 1000))ms")
 
@@ -239,6 +256,18 @@ extension DeviceManager {
         discoveryFlowTasks[id] = task
     }
 
+    /// A drop sets `lastError` for the banner. Reconnect used to leave that banner up.
+    /// Clear only link-down errors once an Oralable is ready again.
+    func clearStaleConnectionBanner() {
+        switch lastError {
+        case .connectionLost, .disconnected, .connectionFailed, .notConnected:
+            Logger.shared.info("[DeviceManager] Link ready; clearing stale connection banner")
+            lastError = nil
+        default:
+            break
+        }
+    }
+
     func handleDeviceDisconnected(peripheral: CBPeripheral, error: Error?) {
         if let error = error {
             Logger.shared.warning("[DeviceManager] Device disconnected with error: \(error.localizedDescription)")
@@ -256,6 +285,8 @@ extension DeviceManager {
         }
         if primaryDevice?.peripheralIdentifier == peripheral.identifier {
             primaryFirmwareDeviceStatus = nil
+            primaryBatteryMillivolts = nil
+            primaryBatteryUsage = nil
         }
 
         // Update readiness state

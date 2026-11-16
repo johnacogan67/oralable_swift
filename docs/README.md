@@ -10,6 +10,7 @@
 | Doc | Role |
 |-----|------|
 | [MOBILE_APP_FLOWS.md](./MOBILE_APP_FLOWS.md) | Phase 0 vitals flows · §2 working diagrams · Protocol A Setup · overnight |
+| [GEN2_COMPATIBILITY_GATE.md](./GEN2_COMPATIBILITY_GATE.md) | Physical-device evidence required before Gen2 can be described as compatible |
 | [FIGURES.md](./FIGURES.md) | `FIG-IOS-*` inventory |
 | `OralableApp/docs/WEBSITE.md` | Website / hardware mirror notes |
 

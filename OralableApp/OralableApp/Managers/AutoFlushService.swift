@@ -22,11 +22,16 @@ final class AutoFlushService {
         self.deviceManager = deviceManager
         self.sensorDataProcessor = sensorDataProcessor
         tick?.cancel()
-        tick = Timer.publish(every: 3600, on: .main, in: .common)
+        tick = Timer.publish(every: 90, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 Task { await self?.flushIfNeeded() }
             }
+    }
+
+    /// Spill RAM + unified buffer now (overflow, 90 s tick, or app background).
+    func flushNow() async {
+        await flushIfNeeded()
     }
 
     private func flushIfNeeded() async {

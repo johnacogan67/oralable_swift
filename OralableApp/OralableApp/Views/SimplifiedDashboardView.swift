@@ -22,6 +22,7 @@ struct SimplifiedDashboardView: View {
     @EnvironmentObject var deviceManager: DeviceManager
     @EnvironmentObject var appStateManager: AppStateManager
     @EnvironmentObject var dependencies: AppDependencies
+    @EnvironmentObject var recordingSessionManager: RecordingSessionManager
     @ObservedObject private var featureFlags = FeatureFlags.shared
     @ObservedObject var viewModel: DashboardViewModel
     @State private var overnightReport: OvernightNightReportBuilder.Result?
@@ -91,6 +92,9 @@ struct SimplifiedDashboardView: View {
             }
             .navigationBarHidden(true)
             .onAppear { refreshOvernightReport() }
+            .onChange(of: recordingSessionManager.sessions.map(\.id)) { _ in
+                refreshOvernightReport()
+            }
         }
     }
 

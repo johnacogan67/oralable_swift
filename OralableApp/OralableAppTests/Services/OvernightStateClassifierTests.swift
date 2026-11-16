@@ -118,6 +118,99 @@ final class OvernightStateClassifierTests: XCTestCase {
         XCTAssertEqual(samples[0].ir, 200_000, accuracy: 0.1)
         XCTAssertEqual(samples[1].spo2, 91, accuracy: 0.1)
         XCTAssertEqual(samples[1].accelZ, 16_384, accuracy: 0.1)
+        XCTAssertEqual(samples[0].temperature, 36.5, accuracy: 0.01)
+    }
+
+    func testAmbientTemperatureExcludesWearAndSASHB() {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_200)
+        var samples: [NightReportSample] = []
+        // Rescue-like IR + low SpO2, but ambient temperature → off-skin gate
+        for i in 0..<120 {
+            samples.append(
+                NightReportSample(
+                    timestamp: t0.addingTimeInterval(Double(i) * 0.1),
+                    ir: 90_000,
+                    accelX: 50,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 88,
+                    temperature: 25.0
+                )
+            )
+        }
+        guard let analysis = OvernightStateClassifier.analyze(samples, classifyHz: 10, timelineHz: 2) else {
+            XCTFail("Expected analysis")
+            return
+        }
+        XCTAssertEqual(analysis.kpis.sashb, 0, accuracy: 1e-6)
+        XCTAssertEqual(analysis.kpis.wearS, 0, accuracy: 1e-6)
+        XCTAssertTrue(analysis.timeline.allSatisfy { $0.state == .quiet })
+    }
+
+    func testMissingTemperatureKeepsMacParityPath() {
+        let t0 = Date(timeIntervalSince1970: 1_700_000_300)
+        var samples: [NightReportSample] = []
+        for i in 0..<80 {
+            samples.append(
+                NightReportSample(
+                    timestamp: t0.addingTimeInterval(Double(i) * 0.1),
+                    ir: 200_000,
+                    accelX: 0,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 98,
+                    temperature: .nan
+                )
+            )
+        }
+        for i in 80..<160 {
+            samples.append(
+                NightReportSample(
+                    timestamp: t0.addingTimeInterval(Double(i) * 0.1),
+                    ir: 90_000,
+                    accelX: 50,
+                    accelY: 0,
+                    accelZ: 16_384,
+                    spo2: 88,
+                    temperature: .nan
+                )
+            )
+        }
+        guard let analysis = OvernightStateClassifier.analyze(samples, classifyHz: 10, timelineHz: 2) else {
+            XCTFail("Expected analysis")
+            return
+        }
+        XCTAssertGreaterThan(analysis.kpis.wearS, 0)
+        XCTAssertGreaterThan(analysis.kpis.sashb, 0)
+    }
+
+    func testLoaderMergesTemperatureFromLiveHistory() {
+        let t0 = Date()
+        let live = (0..<5).map { i -> SensorData in
+            let ts = t0.addingTimeInterval(Double(i) * 0.1)
+            return SensorData(
+                timestamp: ts,
+                ppg: PPGData(red: 1000, ir: 180_000, green: 800, timestamp: ts),
+                accelerometer: AccelerometerData(x: 0, y: 0, z: 16384, timestamp: ts),
+                temperature: TemperatureData(celsius: 34.2, timestamp: ts),
+                battery: BatteryData(percentage: 90, timestamp: ts),
+                heartRate: nil,
+                spo2: SpO2Data(percentage: 97, quality: 0.9, timestamp: ts),
+                deviceType: .oralable
+            )
+        }
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("night_loader_temp_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let samples = NightReportSampleLoader.load(
+            sessionStart: t0.addingTimeInterval(-1),
+            sessionEnd: t0.addingTimeInterval(5),
+            liveHistory: live,
+            sessionFileURL: nil,
+            flushDirectory: tmp
+        )
+        XCTAssertEqual(samples.count, 5)
+        XCTAssertEqual(samples[0].temperature, 34.2, accuracy: 0.01)
     }
 
     func testLoaderMergesLiveHistory() {

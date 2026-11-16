@@ -21,7 +21,7 @@
 		<false/>
 	</dict>
 	<key>CFBundleDisplayName</key>
-	<string>Oralable for Dentists</string>
+	<string>Oralable for Professionals</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>UILaunchScreen</key>

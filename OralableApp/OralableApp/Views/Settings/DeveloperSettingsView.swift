@@ -27,6 +27,11 @@ struct DeveloperSettingsView: View {
     @State private var nrfLogStatus: String = ""
     @State private var nrfExportURL: URL?
     @State private var showNRFExportSheet = false
+    @State private var edfExportURL: URL?
+    @State private var showEDFExportSheet = false
+    @State private var edfStatus: String = ""
+    @State private var simNightStatus: String = ""
+    @State private var isWritingSimNight = false
 
     var body: some View {
         Form {
@@ -54,6 +59,57 @@ struct DeveloperSettingsView: View {
             Section("Other Features") {
                 Toggle("Detection Settings", isOn: $featureFlags.showDetectionSettings)
                 Toggle("Vitals phase (HR + SpO₂)", isOn: $featureFlags.vitalsPhaseEnabled)
+                Toggle("Require Protocol A Setup", isOn: $featureFlags.requireProtocolASetup)
+                if featureFlags.vitalsPhaseEnabled {
+                    Text("Dual Protocol A is off in vitals / Beacon builds (Oralable-only). Turn off Vitals phase to enable Dual for lab use.")
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                } else {
+                    Toggle("Dual Protocol A (research)", isOn: $featureFlags.showDualProtocolA)
+                }
+            }
+
+            Section {
+                Text("Require Protocol A Setup (default OFF for Beacon): pair then dashboard. Turn ON only for the ~6 min couple seat-QC session.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
+                Text("Dual Protocol A: lab only (~6 min + ANR). Default OFF. Not a Beacon patient path. Dual A Share includes session.edf with ANR EMG.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
+            }
+
+            Section("Simulated night") {
+                Text("4 h worn script: quiet, clench, grind, and oxygen drops. Local only. Not a recorded night.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
+                Button("Load simulated 4 h worn night") {
+                    loadSimulatedNight()
+                }
+                .disabled(isWritingSimNight)
+                if !simNightStatus.isEmpty {
+                    Text(simNightStatus)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                }
+            }
+
+            Section("Research EDF+") {
+                Text("Oralable-only EDF from live history (no EMG). For Dual A with ANR EMG, use Dual Protocol A Share.")
+                    .font(designSystem.typography.caption)
+                    .foregroundColor(designSystem.colors.textSecondary)
+                Button("Export Oralable-only session.edf") {
+                    exportOralableOnlyEDF()
+                }
+                if !edfStatus.isEmpty {
+                    Text(edfStatus)
+                        .font(designSystem.typography.caption)
+                        .foregroundColor(designSystem.colors.textSecondary)
+                }
+            }
+            .sheet(isPresented: $showEDFExportSheet) {
+                if let edfExportURL {
+                    ShareSheet(items: [edfExportURL])
+                }
             }
 
             Section("Bench recovery (Gen1)") {
@@ -218,6 +274,33 @@ struct DeveloperSettingsView: View {
             lastFwConfigStatus = "Requested conn param update @ \(Date().formatted(date: .omitted, time: .standard))"
         } catch {
             lastFwConfigStatus = "Request failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func loadSimulatedNight() {
+        isWritingSimNight = true
+        simNightStatus = "Writing the night…"
+        Task {
+            do {
+                _ = try await SimulatedWornNight.load(using: dependencies.recordingSessionManager)
+                featureFlags.showOvernightHypnogram = true
+                simNightStatus = "Loaded. Open the dashboard. Simulated — not a recorded night."
+            } catch {
+                simNightStatus = error.localizedDescription
+            }
+            isWritingSimNight = false
+        }
+    }
+
+    private func exportOralableOnlyEDF() {
+        let history = SensorDataProcessor.shared.sensorDataHistory
+        do {
+            let url = try ResearchEDFExport.writeOralableOnly(from: history)
+            edfExportURL = url
+            edfStatus = "Wrote \(url.lastPathComponent)"
+            showEDFExportSheet = true
+        } catch {
+            edfStatus = error.localizedDescription
         }
     }
 

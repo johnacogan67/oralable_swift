@@ -119,12 +119,9 @@ struct OralableApp: App {
             } else {
                 deviceManager.cancelAllReconnections()
             }
-            // Note: Automatic recording continues in background
-            // Events are auto-saved every 3 minutes and on disconnect
-            // Sync data when app goes to background
             Task(priority: .utility) {
-                // Save any pending events
                 deviceManager.automaticRecordingSession?.savePendingEvents()
+                await AutoFlushService.shared.flushNow()
                 await waitUntilBleIdleForCloudKitSync(deviceManager: deviceManager)
                 await sharedDataManager.uploadCurrentDataForSharing()
             }

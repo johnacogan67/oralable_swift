@@ -72,6 +72,11 @@ enum NightReportSampleLoader {
         let ayIdx = map["accel_y"]
         let azIdx = map["accel_z"]
         let spo2Idx = map["spo2_percent"]
+        let tempIdx = map["temp_c"]
+            ?? map["temp_celsius"]
+            ?? map["temperature"]
+            ?? map["temp"]
+            ?? map["temperature_c"]
 
         let fmtFrac = ISO8601DateFormatter()
         fmtFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -91,6 +96,8 @@ enum NightReportSampleLoader {
             let ay = ayIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
             let az = azIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
             let spo2 = spo2Idx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan
+            let tempRaw = tempIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
+            let temperature = (tempRaw?.isFinite == true && (tempRaw ?? 0) > 0) ? tempRaw! : Double.nan
             out.append(
                 NightReportSample(
                     timestamp: ts,
@@ -98,7 +105,8 @@ enum NightReportSampleLoader {
                     accelX: ax,
                     accelY: ay,
                     accelZ: az,
-                    spo2: spo2
+                    spo2: spo2,
+                    temperature: temperature
                 )
             )
         }
@@ -126,6 +134,11 @@ enum NightReportSampleLoader {
             guard tsIdx < cols.count, irIdx < cols.count else { continue }
             guard let ts = fmtFrac.date(from: cols[tsIdx]) ?? fmt.date(from: cols[tsIdx]) else { continue }
             if ts < start || ts > end { continue }
+            let tempRaw = map["temp_c"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
+                ?? map["temp_celsius"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
+                ?? map["temperature"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
+                ?? map["temp"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
+            let temperature = (tempRaw?.isFinite == true && (tempRaw ?? 0) > 0) ? tempRaw! : Double.nan
             out.append(
                 NightReportSample(
                     timestamp: ts,
@@ -135,7 +148,8 @@ enum NightReportSampleLoader {
                     accelZ: map["accel_z"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0,
                     spo2: map["spo2_percent"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
                         ?? map["spo2"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
-                        ?? .nan
+                        ?? .nan,
+                    temperature: temperature
                 )
             )
         }

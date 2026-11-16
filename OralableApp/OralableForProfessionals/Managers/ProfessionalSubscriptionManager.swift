@@ -19,6 +19,7 @@
 import Foundation
 import StoreKit
 import Combine
+import OralableCore
 
 // MARK: - Professional Subscription Tiers
 
@@ -95,6 +96,16 @@ enum ProfessionalSubscriptionTier: String, Codable, CaseIterable {
     var isPaid: Bool {
         return self != .starter
     }
+
+    /// Subscription tiers are not lexicographically ordered; use this explicit
+    /// rank when several current entitlements are present.
+    var rank: Int {
+        switch self {
+        case .starter: return 0
+        case .professional: return 1
+        case .practice: return 2
+        }
+    }
 }
 
 // MARK: - Professional Subscription Manager
@@ -115,21 +126,9 @@ class ProfessionalSubscriptionManager: ObservableObject {
     // MARK: - Private Properties
 
     private var updateListenerTask: Task<Void, Never>?
-    private let productIDs: Set<String> = [
-        ProductIdentifier.professionalMonthly,
-        ProductIdentifier.professionalYearly
-        // Practice tier deferred to post-launch
-    ]
-
-    // MARK: - Product Identifiers
-
-    private enum ProductIdentifier {
-        static let professionalMonthly = "com.jacdental.oralable.professional.monthly"
-        static let professionalYearly = "com.jacdental.oralable.professional.yearly"
-        // Practice tier deferred to post-launch:
-        // static let practiceMonthly = "com.jacdental.oralable.practice.monthly"
-        // static let practiceYearly = "com.jacdental.oralable.practice.yearly"
-    }
+    /// The professional app remains deferred. Keeping every local test product
+    /// in the catalog prevents drift between the manager and its StoreKit file.
+    private let productIDs = OralableAppServiceContract.StoreKit.professionalProductIdentifiers
 
     // MARK: - Initialization
 
@@ -243,7 +242,7 @@ class ProfessionalSubscriptionManager: ObservableObject {
                 let transaction = try checkVerified(result)
 
                 if let tier = tierForProductID(transaction.productID) {
-                    if tier.rawValue > highestTier.rawValue {
+                    if tier.rank > highestTier.rank {
                         highestTier = tier
                         isActive = true
                         expiryDate = transaction.expirationDate
@@ -302,13 +301,12 @@ class ProfessionalSubscriptionManager: ObservableObject {
 
     private func tierForProductID(_ productID: String) -> ProfessionalSubscriptionTier? {
         switch productID {
-        case ProductIdentifier.professionalMonthly,
-             ProductIdentifier.professionalYearly:
+        case OralableAppServiceContract.StoreKit.professionalMonthly,
+             OralableAppServiceContract.StoreKit.professionalYearly:
             return .professional
-        // Practice tier deferred to post-launch
-        // case ProductIdentifier.practiceMonthly,
-        //      ProductIdentifier.practiceYearly:
-        //     return .practice
+        case OralableAppServiceContract.StoreKit.practiceMonthly,
+             OralableAppServiceContract.StoreKit.practiceYearly:
+            return .practice
         default:
             return nil
         }

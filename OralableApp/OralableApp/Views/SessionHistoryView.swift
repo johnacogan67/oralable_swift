@@ -16,6 +16,9 @@ enum HistoryFilter: String, CaseIterable {
     case movement = "Move"
     case temperature = "Temp"
 
+    /// Beacon / vitals: Oralable IR, movement, temperature. EMG stays lab.
+    static var beaconCases: [HistoryFilter] { [.ir, .movement, .temperature] }
+
     /// Device that produces this data type
     var deviceSource: String {
         switch self {
@@ -78,8 +81,13 @@ enum HistoryFilter: String, CaseIterable {
 struct SessionHistoryView: View {
     @EnvironmentObject var designSystem: DesignSystem
     @ObservedObject var sessionManager: RecordingSessionManager
+    @ObservedObject private var featureFlags = FeatureFlags.shared
 
     @State private var selectedFilter: HistoryFilter = .ir
+
+    private var visibleFilters: [HistoryFilter] {
+        featureFlags.vitalsPhaseEnabled ? HistoryFilter.beaconCases : Array(HistoryFilter.allCases)
+    }
 
     /// Filtered sessions based on selected filter
     private var filteredSessions: [RecordingSession] {
@@ -126,6 +134,11 @@ struct SessionHistoryView: View {
             }
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                if featureFlags.vitalsPhaseEnabled && selectedFilter == .emg {
+                    selectedFilter = .ir
+                }
+            }
         }
     }
 
@@ -133,7 +146,7 @@ struct SessionHistoryView: View {
 
     private var filterPicker: some View {
         Picker("Data Type", selection: $selectedFilter) {
-            ForEach(HistoryFilter.allCases, id: \.self) { filter in
+            ForEach(visibleFilters, id: \.self) { filter in
                 Text(filter.rawValue).tag(filter)
             }
         }
@@ -250,6 +263,23 @@ struct SessionRowView: View {
                         .padding(.vertical, 2)
                         .background(dataTypeColor)
                         .cornerRadius(4)
+
+                    if session.isProtocolASetup {
+                        Text("Protocol A")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange)
+                            .cornerRadius(4)
+                    }
+                }
+
+                if let notes = session.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 // Date and duration

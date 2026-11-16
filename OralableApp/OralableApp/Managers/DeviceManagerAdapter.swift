@@ -39,9 +39,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     private let deviceManager: DeviceManager
     private let sensorDataProcessor: SensorDataProcessor
     private let sessionHistoryStore: SessionHistoryStore?
+    /// Sole live clinical biometric owner (Mac → phone parity).
+    /// Legacy `BioMetricCalculator` / `SignalProcessingPipeline` must not feed vitals.
     private let unifiedBiometricProcessor = UnifiedBiometricProcessor()
-    private let bioMetricCalculator = BioMetricCalculator()
-    private let heartRateCalculator = HeartRateCalculator(sampleRate: 50.0)
     private var cancellables = Set<AnyCancellable>()
     private let deviceStateDetector = DeviceStateDetector()
     private var sensorDataBuffer: [SensorData] = []
@@ -78,6 +78,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var deviceState: DeviceStateResult?
 
     @Published var temporalisFatigueIndexPercent: Double = 50
+    /// Session cumulative SASHB from Unified (Mac ClinicalBiometricSuite parity).
+    @Published private(set) var cumulativeSASHB: Double = 0
     @Published private(set) var latestTemporalisProbabilities: TemporalisProbabilities?
 
     // MARK: - Initialization
@@ -159,6 +161,12 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                     let arrays = DeviceManagerAdapter.biometricSampleArrays(from: flat)
                     guard !arrays.ir.isEmpty else { return }
 
+                    let skinTemp = await MainActor.run { [weak self] in self?.temperature }
+                    let tempForGate: Double? = {
+                        guard let skinTemp, skinTemp.isFinite, skinTemp > 0 else { return nil }
+                        return skinTemp
+                    }()
+
                     let result = await processor.processBatch(
                         irSamples: arrays.ir,
                         redSamples: arrays.red,
@@ -166,7 +174,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                         accelX: arrays.ax,
                         accelY: arrays.ay,
                         accelZ: arrays.az,
-                        resetState: false
+                        resetState: false,
+                        temperatureC: tempForGate
                     )
 
                     let ts = Date()
@@ -183,6 +192,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                         }
                         let spo2Percent = self.spO2 > 0 ? Double(self.spO2) : nil
                         self.temporalisFatigueIndexPercent = tfi
+                        self.cumulativeSASHB = result.cumulativeSASHB
                         self.sessionHistoryStore?.recordTFI(percent: tfi, at: ts)
                         self.sessionHistoryStore?.recordSpO2Sample(percent: spo2Percent, at: ts)
                     }
@@ -198,6 +208,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 if !connected {
                     self.sessionHistoryStore?.resetForDisconnect()
                     self.temporalisFatigueIndexPercent = 50
+                    self.cumulativeSASHB = 0
                     self.emgSessionPeak = 1
                     self.emgActivityPercent = 0
                     ANRMuscleClinicalDeviceAdapter.dashboardEmgActivityPercent = 0
@@ -223,13 +234,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     }
 
     /// Apply latest-per-type readings from one batch window (main actor only).
+    /// HR/SpO2 come only from `unifiedBiometricProcessor` (not device/legacy calculators).
     private func ingestLiveMetricsFromLatestReadings(_ readings: [SensorType: SensorReading]) {
-        if let reading = readings[.heartRate] {
-            heartRate = Int(reading.value)
-        }
-        if let reading = readings[.spo2] {
-            spO2 = Int(reading.value)
-        }
         if let reading = readings[.temperature] {
             temperature = reading.value
         }
@@ -252,14 +258,6 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         }
         if let reading = readings[.ppgInfrared] {
             ppgIRValue = reading.value
-            if ppgIRValue > 100 {
-                if let calculatedHR = heartRateCalculator.process(irValue: ppgIRValue) {
-                    if calculatedHR > 30 && calculatedHR < 200 {
-                        heartRate = calculatedHR
-                        heartRateQuality = 0.8
-                    }
-                }
-            }
         }
         if let reading = readings[.ppgGreen] {
             ppgGreenValue = reading.value

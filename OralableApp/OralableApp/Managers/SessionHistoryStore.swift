@@ -98,8 +98,24 @@ final class SessionHistoryStore: ObservableObject {
 
     private let sleepCalDefaultsKey = "oralable.temporalis_sleep_calibration"
 
+    // MARK: - Protocol A Setup export (General Mode / Share)
+
+    struct ProtocolASetupExportRecord: Codable, Equatable, Sendable {
+        let recordingSessionId: UUID
+        let sessionTimestamp: String
+        let completedAt: Date
+        let sampleCount: Int
+        let deviceID: String?
+        let deviceName: String?
+    }
+
+    @Published private(set) var protocolASetupExport: ProtocolASetupExportRecord?
+
+    private let protocolASetupDefaultsKey = "oralable.protocol_a_setup_export"
+
     init() {
         loadSleepCalibration()
+        loadProtocolASetupExport()
     }
 
     func recordTemporalisSleepCalibration(
@@ -122,6 +138,53 @@ final class SessionHistoryStore: ObservableObject {
     func clearTemporalisSleepCalibration() {
         temporalisSleepCalibration = nil
         persistSleepCalibration()
+    }
+
+    func recordProtocolASetupExport(
+        recordingSessionId: UUID,
+        sessionTimestamp: String,
+        sampleCount: Int,
+        deviceID: String?,
+        deviceName: String?,
+        completedAt: Date = Date()
+    ) {
+        protocolASetupExport = ProtocolASetupExportRecord(
+            recordingSessionId: recordingSessionId,
+            sessionTimestamp: sessionTimestamp,
+            completedAt: completedAt,
+            sampleCount: sampleCount,
+            deviceID: deviceID,
+            deviceName: deviceName
+        )
+        persistProtocolASetupExport()
+    }
+
+    func clearProtocolASetupExport() {
+        protocolASetupExport = nil
+        persistProtocolASetupExport()
+    }
+
+    /// EDF + sidecar for the latest Protocol A Setup pack, if still on disk.
+    func protocolASetupShareURLs() -> [URL]? {
+        guard let stamp = protocolASetupExport?.sessionTimestamp else { return nil }
+        return SingleProtocolAExport.shareURLs(sessionTimestamp: stamp)
+    }
+
+    private func loadProtocolASetupExport() {
+        guard let data = UserDefaults.standard.data(forKey: protocolASetupDefaultsKey),
+              let decoded = try? JSONDecoder().decode(ProtocolASetupExportRecord.self, from: data) else {
+            return
+        }
+        protocolASetupExport = decoded
+    }
+
+    private func persistProtocolASetupExport() {
+        if let record = protocolASetupExport,
+           let data = try? JSONEncoder().encode(record) {
+            UserDefaults.standard.set(data, forKey: protocolASetupDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: protocolASetupDefaultsKey)
+        }
     }
 
     /// Call when BLE primary changes: drop stored calibration if a different peripheral is now primary.

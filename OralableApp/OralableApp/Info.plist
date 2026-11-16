@@ -42,15 +42,15 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Oralable uses the camera as a mirror to guide Temporalis sensor placement on your temple before sleep studies.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Oralable reads oxygen saturation from Health when you choose to sync clinical summaries.</string>
+	<string>Oralable reads heart rate and oxygen saturation from Health when you choose to sync.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Oralable writes session-average SpO₂ from your Oralable recordings to the Health app when you enable sync or export.</string>
+	<string>Oralable writes heart rate and blood oxygen from your Oralable recordings to the Health app when you enable sync or export. Night states are not written as sleep stages.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>bluetooth-le</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>MAM</string>
+	<string>MAM Diagnostics</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleGetInfoString</key>

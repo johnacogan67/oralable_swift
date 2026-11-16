@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OralableCore
 
 struct VitalsPlacementPickerSection: View {
     @ObservedObject private var featureFlags = FeatureFlags.shared
@@ -32,7 +33,7 @@ struct VitalsPlacementPickerSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
-            Text("Where is the clip right now?")
+            Text("Where is the MAM right now?")
                 .font(compact ? designSystem.typography.headline : designSystem.typography.h3)
                 .foregroundColor(designSystem.colors.textPrimary)
 
@@ -52,10 +53,11 @@ struct VitalsPlacementPickerSection: View {
                 .foregroundColor(designSystem.colors.textSecondary)
 
             if let firmwareVersion {
-                Text("Firmware \(firmwareVersion)"
+                Text("\(BLEConstants.TGM.userFacingDeviceName) firmware \(firmwareVersion)"
+                    + (deviceManager.firmwareVersionIsFromLastConnection ? " — last connection. " : " — ")
                     + (automaticDockSupported
-                        ? " — Automatic dock detect OK."
-                        : " — use manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."))
+                        ? "Automatic dock detect OK."
+                        : "use manual placement until \(FirmwareGate.recommendedOralableSemanticVersion)."))
                     .font(designSystem.typography.captionSmall)
                     .foregroundColor(
                         automaticDockSupported
@@ -63,14 +65,14 @@ struct VitalsPlacementPickerSection: View {
                             : designSystem.colors.warning
                     )
             } else if featureFlags.devicePlacementMode == .auto {
-                Text("Automatic needs FW \(FirmwareGate.recommendedOralableSemanticVersion)+. If Connect fails dock detection, switch to On wireless charger.")
+                Text("Automatic needs FW \(FirmwareGate.recommendedOralableSemanticVersion)+. If Connect fails dock detection, switch to On Oralable case.")
                     .font(designSystem.typography.captionSmall)
                     .foregroundColor(designSystem.colors.warning)
             }
 
             if featureFlags.devicePlacementMode == .onCharger {
                 Label(
-                    "Oralable case + USB-C only. Red flash = charging; solid red = charge taper (not always 4.2 V).",
+                    "Oralable case + USB-C only. No phone: flash green = still charging, brief green pulse ~every 10 s = hold. Status never shows red. While linked the MAM LED is off.",
                     systemImage: "circle.fill"
                 )
                 .font(designSystem.typography.captionSmall)

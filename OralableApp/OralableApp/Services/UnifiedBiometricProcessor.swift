@@ -70,6 +70,12 @@ struct BiometricResult {
     /// Temporalis Fatigue Index (0–100%) — matches research `tanh` composite from IR-DC / AC trends.
     let tfiPercent: Double
 
+    /// Sample-level airway rescue (Mac ClinicalBiometricSuite: IR-DC ≤ −10% in 500 ms).
+    let isAirwayRescue: Bool
+
+    /// Session cumulative SASHB ((90 − SpO2)·dt when SpO2 < 90).
+    let cumulativeSASHB: Double
+
     /// Empty result for when processing cannot produce valid output
     static let empty = BiometricResult(
         heartRate: 0,
@@ -83,7 +89,9 @@ struct BiometricResult {
         motionLevel: 0,
         signalStrength: .none,
         processingMethod: .realtime,
-        tfiPercent: 50
+        tfiPercent: 50,
+        isAirwayRescue: false,
+        cumulativeSASHB: 0
     )
 }
 
@@ -123,7 +131,7 @@ struct BiometricConfiguration {
         motionThresholdG: TemporalisProtocolReference.syncTapMotionThresholdG,
         minBPM: 40,
         maxBPM: 180,
-        minSpO2: 70,
+        minSpO2: 60,  // Mac Protocol A clamp floor
         maxSpO2: 100
     )
 
@@ -138,7 +146,7 @@ struct BiometricConfiguration {
         motionThresholdG: TemporalisProtocolReference.syncTapMotionThresholdG,
         minBPM: 40,
         maxBPM: 180,
-        minSpO2: 70,
+        minSpO2: 60,  // Mac Protocol A clamp floor
         maxSpO2: 100
     )
 
@@ -177,6 +185,13 @@ actor UnifiedBiometricProcessor {
     private var redBuffer: CircularBuffer<Double>
     private var greenBuffer: CircularBuffer<Double>
     private var accelMagnitudeBuffer: CircularBuffer<Double>
+    /// SpO2 prep (Mac Protocol A): DC = LP 0.8 Hz; AC = HR BP 0.5–8 Hz.
+    private var redDCBuffer: CircularBuffer<Double>
+    private var irDCBuffer: CircularBuffer<Double>
+    private var redACSpO2Buffer: CircularBuffer<Double>
+    private var irACSpO2Buffer: CircularBuffer<Double>
+    /// IR-DC history for sample-level airway rescue (−10% / 500 ms).
+    private var irDCRescueBuffer: CircularBuffer<Double>
 
     // MARK: - PPG filtering (AlgorithmSpec HR bandpass 0.5–8 Hz, real-time `processSample`)
 
@@ -186,12 +201,23 @@ actor UnifiedBiometricProcessor {
 
     /// IR DC / occlusion track (low-pass per `AlgorithmSpec`, scipy `(b,a)` via `TransferFunctionFilter`).
     private let irdcProcessor: IRDCProcessor
+    /// Red DC lowpass (same coeffs as IR-DC) for SpO2 RoR.
+    private let redDCFilter = TransferFunctionFilter.irDCLowpass()
 
     // MARK: - Temporalis MAM inference
 
     private let mamInferenceManager: MAMInferenceManager
     private let greenTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
     private let redTemporalisBandpass = TransferFunctionFilter.temporalisACBandpass()
+
+    /// When false (default), HR matches Mac peak path — no FFT cross-validation override.
+    private let useFFTCrossValidation: Bool = false
+
+    /// Session cumulative SASHB (Mac `_compute_sashb`).
+    private var cumulativeSASHB: Double = 0
+    private let sashbSpO2Threshold: Double = 90.0
+    private let airwayRescueWindowSamples: Int = 25 // 500 ms @ 50 Hz
+    private let airwayRescueDropThreshold: Double = -0.10
 
     // MARK: - Temporalis Fatigue Index (session trend, 5 s decimation)
 
@@ -211,7 +237,6 @@ actor UnifiedBiometricProcessor {
 
     private var irBaseline: Double = 0
     private var isBaselineInitialized: Bool = false
-    private var lastStableSpO2: Double?
 
     // MARK: - FFT Setup (cached for reuse; creating FFT plans is expensive)
 
@@ -236,11 +261,16 @@ actor UnifiedBiometricProcessor {
         self.activityClassifier = ActivityClassifier()
 
         // Initialize circular buffers with fixed capacity (O(1) append, no removeFirst)
-        let capacity = config.hrWindowSize
+        let capacity = max(config.hrWindowSize, config.spo2WindowSize)
         self.irBuffer = CircularBuffer<Double>(capacity: capacity)
         self.redBuffer = CircularBuffer<Double>(capacity: capacity)
         self.greenBuffer = CircularBuffer<Double>(capacity: capacity)
         self.accelMagnitudeBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.redDCBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.irDCBuffer = CircularBuffer<Double>(capacity: capacity)
+        self.redACSpO2Buffer = CircularBuffer<Double>(capacity: capacity)
+        self.irACSpO2Buffer = CircularBuffer<Double>(capacity: capacity)
+        self.irDCRescueBuffer = CircularBuffer<Double>(capacity: max(capacity, 25))
         self.mamInferenceManager = MAMInferenceManager()
 
         let fs = config.sampleRate
@@ -260,6 +290,7 @@ actor UnifiedBiometricProcessor {
     ///   - accelX: Accelerometer X (raw, ~16384 = 1g)
     ///   - accelY: Accelerometer Y (raw)
     ///   - accelZ: Accelerometer Z (raw)
+    ///   - temperatureC: Optional skin temperature (°C) for soft corroboration
     /// - Returns: BiometricResult with all calculated values
     func process(
         ir: Double,
@@ -267,7 +298,8 @@ actor UnifiedBiometricProcessor {
         green: Double,
         accelX: Double,
         accelY: Double,
-        accelZ: Double
+        accelZ: Double,
+        temperatureC: Double? = nil
     ) -> BiometricResult {
         let (motionLevel, activity) = ingestSample(
             ir: ir,
@@ -277,7 +309,12 @@ actor UnifiedBiometricProcessor {
             accelY: accelY,
             accelZ: accelZ
         )
-        return computeSummaryResult(activity: activity, motionLevel: motionLevel, processingMethod: .realtime)
+        return computeSummaryResult(
+            activity: activity,
+            motionLevel: motionLevel,
+            processingMethod: .realtime,
+            temperatureC: temperatureC
+        )
     }
 
     // MARK: - Batch Processing
@@ -291,7 +328,8 @@ actor UnifiedBiometricProcessor {
         accelX: [Double],
         accelY: [Double],
         accelZ: [Double],
-        resetState: Bool = true
+        resetState: Bool = true,
+        temperatureC: Double? = nil
     ) -> BiometricResult {
         if resetState {
             reset()
@@ -323,7 +361,12 @@ actor UnifiedBiometricProcessor {
         }
 
         let method: ProcessingMethod = resetState ? .batch : .realtime
-        return computeSummaryResult(activity: lastActivity, motionLevel: lastMotion, processingMethod: method)
+        return computeSummaryResult(
+            activity: lastActivity,
+            motionLevel: lastMotion,
+            processingMethod: method,
+            temperatureC: temperatureC
+        )
     }
 
     // MARK: - Temporalis streaming hook
@@ -340,16 +383,22 @@ actor UnifiedBiometricProcessor {
         redBuffer.removeAll()
         greenBuffer.removeAll()
         accelMagnitudeBuffer.removeAll()
+        redDCBuffer.removeAll()
+        irDCBuffer.removeAll()
+        redACSpO2Buffer.removeAll()
+        irACSpO2Buffer.removeAll()
+        irDCRescueBuffer.removeAll()
 
         irBaseline = 0
         isBaselineInitialized = false
-        lastStableSpO2 = nil
+        cumulativeSASHB = 0
 
         motionCompensator.reset()
         irFilter.reset()
         redFilter.reset()
         greenFilter.reset()
         irdcProcessor.reset()
+        redDCFilter.reset()
         greenTemporalisBandpass.reset()
         redTemporalisBandpass.reset()
         mamInferenceManager.reset()
@@ -422,7 +471,8 @@ actor UnifiedBiometricProcessor {
     private func computeSummaryResult(
         activity: ActivityType,
         motionLevel: Double,
-        processingMethod: ProcessingMethod
+        processingMethod: ProcessingMethod,
+        temperatureC: Double? = nil
     ) -> BiometricResult {
         let tfiNow = computeTFIPercent()
         guard irBuffer.count >= config.hrWindowSize else {
@@ -439,7 +489,9 @@ actor UnifiedBiometricProcessor {
                 motionLevel: motionLevel,
                 signalStrength: .none,
                 processingMethod: processingMethod,
-                tfiPercent: tfiNow
+                tfiPercent: tfiNow,
+                isAirwayRescue: false,
+                cumulativeSASHB: cumulativeSASHB
             )
         }
 
@@ -454,18 +506,29 @@ actor UnifiedBiometricProcessor {
             (heartRate, heartRateQuality, heartRateSource) = calculateHeartRate()
         }
 
+        // Mac Protocol A: SpO2 whenever window full (no PI/motion gate; no stabilizer).
         var spo2 = 0.0
         var spo2Quality = 0.0
+        (spo2, spo2Quality) = calculateSpO2()
 
-        if activity != .motion && signalStrength != .none && signalStrength != .weak {
-            (spo2, spo2Quality) = calculateSpO2()
-            spo2 = stabilizeSpO2Estimate(raw: spo2, quality: spo2Quality, motionLevel: motionLevel)
-        }
+        // Soft ACC + skin-temp corroboration: quality / isWorn only (not SpO2/HR numbers).
+        let qualityMul = SensorCorroboration.vitalsQualityMultiplier(
+            temperatureC: temperatureC,
+            motionLevel: motionLevel,
+            motionThreshold: config.motionThresholdG
+        )
+        heartRateQuality *= qualityMul
+        spo2Quality *= qualityMul
+
         mamInferenceManager.updateSpO2Estimate(spo2 > 0 ? spo2 : nil)
+        updateSASHB(spo2: spo2)
+
+        let isAirwayRescue = detectAirwayRescue()
 
         let isWorn = perfusionIndex > config.minPerfusionIndex &&
             heartRate > 0 &&
-            heartRateQuality > config.minHRQuality
+            heartRateQuality > config.minHRQuality &&
+            SensorCorroboration.isLikelyOnSkin(temperatureC: temperatureC)
 
         return BiometricResult(
             heartRate: heartRate,
@@ -479,7 +542,9 @@ actor UnifiedBiometricProcessor {
             motionLevel: motionLevel,
             signalStrength: signalStrength,
             processingMethod: processingMethod,
-            tfiPercent: tfiNow
+            tfiPercent: tfiNow,
+            isAirwayRescue: isAirwayRescue,
+            cumulativeSASHB: cumulativeSASHB
         )
     }
 
@@ -589,18 +654,25 @@ actor UnifiedBiometricProcessor {
     ) {
         let irBP = irFilter.processSample(irForHR)
         let greenBP = greenFilter.processSample(greenForHR)
-        _ = redFilter.processSample(redForHR)
+        let redBP = redFilter.processSample(redForHR)
 
         // DC / occlusion tracking MUST use the raw IR channel (non-negative, physical units).
-        // Feeding motion-compensated residuals here causes negative "IR_DC" and breaks normalization/gating.
         let irDCFiltered = irdcProcessor.processSample(irRaw).dcValue
+        let redDCFiltered = redDCFilter.processSample(redRaw)
 
         irBuffer.append(irBP)
-        // Keep raw (non-negative) channels for SpO2 / DC-based metrics.
         redBuffer.append(redRaw)
         greenBuffer.append(greenBP)
         accelMagnitudeBuffer.append(motion)
 
+        // SpO2 prep = Mac compute_filters: DC LP 0.8, AC BP 0.5–8 (causal live).
+        redDCBuffer.append(redDCFiltered)
+        irDCBuffer.append(irDCFiltered)
+        redACSpO2Buffer.append(redBP)
+        irACSpO2Buffer.append(irBP)
+        irDCRescueBuffer.append(irDCFiltered)
+
+        // MAM channels keep Temporalis AC 0.5–4 Hz.
         let greenAC = greenTemporalisBandpass.processSample(greenRaw)
         let redAC = redTemporalisBandpass.processSample(redRaw)
         lastIRDCForTFI = irDCFiltered
@@ -641,15 +713,15 @@ actor UnifiedBiometricProcessor {
         let irSignal = irBuffer.all
         if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(irSignal) {
             if peakQuality >= config.minHRQuality {
-                // Cross-validate with FFT if we have enough samples
-                let (fftBpm, _) = calculateHeartRateFFT(from: irSignal, sampleRate: config.sampleRate)
-                if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
-                    // FFT disagrees significantly with peak detection — prefer FFT
-                    // as it is more robust to noise and irregular peak shapes
-                    if shouldEmitHeartRateDiagnosticLog() {
-                        Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                // Mac parity: peak path only unless FFT cross-validation explicitly enabled.
+                if useFFTCrossValidation {
+                    let (fftBpm, _) = calculateHeartRateFFT(from: irSignal, sampleRate: config.sampleRate)
+                    if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
+                        if shouldEmitHeartRateDiagnosticLog() {
+                            Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                        }
+                        return (fftBpm, peakQuality * 0.8, .fft)
                     }
-                    return (fftBpm, peakQuality * 0.8, .fft)
                 }
                 return (peakBpm, peakQuality, .ir)
             }
@@ -659,13 +731,14 @@ actor UnifiedBiometricProcessor {
         let greenSignal = greenBuffer.all
         if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(greenSignal) {
             if peakQuality >= config.minHRQuality {
-                // Cross-validate with FFT on green channel
-                let (fftBpm, _) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
-                if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
-                    if shouldEmitHeartRateDiagnosticLog() {
-                        Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                if useFFTCrossValidation {
+                    let (fftBpm, _) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
+                    if fftBpm > 0 && abs(peakBpm - fftBpm) > 15 {
+                        if shouldEmitHeartRateDiagnosticLog() {
+                            Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
+                        }
+                        return (fftBpm, peakQuality * 0.8, .fft)
                     }
-                    return (fftBpm, peakQuality * 0.8, .fft)
                 }
                 return (peakBpm, peakQuality, .green)
             }
@@ -876,77 +949,41 @@ actor UnifiedBiometricProcessor {
     // MARK: - Private: SpO2 Calculation
 
     private func calculateSpO2() -> (spo2: Double, quality: Double) {
-        guard redBuffer.count >= config.spo2WindowSize,
-              irBuffer.count >= config.spo2WindowSize else {
+        let n = config.spo2WindowSize
+        guard redDCBuffer.count >= n,
+              irDCBuffer.count >= n,
+              redACSpO2Buffer.count >= n,
+              irACSpO2Buffer.count >= n else {
             return (0, 0)
         }
 
-        // Snapshot buffers to arrays for efficient multi-pass calculation
-        let redValues = redBuffer.all
-        let irValues = irBuffer.all
-
-        // DC components (mean)
-        let dcRed = redValues.reduce(0, +) / Double(redValues.count)
-        let dcIR = irValues.reduce(0, +) / Double(irValues.count)
-
-        guard dcRed > 0, dcIR > 0 else { return (0, 0) }
-
-        // AC components (peak-to-peak)
-        let acRed = (redValues.max() ?? 0) - (redValues.min() ?? 0)
-        let acIR = (irValues.max() ?? 0) - (irValues.min() ?? 0)
-
-        guard acRed > 0, acIR > 0 else { return (0, 0) }
-
-        // R value (ratio of ratios)
-        let ratioRed = acRed / dcRed
-        let ratioIR = acIR / dcIR
-
-        guard ratioRed > 1e-6, ratioIR > 1e-6 else { return (0, 0) }
-
-        let rValue = ratioRed / ratioIR
-
-        // Validate R-value bounds (physiological range: 0.4 to 3.4)
-        // R < 0.4 implies SpO2 > 100% (impossible), R > 3.4 implies SpO2 < 0% (impossible)
-        // Values outside this range indicate noise or motion artifact
-        guard rValue >= 0.4 && rValue <= 3.4 else { return (0, 0) }
-
-        // Empirical calibration curve
-        // SpO2 = -45.060 * R^2 + 30.354 * R + 94.845
-        let spo2 = -45.060 * pow(rValue, 2) + 30.354 * rValue + 94.845
-
-        // Validate range
-        guard spo2 >= config.minSpO2, spo2 <= config.maxSpO2 else { return (0, 0) }
-
-        // Calculate quality from SNR
-        let snrRed = ratioRed
-        let snrIR = ratioIR
-        let avgSNR = (snrRed + snrIR) / 2.0
-        let quality = min(1.0, avgSNR / 0.1)
-
-        return (round(spo2 * 10) / 10, max(0, min(1.0, quality)))
+        // Live trailing window (causal exception). Offline/gold uses centered
+        // `SpO2Service.protocolASpO2Series` to match Mac filtfilt + rolling.
+        return SpO2Service.protocolASpO2(
+            redDCSamples: Array(redDCBuffer.all.suffix(n)),
+            redACSamples: Array(redACSpO2Buffer.all.suffix(n)),
+            irDCSamples: Array(irDCBuffer.all.suffix(n)),
+            irACSamples: Array(irACSpO2Buffer.all.suffix(n))
+        )
     }
 
-    /// Damp abrupt low-quality jumps in SpO2 around sync-tap/motion transitions.
-    private func stabilizeSpO2Estimate(raw: Double, quality: Double, motionLevel: Double) -> Double {
-        guard raw > 0 else {
-            lastStableSpO2 = nil
-            return raw
-        }
-        guard let previous = lastStableSpO2 else {
-            lastStableSpO2 = raw
-            return raw
-        }
+    /// Mac `ClinicalBiometricSuite._compute_airway_rescue`: IR-DC drop ≤ −10% in 500 ms.
+    private func detectAirwayRescue() -> Bool {
+        let w = airwayRescueWindowSamples
+        guard irDCRescueBuffer.count > w else { return false }
+        let samples = irDCRescueBuffer.all
+        let endVal = samples[samples.count - 1]
+        let startVal = samples[samples.count - 1 - w]
+        guard startVal.isFinite, endVal.isFinite, startVal > 1e-9 else { return false }
+        let pctChange = (endVal - startVal) / startVal
+        return pctChange <= airwayRescueDropThreshold
+    }
 
-        // Around sync taps (>0.15 g), clamp low-quality step changes per update.
-        let inSyncTapMotion = motionLevel > TemporalisProtocolReference.syncTapMotionThresholdG
-        let maxStep = inSyncTapMotion ? 0.5 : 2.0
-        if quality < 0.75, abs(raw - previous) > maxStep {
-            let adjusted = previous + (raw > previous ? maxStep : -maxStep)
-            lastStableSpO2 = adjusted
-            return adjusted
+    /// Mac `_compute_sashb`: accumulate (threshold − SpO2) · dt when SpO2 < 90.
+    private func updateSASHB(spo2: Double) {
+        let dt = 1.0 / config.sampleRate
+        if spo2.isFinite, spo2 > 0, spo2 < sashbSpO2Threshold {
+            cumulativeSASHB += (sashbSpO2Threshold - spo2) * dt
         }
-
-        lastStableSpO2 = raw
-        return raw
     }
 }

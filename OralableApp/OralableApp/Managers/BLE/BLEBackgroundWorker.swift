@@ -484,6 +484,17 @@ final class BLEBackgroundWorker: ObservableObject {
 
     /// Handle reconnection timeout
     private func handleReconnectionTimeout(for peripheralId: UUID, peripheral: CBPeripheral, attempt: Int) {
+        // A recording session must keep one CoreBluetooth connect outstanding. Cancelling it
+        // drops the system wake, and the clean disconnect that follows used to wipe the next retry.
+        if unlimitedReconnectActive {
+            Logger.shared.info(
+                "[BLEBackgroundWorker] Connect still pending for \(peripheralId) after \(config.connectionTimeout)s; leaving it for iOS to finish"
+            )
+            reconnectionStates[peripheralId]?.isActive = false
+            activeReconnections.remove(peripheralId)
+            return
+        }
+
         let willRetry = (reconnectionStates[peripheralId]?.attemptCount ?? 0) < effectiveMaxReconnectionAttempts()
 
         // Cancel the pending connection and clear any stuck pending-connect flag.
@@ -551,7 +562,8 @@ final class BLEBackgroundWorker: ObservableObject {
         pendingReconnectionPeripherals.removeAll()
     }
 
-    /// Handle successful connection (resets reconnection state)
+    /// ACL is up. Stop the connect watchdog, but keep the attempt count until GATT is ready.
+    /// A link that dies during discovery must back off instead of restarting at attempt 1.
     func handleConnectionSuccess(for peripheralId: UUID) {
         // Cancel any pending timeout task
         connectionTimeoutTasks[peripheralId]?.cancel()
@@ -566,10 +578,20 @@ final class BLEBackgroundWorker: ObservableObject {
             eventSubject.send(.reconnectionSucceeded(peripheralId: peripheralId))
             reconnectionDelegate?.reconnectionDidSucceed(for: peripheralId, afterAttempts: attempts)
         }
-        reconnectionStates[peripheralId]?.reset()
+        reconnectionStates[peripheralId]?.isActive = false
+        reconnectionStates[peripheralId]?.task?.cancel()
+        reconnectionStates[peripheralId]?.task = nil
         activeReconnections.remove(peripheralId)
         lastDataReceived[peripheralId] = Date()
         connectionHealth[peripheralId] = .healthy
+    }
+
+    /// GATT discovery finished. The link is usable, so the next drop starts a fresh budget.
+    func noteLinkReady(for peripheralId: UUID) {
+        guard reconnectionStates[peripheralId] != nil else { return }
+        reconnectionStates[peripheralId]?.reset()
+        activeReconnections.remove(peripheralId)
+        Logger.shared.info("[BLEBackgroundWorker] Link ready for \(peripheralId); reconnect budget reset")
     }
 
     /// Handle disconnection (may trigger reconnection)
@@ -585,6 +607,10 @@ final class BLEBackgroundWorker: ObservableObject {
                 peripheral: peripheral,
                 immediate: !isLinkSupervisionTimeout
             )
+        } else if reconnectionStates[peripheralId]?.isActive == true {
+            // Timeout path disconnects, then schedules the next try. That disconnect is clean
+            // (error == nil) and arrives after the new try is active. Do not cancel it.
+            Logger.shared.info("[BLEBackgroundWorker] Clean disconnect for \(peripheralId); keeping scheduled retry")
         } else {
             reconnectionStates[peripheralId]?.reset()
             activeReconnections.remove(peripheralId)

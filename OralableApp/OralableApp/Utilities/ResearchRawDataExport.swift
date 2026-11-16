@@ -47,4 +47,40 @@ enum ResearchRawDataExport {
         }
         try data.write(to: url, options: .atomic)
     }
+
+    /// Merged night CSV from flush-rebuilt samples. Paper A handoff — not the ~3 min RAM dump.
+    static func writeNightReportCSV(samples: [NightReportSample], nightDate: Date, to url: URL? = nil) throws -> URL {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone.current
+        df.dateFormat = "yyyyMMdd"
+        let dest = url ?? FileManager.default.temporaryDirectory
+            .appendingPathComponent("Oralable_NIGHT_\(df.string(from: nightDate)).csv")
+        var lines: [String] = []
+        lines.reserveCapacity(samples.count + 1)
+        lines.append("device_type,iso8601_timestamp,ir,accel_x,accel_y,accel_z,spo2_percent,temp_celsius")
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        for s in samples {
+            let spo2 = s.spo2.isFinite ? String(format: "%.0f", s.spo2) : ""
+            let temp = s.temperature.isFinite ? String(format: "%.3f", s.temperature) : ""
+            lines.append(
+                [
+                    "oralable",
+                    fmt.string(from: s.timestamp),
+                    "\(s.ir)",
+                    "\(s.accelX)",
+                    "\(s.accelY)",
+                    "\(s.accelZ)",
+                    spo2,
+                    temp
+                ].joined(separator: ",")
+            )
+        }
+        guard let data = lines.joined(separator: "\n").data(using: .utf8) else {
+            throw NSError(domain: "ResearchRawDataExport", code: 1, userInfo: [NSLocalizedDescriptionKey: "UTF-8 encoding failed"])
+        }
+        try data.write(to: dest, options: .atomic)
+        return dest
+    }
 }

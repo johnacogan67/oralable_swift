@@ -2,7 +2,7 @@
 //  FirstLaunchManager.swift
 //  OralableApp
 //
-//  First-run gate: Temporalis fit + calibration before Home (trial subjects).
+//  First-run gate: pair → (optional) Protocol A Setup → General Mode (MainTab).
 //
 
 import Combine
@@ -14,16 +14,19 @@ final class FirstLaunchManager: ObservableObject {
     private static let fitKey = "oralable.hasCompletedFirstFit"
     private static let pairedKey = "oralable.hasPairedOralablePrimary"
     private static let trialKey = "oralable.onboardingTrialSetupMode"
+    private static let protocolASetupKey = "oralable.hasCompletedProtocolASetup"
 
     @Published private(set) var hasCompletedFirstFit: Bool
     @Published private(set) var hasPairedOralablePrimary: Bool
     @Published private(set) var isTrialSetupMode: Bool
+    @Published private(set) var hasCompletedProtocolASetup: Bool
 
     init() {
         let defaults = UserDefaults.standard
         hasCompletedFirstFit = defaults.bool(forKey: Self.fitKey)
         hasPairedOralablePrimary = defaults.bool(forKey: Self.pairedKey)
         isTrialSetupMode = defaults.bool(forKey: Self.trialKey)
+        hasCompletedProtocolASetup = defaults.bool(forKey: Self.protocolASetupKey)
     }
 
     /// REV10 / Oralable primary reached full BLE readiness during onboarding.
@@ -33,7 +36,9 @@ final class FirstLaunchManager: ObservableObject {
         UserDefaults.standard.set(false, forKey: Self.trialKey)
         isTrialSetupMode = false
         Logger.shared.info("[FirstLaunchManager] Oralable primary paired (onboarding)")
-        if FeatureFlags.shared.vitalsPhaseEnabled {
+        // Vitals-only unlock to MainTab when Protocol A Setup gate is off.
+        if FeatureFlags.shared.vitalsPhaseEnabled,
+           !FeatureFlags.shared.requireProtocolASetup {
             markFirstFitCompleted()
             Logger.shared.info("[FirstLaunchManager] Vitals phase — skipped Temporalis fit/calibration gate")
         }
@@ -58,5 +63,20 @@ final class FirstLaunchManager: ObservableObject {
         hasCompletedFirstFit = true
         exitTrialSetupMode()
         Logger.shared.info("[FirstLaunchManager] First Temporalis fit gate completed (setup finalized, MainTab eligible)")
+    }
+
+    /// Single-MAM Protocol A Setup finished (IR preflight + 360 s + export). Unlocks General Mode.
+    func markProtocolASetupCompleted() {
+        UserDefaults.standard.set(true, forKey: Self.protocolASetupKey)
+        hasCompletedProtocolASetup = true
+        markFirstFitCompleted()
+        Logger.shared.info("[FirstLaunchManager] Protocol A Setup completed — General Mode eligible")
+    }
+
+    /// Desk / test reset of Protocol A gate only (does not unpair).
+    func resetProtocolASetupForTesting() {
+        UserDefaults.standard.set(false, forKey: Self.protocolASetupKey)
+        hasCompletedProtocolASetup = false
+        Logger.shared.info("[FirstLaunchManager] Protocol A Setup flag cleared")
     }
 }

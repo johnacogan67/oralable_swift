@@ -2,7 +2,8 @@
 //  DeviceStatusLEDView.swift
 //  OralableApp
 //
-//  Live mirror of firmware status LED (green/red PPG channels).
+//  Live mirror of firmware status LED. While BLE is linked the MAM has no
+//  status light (optics are PPG-only). Disconnected: green on the pad only.
 //
 
 import SwiftUI
@@ -19,7 +20,7 @@ struct DeviceStatusLEDView: View {
         HStack(spacing: designSystem.spacing.sm) {
             ledGlyph
             VStack(alignment: .leading, spacing: 2) {
-                Text("Device LED")
+                Text("MAM LED")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textSecondary)
                 Text(representation.detail)

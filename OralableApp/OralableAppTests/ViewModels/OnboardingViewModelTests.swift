@@ -41,18 +41,18 @@ final class OnboardingViewModelTests: XCTestCase {
 
     func testFirstPageShowsWelcomeContent() {
         // First page should introduce the app
-        let firstPageTitle = "Muscle Activity Monitor"
-        let firstPageDescription = "Monitor muscle activity for wellness, therapy, sports, and research"
+        let firstPageTitle = "One night on the temple"
+        let firstPageDescription = "Charge on the Oralable case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis."
 
         XCTAssertFalse(firstPageTitle.isEmpty, "First page should have a title")
         XCTAssertFalse(firstPageDescription.isEmpty, "First page should have a description")
-        XCTAssertTrue(firstPageDescription.contains("wellness"), "Description should mention wellness use case")
+        XCTAssertTrue(firstPageDescription.contains("Wellness"), "Description should mention wellness use case")
     }
 
     func testOnboardingIncludesHealthIntegrationPage() {
         // One page should cover Apple Health integration
         let healthPageTitle = "Integrate with Apple Health"
-        let healthDescription = "Sync heart rate and SpO2 data with Apple Health"
+        let healthDescription = "When you allow it, Oralable can save heart rate and blood oxygen samples to Apple Health"
 
         XCTAssertFalse(healthPageTitle.isEmpty, "Health integration page should have a title")
         XCTAssertTrue(healthDescription.contains("Health"), "Description should mention Apple Health")
@@ -60,21 +60,21 @@ final class OnboardingViewModelTests: XCTestCase {
 
     func testOnboardingIncludesAnalyticsPage() {
         // One page should cover analytics/insights
-        let analyticsTitle = "Understand Your Patterns"
-        let analyticsDescription = "Gain insights into your muscle activity with detailed analytics"
+        let analyticsTitle = "See last night"
+        let analyticsDescription = "Morning view: wear hours, heart rate, blood oxygen, and a state map of the night"
 
         XCTAssertFalse(analyticsTitle.isEmpty, "Analytics page should have a title")
-        XCTAssertTrue(analyticsDescription.contains("insights"), "Description should mention insights")
+        XCTAssertTrue(analyticsDescription.contains("Morning"), "Description should mention the morning view")
     }
 
     func testOnboardingIncludesProviderSharingPage() {
         // One page should cover sharing with healthcare providers
-        let sharingTitle = "Share with Your Provider"
-        let sharingDescription = "Collaborate with your healthcare professional by securely sharing your data"
+        let sharingTitle = "Share the night report"
+        let sharingDescription = "Export a PDF and full-night CSV for the clinic. This build does not share with a dentist app."
 
         XCTAssertFalse(sharingTitle.isEmpty, "Sharing page should have a title")
-        XCTAssertTrue(sharingDescription.contains("securely"), "Description should emphasize security")
-        XCTAssertTrue(sharingDescription.contains("healthcare"), "Description should mention healthcare professional")
+        XCTAssertTrue(sharingDescription.contains("PDF"), "Description should mention PDF export")
+        XCTAssertTrue(sharingDescription.contains("clinic"), "Description should mention the clinic")
     }
 
     // MARK: - Privacy Disclaimer Tests

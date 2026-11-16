@@ -1,8 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
-  <rect width="960" height="540" fill="#F3F4F6"/>
-  <rect x="24" y="24" width="912" height="492" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="12 8" rx="8"/>
-  <text x="480" y="220" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#374151">FIG-IOS-003</text>
-  <text x="480" y="270" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#111827">iOS night report screen</text>
-  <text x="480" y="330" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#6B7280">PLACEHOLDER — replace with final art</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#FAFAF8"/>
+  <text x="40" y="36" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">FIG-IOS-003 · draft wireframe · adapts FIG-CO-025 layout</text>
+  <text x="40" y="64" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#111111">In-app night card + Share hypnogram</text>
+  <text x="40" y="88" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6B7280">Device-inferred wellness states — not a medical diagnosis. FIG-CO-025 pack wear ≈ 6 min (layout only).</text>
+
+  <!-- Dashboard phone -->
+  <rect x="48" y="110" width="260" height="520" rx="38" fill="#111111"/>
+  <rect x="56" y="118" width="244" height="504" rx="30" fill="#FFFFFF"/>
+  <rect x="138" y="128" width="72" height="11" rx="5" fill="#111111"/>
+  <text x="72" y="164" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Dashboard</text>
+  <rect x="72" y="180" width="212" height="220" rx="10" fill="#F3F4F6"/>
+  <text x="84" y="204" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Last night</text>
+  <rect x="84" y="218" width="58" height="36" rx="6" fill="#FFFFFF"/>
+  <text x="90" y="234" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">Jaw load</text>
+  <text x="90" y="248" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" fill="#16A34A">Low</text>
+  <rect x="148" y="218" width="58" height="36" rx="6" fill="#FFFFFF"/>
+  <text x="154" y="234" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">O2</text>
+  <text x="154" y="248" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" fill="#CA8A04">Moderate</text>
+  <rect x="212" y="218" width="60" height="36" rx="6" fill="#FFFFFF"/>
+  <text x="218" y="234" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#6B7280">Rescue</text>
+  <text x="218" y="248" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="bold" fill="#16A34A">Low</text>
+  <text x="84" y="272" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">State hypnogram · 22:00–06:00</text>
+<rect x="84" y="278" width="196" height="70" rx="5" fill="#F9FAFB"/>
+<text x="86" y="288.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Rescue</text>
+<text x="86" y="302.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Tonic</text>
+<text x="86" y="316.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Phasic</text>
+<text x="86" y="330.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Recov.</text>
+<text x="86" y="344.1" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">Quiet</text>
+<rect x="112.0" y="335.0" width="32.8" height="9.8" fill="#D4D4D4"/>
+<rect x="150.9" y="335.0" width="28.7" height="9.8" fill="#D4D4D4"/>
+<rect x="185.8" y="335.0" width="22.6" height="9.8" fill="#D4D4D4"/>
+<rect x="214.5" y="335.0" width="26.7" height="9.8" fill="#D4D4D4"/>
+<rect x="247.3" y="335.0" width="28.7" height="9.8" fill="#D4D4D4"/>
+<rect x="120.2" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="134.6" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="157.1" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="169.4" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="196.1" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="208.4" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="230.9" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="241.2" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="259.6" y="321.0" width="1.5" height="9.8" fill="#E8B86E"/>
+<rect x="181.7" y="307.0" width="11.3" height="10.5" rx="1" fill="#4FC778"/>
+<rect x="118.2" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="126.3" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="132.5" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="142.8" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="153.0" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="161.2" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="167.3" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="194.0" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="202.2" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="210.4" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="220.6" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="226.8" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="237.1" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="251.4" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="257.5" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="265.8" y="293.0" width="1.4" height="9.8" fill="#4068E0"/>
+<rect x="170.4" y="293.0" width="7.2" height="9.8" rx="1" fill="#4068E0"/>
+<rect x="123.3" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="139.7" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="156.1" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="174.5" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="205.3" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="223.7" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="242.2" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="262.7" y="279.0" width="1.5" height="9.8" fill="#8C0000"/>
+<rect x="231.9" y="279.0" width="5.7" height="9.8" rx="1" fill="#8C0000"/>
+<text x="112.0" y="347.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">22</text>
+<text x="153.0" y="347.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">00</text>
+<text x="194.0" y="347.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">02</text>
+<text x="235.0" y="347.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">04</text>
+<text x="276.0" y="347.0" font-family="Helvetica, Arial, sans-serif" font-size="5" fill="#9CA3AF">06</text>
+  <text x="84" y="362" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">Rescue · Tonic · Phasic · Recovery · Quiet</text>
+  <text x="84" y="376" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#9CA3AF">StateHypnogramView · FIG-CO-025</text>
+  <text x="84" y="394" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#6B7280">Need ≥1 hour worn for overnight bands.</text>
+  <text x="100" y="610" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">Dashboard morning card</text>
+
+  <!-- Share phone -->
+  <rect x="340" y="110" width="260" height="520" rx="38" fill="#111111"/>
+  <rect x="348" y="118" width="244" height="504" rx="30" fill="#FFFFFF"/>
+  <rect x="430" y="128" width="72" height="11" rx="5" fill="#111111"/>
+  <text x="364" y="164" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111111">Share</text>
+  <rect x="364" y="180" width="212" height="44" rx="8" fill="#F3F4F6"/>
+  <text x="376" y="206" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">Protocol A Setup pack</text>
+  <rect x="364" y="234" width="212" height="44" rx="8" fill="#F3F4F6"/>
+  <text x="376" y="260" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#111111">Share CSV  ·  Events | All samples</text>
+  <rect x="364" y="288" width="212" height="88" rx="8" fill="#111111"/>
+  <text x="376" y="316" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#FFFFFF">Clinical Temporalis PDF</text>
+  <text x="376" y="336" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#D1D5DB">Gen2 8 h state hypnogram first</text>
+  <text x="376" y="354" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#D1D5DB">+ Oralable_Night_Events_*.csv</text>
+  <rect x="364" y="388" width="212" height="72" rx="8" fill="#F3F4F6"/>
+  <text x="376" y="412" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#6B7280">Share preview</text>
+  <polyline points="376,440 392,436 408,442 424,428 440,434 456,426 472,438 488,430 504,436 532,432" fill="none" stroke="#111111" stroke-width="1.3"/>
+  <text x="392" y="610" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#9CA3AF">ShareView</text>
+
+  <!-- Notes -->
+  <rect x="640" y="120" width="520" height="500" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="664" y="156" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111111">What ships vs what the PDF adds</text>
+  <text x="664" y="192" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">In app (flag showOvernightHypnogram)</text>
+  <text x="664" y="214" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Band chips + StateHypnogramView on Dashboard and Share.</text>
+  <text x="664" y="234" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Bands unlock at ≥1 h worn. Under that: “Need ≥1 hour…”</text>
+  <text x="664" y="270" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Clinical PDF (Share)</text>
+  <text x="664" y="292" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">KPIs → bout hypnogram → hourly stack → IR-DC/SpO₂ rail → events.</text>
+  <text x="664" y="328" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Evaluable overnight (cohort / Paper A)</text>
+  <text x="664" y="350" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">≥6 h worn (goal 8 h). Do not mix with the 1 h in-app gate.</text>
+  <text x="664" y="386" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111111">Wording</text>
+  <text x="664" y="408" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">Low / Moderate / High — not a sleep score, not AHI, not diagnosis.</text>
+  <text x="664" y="444" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#6B7280">OvernightNightReportBuilder · ClinicalReportGenerator</text>
+  <text x="664" y="580" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#9CA3AF">DRAFT wireframe — screenshot still open for FIG-IOS-003.</text>
 </svg>

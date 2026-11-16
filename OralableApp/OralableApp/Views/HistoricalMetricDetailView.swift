@@ -67,8 +67,12 @@ struct HistoricalMetricDetailView: View {
                 guard let p = s.spo2, p.percentage > 0, p.percentage <= 100 else { return nil }
                 return AppleHealthSpO2SampleStub(date: s.timestamp, oxygenSaturationPercent: p.percentage)
             }
-            try await appleHealthManager.exportSpO2ToAppleHealthStub(samples: samples)
-            exportBanner = "Saved session-average SpO₂ (\(samples.count) samples) to Apple Health."
+            let hrSamples = oral.compactMap { s -> AppleHealthHeartRateSample? in
+                guard let hr = s.heartRate, hr.bpm >= 40, hr.bpm <= 200 else { return nil }
+                return AppleHealthHeartRateSample(date: s.timestamp, bpm: hr.bpm)
+            }
+            try await appleHealthManager.exportVitalsToAppleHealth(heartRate: hrSamples, spo2: samples)
+            exportBanner = "Saved \(hrSamples.count) heart-rate and \(samples.count) SpO₂ samples (downsampled) to Apple Health."
             showExportAlert = true
         } catch {
             exportBanner = error.localizedDescription

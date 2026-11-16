@@ -21,6 +21,7 @@
 
 import Foundation
 import StoreKit
+import OralableCore
 
 // MARK: - Subscription Tier
 
@@ -106,16 +107,9 @@ class SubscriptionManager: ObservableObject {
 
     // MARK: - Constants
 
-    // Product IDs for Patient App
-    private enum ProductIdentifier {
-        static let monthlySubscription = "com.jacdental.oralable.premium.monthly"
-        static let yearlySubscription = "com.jacdental.oralable.premium.yearly"
-    }
-
-    private let productIdentifiers: Set<String> = [
-        ProductIdentifier.monthlySubscription,
-        ProductIdentifier.yearlySubscription
-    ]
+    /// Local StoreKit fixtures and App Store Connect must match this shared
+    /// contract before the subscription UI is enabled for release.
+    private let productIdentifiers = OralableAppServiceContract.StoreKit.consumerProductIdentifiers
 
     // MARK: - Private Properties
 
@@ -314,11 +308,11 @@ class SubscriptionManager: ObservableObject {
     }
 
     var monthlyProduct: Product? {
-        return product(for: ProductIdentifier.monthlySubscription)
+        return product(for: OralableAppServiceContract.StoreKit.consumerPremiumMonthly)
     }
 
     var yearlyProduct: Product? {
-        return product(for: ProductIdentifier.yearlySubscription)
+        return product(for: OralableAppServiceContract.StoreKit.consumerPremiumYearly)
     }
 
     // MARK: - Subscription Expiry Tracking

@@ -124,6 +124,10 @@ extension OralableDevice: CBPeripheralDelegate {
                 firmwareConfigStateCharacteristic = characteristic
                 Logger.shared.info("[OralableDevice] ⚙️ Firmware config state characteristic found (3A0FF00C)")
 
+            case batteryUsageCharUUID:
+                batteryUsageCharacteristic = characteristic
+                Logger.shared.info("[OralableDevice] Battery usage characteristic found (3A0FF00D)")
+
             default:
                 Logger.shared.debug("[OralableDevice] Other characteristic: \(characteristic.uuid.uuidString)")
             }
@@ -185,6 +189,9 @@ extension OralableDevice: CBPeripheralDelegate {
             } else if characteristic.uuid == tgmBatteryCharUUID {
                 batteryNotificationContinuation?.resume(throwing: error)
                 batteryNotificationContinuation = nil
+            } else if characteristic.uuid == batteryUsageCharUUID {
+                batteryUsageNotificationContinuation?.resume(throwing: error)
+                batteryUsageNotificationContinuation = nil
             } else if characteristic.uuid == commandCharUUID {
                 temperatureNotificationContinuation?.resume(throwing: error)
                 temperatureNotificationContinuation = nil
@@ -227,6 +234,11 @@ extension OralableDevice: CBPeripheralDelegate {
                 batteryNotificationContinuation?.resume()
                 batteryNotificationContinuation = nil
 
+            case batteryUsageCharUUID:
+                Logger.shared.info("[OralableDevice] Battery usage notifications confirmed")
+                batteryUsageNotificationContinuation?.resume()
+                batteryUsageNotificationContinuation = nil
+
             default:
                 Logger.shared.debug("[OralableDevice] 📡 Unknown characteristic notifications enabled: \(charName)")
             }
@@ -266,6 +278,9 @@ extension OralableDevice: CBPeripheralDelegate {
                 notificationReadiness.remove(.battery)
                 batteryNotificationContinuation?.resume(throwing: disableError)
                 batteryNotificationContinuation = nil
+            case batteryUsageCharUUID:
+                batteryUsageNotificationContinuation?.resume(throwing: disableError)
+                batteryUsageNotificationContinuation = nil
             default:
                 break
             }
@@ -358,6 +373,9 @@ extension OralableDevice: CBPeripheralDelegate {
         case tgmBatteryCharUUID:
             // TGM Battery (4 bytes, millivolts)
             parseBatteryData(data)
+
+        case batteryUsageCharUUID:
+            parseBatteryUsage(data)
 
         case firmwareLogCharUUID:
             let line = String(data: data, encoding: .utf8)?

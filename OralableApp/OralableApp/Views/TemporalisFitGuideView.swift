@@ -122,7 +122,7 @@ struct TemporalisFitGuideView: View {
                 Spacer(minLength: 0)
                 }
                 .background(designSystem.colors.backgroundSecondary)
-                .navigationTitle("Temporalis fit")
+                .navigationTitle("Temple fit")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -252,17 +252,17 @@ struct TemporalisFitGuideView: View {
 
     private var instructionPanel: some View {
         VStack(spacing: 8) {
-            Text("Place sensor over the temple bulge and clench your teeth.")
+            Text("Place the clip over the temple bulge and clench your teeth.")
                 .font(designSystem.typography.headline)
                 .foregroundColor(designSystem.colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, designSystem.spacing.lg)
-            Text("Ensure the headband is tight. The sensor must remain flush with the temple bulge even during a strong clench.")
+            Text("Press pad or tape so the sensor stays flush with the temple even during a strong clench. No headband.")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, designSystem.spacing.lg)
-            Text("Use the mirror to align the headband. Relax, then gently clench to confirm coupling.")
+            Text("Use the mirror to line up the pad. Relax, then gently clench to confirm coupling.")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textSecondary)
                 .multilineTextAlignment(.center)

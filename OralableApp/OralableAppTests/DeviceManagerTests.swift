@@ -11,6 +11,7 @@ import XCTest
 import Combine
 import CoreBluetooth
 @testable import OralableApp
+import struct OralableCore.TGMDeviceStatus
 
 @MainActor
 final class DeviceManagerTests: XCTestCase {
@@ -350,6 +351,21 @@ final class DeviceManagerTests: XCTestCase {
         }
     }
 
+    func testReadyLinkClearsConnectionLostBanner() {
+        sut.lastError = .connectionLost
+        sut.clearStaleConnectionBanner()
+        XCTAssertNil(sut.lastError)
+    }
+
+    func testReadyLinkKeepsFirmwareBanner() {
+        sut.lastError = .firmwareUpdateRequired(requiredMinimum: "1.0.90", reported: "1.0.87")
+        sut.clearStaleConnectionBanner()
+        if case .firmwareUpdateRequired = sut.lastError {
+            return
+        }
+        XCTFail("Firmware banner should stay up after the link is ready")
+    }
+
     func testDataCorruptedErrorSetsParsingError() async {
         // Given
         let error = BLEError.dataCorrupted(description: "Invalid checksum")
@@ -499,6 +515,65 @@ final class DeviceManagerTests: XCTestCase {
         } else {
             XCTFail("Expected unknownError for internalError")
         }
+    }
+
+    // MARK: - Battery percent preference
+
+    func testPrimaryBatteryPercentPrefersNonZeroStatus() {
+        sut.primaryFirmwareDeviceStatus = TGMDeviceStatus(
+            onDock: false,
+            chargeActive: false,
+            worn: true,
+            deviceState: 2,
+            batteryPercent: 75
+        )
+        sut.primaryDevice = DeviceInfo(
+            type: .oralable,
+            name: "Oralable",
+            peripheralIdentifier: UUID(),
+            connectionState: .connected,
+            batteryLevel: 40
+        )
+
+        XCTAssertEqual(sut.primaryBatteryPercent(), 75)
+    }
+
+    func testPrimaryBatteryPercentFallsThroughZeroStatusToDeviceGauge() {
+        sut.primaryFirmwareDeviceStatus = TGMDeviceStatus(
+            onDock: true,
+            chargeActive: false,
+            worn: false,
+            deviceState: 1,
+            batteryPercent: 0
+        )
+        sut.primaryDevice = DeviceInfo(
+            type: .oralable,
+            name: "Oralable",
+            peripheralIdentifier: UUID(),
+            connectionState: .connected,
+            batteryLevel: 73
+        )
+
+        XCTAssertEqual(sut.primaryBatteryPercent(), 73)
+    }
+
+    func testPrimaryBatteryPercentReturnsZeroWhenNoGaugeFallback() {
+        sut.primaryFirmwareDeviceStatus = TGMDeviceStatus(
+            onDock: false,
+            chargeActive: false,
+            worn: false,
+            deviceState: 0,
+            batteryPercent: 0
+        )
+        sut.primaryDevice = DeviceInfo(
+            type: .oralable,
+            name: "Oralable",
+            peripheralIdentifier: UUID(),
+            connectionState: .connected,
+            batteryLevel: nil
+        )
+
+        XCTAssertEqual(sut.primaryBatteryPercent(), 0)
     }
 }
 

@@ -92,7 +92,11 @@ struct FirstLaunchOnboardingView: View {
                 .font(designSystem.typography.h2)
                 .foregroundColor(designSystem.colors.textPrimary)
 
-            Text("Phase 0 vitals: heart rate and SpO₂ on the temple. No cheek calibration.")
+            Text(
+                featureFlags.requireProtocolASetup
+                    ? "Connect Oralable, then complete Protocol A Setup (~6 min research QC) before the dashboard. Wellness only."
+                    : "Connect the Gen1 Oralable. Charge on the Oralable case. Pad or tape on the temple — no headband, no ANR. Set Worn on temple. Heart rate and SpO₂ while the phone is nearby. One night, then Share the night pack. Protocol A Setup is optional research QC."
+            )
                 .font(designSystem.typography.body)
                 .foregroundColor(designSystem.colors.textSecondary)
 
@@ -101,9 +105,15 @@ struct FirstLaunchOnboardingView: View {
                 .environmentObject(deviceManager)
 
             if firstLaunchManager.hasPairedOralablePrimary {
-                Label("Device paired — opening dashboard…", systemImage: "checkmark.circle.fill")
-                    .font(designSystem.typography.labelMedium)
-                    .foregroundColor(designSystem.colors.success)
+                if featureFlags.requireProtocolASetup {
+                    Label("Device paired — continue with Protocol A Setup…", systemImage: "checkmark.circle.fill")
+                        .font(designSystem.typography.labelMedium)
+                        .foregroundColor(designSystem.colors.success)
+                } else {
+                    Label("Device paired — opening dashboard…", systemImage: "checkmark.circle.fill")
+                        .font(designSystem.typography.labelMedium)
+                        .foregroundColor(designSystem.colors.success)
+                }
             }
 
             Button {
@@ -130,10 +140,10 @@ struct FirstLaunchOnboardingView: View {
         VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
             Text("Placement modes")
                 .font(designSystem.typography.headline)
-            bullet("Automatic — FW \(FirmwareGate.recommendedOralableSemanticVersion)+ (STAT blink = on Oralable case)")
-            bullet("On wireless charger — red flash while charging, solid on taper")
-            bullet("Off charger (not worn) — green LED on table")
-            bullet("Worn on temple — HR / SpO₂ streaming")
+            bullet("Automatic — FW 1.0.70+ (STAT blink = on Oralable case)")
+            bullet("On Oralable case — no phone: flash green = still charging, brief green pulse ~every 10 s = hold (never red)")
+            bullet("Off case (not worn) — status LED off on the table")
+            bullet("Worn on temple — pad or tape; HR / SpO₂ while the phone is linked; MAM status LED off")
         }
         .font(designSystem.typography.bodySmall)
         .foregroundColor(designSystem.colors.textSecondary)
@@ -151,7 +161,7 @@ struct FirstLaunchOnboardingView: View {
                         .font(designSystem.typography.h2)
                         .foregroundColor(designSystem.colors.textPrimary)
 
-                    Text("Connect your Oralable REV10, then complete the Temporalis fit and calibration once. This aligns every trial night with the same placement standard.")
+                    Text("Connect your MAM, then complete the Temporalis fit and calibration once. This aligns every trial night with the same placement standard.")
                         .font(designSystem.typography.body)
                         .foregroundColor(designSystem.colors.textSecondary)
 

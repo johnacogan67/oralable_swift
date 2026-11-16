@@ -130,7 +130,13 @@ struct DevicesView: View {
     // MARK: - My Devices Section (Remembered)
     private var myDevicesSection: some View {
         Section {
-            let rememberedDevices = persistenceManager.getRememberedDevices()
+            let rememberedDevices = persistenceManager.getRememberedDevices().filter { device in
+                if FeatureFlags.shared.vitalsPhaseEnabled {
+                    let name = device.name.lowercased()
+                    if name.contains("anr") || name.contains("m40") { return false }
+                }
+                return true
+            }
 
             if rememberedDevices.isEmpty {
                 Text("No saved devices")
@@ -158,6 +164,10 @@ struct DevicesView: View {
             }
         } header: {
             Text("My Devices")
+        } footer: {
+            if FeatureFlags.shared.vitalsPhaseEnabled {
+                Text("Beacon: Gen1 Oralable only. ANR stays lab.")
+            }
         }
     }
 

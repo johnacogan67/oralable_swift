@@ -21,6 +21,8 @@ import CloudKit
 import Combine
 import OralableCore
 
+private typealias CloudKitContract = OralableAppServiceContract.CloudKit
+
 // MARK: - Patient Models
 
 struct ProfessionalPatient: Identifiable, Codable {
@@ -150,7 +152,7 @@ class ProfessionalDataManager: ObservableObject {
 
     private init() {
         // Use same shared container as patient app
-        self.container = CKContainer(identifier: "iCloud.com.jacdental.oralable.shared")
+        self.container = CKContainer(identifier: CloudKitContract.containerIdentifier)
 
         // For development/testing, use private database which auto-creates schemas
         // In production, switch to publicCloudDatabase after setting up schema
@@ -177,8 +179,11 @@ class ProfessionalDataManager: ObservableObject {
 
         do {
             // Step 1: Find the share invitation with this code
-            let predicate = NSPredicate(format: "shareCode == %@ AND isActive == 1", shareCode)
-            let query = CKQuery(recordType: "ShareInvitation", predicate: predicate)
+            let predicate = NSPredicate(
+                format: "\(CloudKitContract.Field.shareCode) == %@ AND \(CloudKitContract.Field.isActive) == 1",
+                shareCode
+            )
+            let query = CKQuery(recordType: CloudKitContract.RecordType.shareInvitation, predicate: predicate)
 
             let (matchResults, _) = try await publicDatabase.records(matching: query)
 
@@ -191,13 +196,13 @@ class ProfessionalDataManager: ObservableObject {
             }
 
             // Step 2: Check if code is expired
-            if let expiryDate = invitationRecord["expiryDate"] as? Date,
+            if let expiryDate = invitationRecord[CloudKitContract.Field.expiryDate] as? Date,
                expiryDate < Date() {
                 throw ProfessionalDataError.shareCodeExpired
             }
 
             // Step 3: Get patient ID from invitation
-            guard let patientID = invitationRecord["patientID"] as? String else {
+            guard let patientID = invitationRecord[CloudKitContract.Field.patientID] as? String else {
                 throw ProfessionalDataError.invalidShareCode
             }
 
@@ -208,21 +213,24 @@ class ProfessionalDataManager: ObservableObject {
 
             // Step 5: Create SharedPatientData record
             let sharedDataID = CKRecord.ID(recordName: UUID().uuidString)
-            let sharedDataRecord = CKRecord(recordType: "SharedPatientData", recordID: sharedDataID)
+            let sharedDataRecord = CKRecord(recordType: CloudKitContract.RecordType.sharedPatientData, recordID: sharedDataID)
 
-            // Note: CloudKit field names use "dentistID" for backwards compatibility
-            sharedDataRecord["patientID"] = patientID as CKRecordValue
-            sharedDataRecord["dentistID"] = professionalID as CKRecordValue
-            sharedDataRecord["shareCode"] = shareCode as CKRecordValue
-            sharedDataRecord["accessGrantedDate"] = Date() as CKRecordValue
-            sharedDataRecord["isActive"] = 1 as CKRecordValue
-            sharedDataRecord["dentistName"] = getCurrentProfessionalName() as CKRecordValue?
+            // `professionalID` is canonical; retained aliases bridge older development/test records.
+            sharedDataRecord[CloudKitContract.Field.patientID] = patientID as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.professionalID] = professionalID as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.legacyDentistID] = professionalID as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.shareCode] = shareCode as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.accessGrantedDate] = Date() as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.isActive] = 1 as CKRecordValue
+            sharedDataRecord[CloudKitContract.Field.professionalName] = getCurrentProfessionalName() as CKRecordValue?
+            sharedDataRecord[CloudKitContract.Field.legacyDentistName] = getCurrentProfessionalName() as CKRecordValue?
 
             try await publicDatabase.save(sharedDataRecord)
 
             // Step 6: Update the invitation to mark it as used
-            invitationRecord["dentistID"] = professionalID as CKRecordValue
-            invitationRecord["isActive"] = 0 as CKRecordValue
+            invitationRecord[CloudKitContract.Field.professionalID] = professionalID as CKRecordValue
+            invitationRecord[CloudKitContract.Field.legacyDentistID] = professionalID as CKRecordValue
+            invitationRecord[CloudKitContract.Field.isActive] = 0 as CKRecordValue
             try await publicDatabase.save(invitationRecord)
 
             // Step 7: Add to local patient list
@@ -273,9 +281,12 @@ class ProfessionalDataManager: ObservableObject {
             isLoading = true
             errorMessage = nil
 
-            // Note: CloudKit field name is "dentistID" for backwards compatibility
-            let predicate = NSPredicate(format: "dentistID == %@ AND isActive == 1", professionalID)
-            let query = CKQuery(recordType: "SharedPatientData", predicate: predicate)
+            let predicate = NSPredicate(
+                format: "(\(CloudKitContract.Field.professionalID) == %@ OR \(CloudKitContract.Field.legacyDentistID) == %@) AND \(CloudKitContract.Field.isActive) == 1",
+                professionalID,
+                professionalID
+            )
+            let query = CKQuery(recordType: CloudKitContract.RecordType.sharedPatientData, predicate: predicate)
 
             do {
                 let (matchResults, _) = try await publicDatabase.records(matching: query)
@@ -285,17 +296,17 @@ class ProfessionalDataManager: ObservableObject {
                 for (_, result) in matchResults {
                     switch result {
                     case .success(let record):
-                        if let patientID = record["patientID"] as? String,
-                           let shareCode = record["shareCode"] as? String,
-                           let accessDate = record["accessGrantedDate"] as? Date {
+                        if let patientID = record[CloudKitContract.Field.patientID] as? String,
+                           let shareCode = record[CloudKitContract.Field.shareCode] as? String,
+                           let accessDate = record[CloudKitContract.Field.accessGrantedDate] as? Date {
 
                             let patient = ProfessionalPatient(
                                 id: record.recordID.recordName,
                                 patientID: patientID,
-                                patientName: record["patientName"] as? String,
+                                patientName: record[CloudKitContract.Field.patientName] as? String,
                                 shareCode: shareCode,
                                 accessGrantedDate: accessDate,
-                                lastDataUpdate: record["lastDataUpdate"] as? Date,
+                                lastDataUpdate: record[CloudKitContract.Field.lastDataUpdate] as? Date,
                                 recordID: record.recordID.recordName,
                                 isLocalImport: false
                             )
@@ -361,7 +372,7 @@ class ProfessionalDataManager: ObservableObject {
             let recordID = CKRecord.ID(recordName: patient.recordID)
             let record = try await publicDatabase.record(for: recordID)
 
-            record["isActive"] = 0 as CKRecordValue
+            record[CloudKitContract.Field.isActive] = 0 as CKRecordValue
             try await publicDatabase.save(record)
 
             await MainActor.run {
@@ -388,13 +399,13 @@ class ProfessionalDataManager: ObservableObject {
         do {
             // Query HealthDataRecord CloudKit records for this patient
             let predicate = NSPredicate(
-                format: "patientID == %@ AND recordingDate >= %@ AND recordingDate <= %@",
+                format: "\(CloudKitContract.Field.patientID) == %@ AND \(CloudKitContract.Field.recordingDate) >= %@ AND \(CloudKitContract.Field.recordingDate) <= %@",
                 patient.patientID,
                 startDate as NSDate,
                 endDate as NSDate
             )
-            let query = CKQuery(recordType: "HealthDataRecord", predicate: predicate)
-            query.sortDescriptors = [NSSortDescriptor(key: "recordingDate", ascending: false)]
+            let query = CKQuery(recordType: CloudKitContract.RecordType.healthDataRecord, predicate: predicate)
+            query.sortDescriptors = [NSSortDescriptor(key: CloudKitContract.Field.recordingDate, ascending: false)]
 
             let (matchResults, _) = try await publicDatabase.records(matching: query)
 
@@ -405,16 +416,16 @@ class ProfessionalDataManager: ObservableObject {
                 case .success(let record):
                     // Parse health data from record
                     // This is a simplified example - actual implementation would parse sensor data
-                    if let recordDate = record["recordingDate"] as? Date,
-                       let duration = record["sessionDuration"] as? Double {
+                    if let recordDate = record[CloudKitContract.Field.recordingDate] as? Date,
+                       let duration = record[CloudKitContract.Field.sessionDuration] as? Double {
 
                         let summary = PatientHealthSummary(
                             patientID: patient.patientID,
                             recordingDate: recordDate,
                             sessionDuration: duration,
-                            bruxismEvents: record["bruxismEvents"] as? Int ?? 0,
-                            averageIntensity: record["averageIntensity"] as? Double ?? 0.0,
-                            peakIntensity: record["peakIntensity"] as? Double ?? 0.0,
+                            bruxismEvents: record[CloudKitContract.Field.bruxismEvents] as? Int ?? 0,
+                            averageIntensity: record[CloudKitContract.Field.averageIntensity] as? Double ?? 0.0,
+                            peakIntensity: record[CloudKitContract.Field.peakIntensity] as? Double ?? 0.0,
                             heartRateData: [],  // Would parse from measurements data
                             oxygenSaturation: []  // Would parse from measurements data
                         )
@@ -455,13 +466,13 @@ class ProfessionalDataManager: ObservableObject {
             let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
             let predicate = NSPredicate(
-                format: "patientID == %@ AND recordingDate >= %@ AND recordingDate < %@",
+                format: "\(CloudKitContract.Field.patientID) == %@ AND \(CloudKitContract.Field.recordingDate) >= %@ AND \(CloudKitContract.Field.recordingDate) < %@",
                 patient.patientID,
                 startOfDay as NSDate,
                 endOfDay as NSDate
             )
-            let query = CKQuery(recordType: "HealthDataRecord", predicate: predicate)
-            query.sortDescriptors = [NSSortDescriptor(key: "recordingDate", ascending: false)]
+            let query = CKQuery(recordType: CloudKitContract.RecordType.healthDataRecord, predicate: predicate)
+            query.sortDescriptors = [NSSortDescriptor(key: CloudKitContract.Field.recordingDate, ascending: false)]
 
             let (matchResults, _) = try await publicDatabase.records(matching: query, resultsLimit: 1)
 
@@ -472,8 +483,8 @@ class ProfessionalDataManager: ObservableObject {
             }
 
             // Extract and decompress sensor data
-            guard let compressedData = record["sensorDataCompressed"] as? Data,
-                  let uncompressedSize = record["sensorDataUncompressedSize"] as? Int else {
+            guard let compressedData = record[CloudKitContract.Field.sensorDataCompressed] as? Data,
+                  let uncompressedSize = record[CloudKitContract.Field.sensorDataUncompressedSize] as? Int else {
                 await MainActor.run { self.isLoading = false }
                 return nil
             }
@@ -514,13 +525,13 @@ class ProfessionalDataManager: ObservableObject {
 
         do {
             let predicate = NSPredicate(
-                format: "patientID == %@ AND recordingDate >= %@ AND recordingDate <= %@",
+                format: "\(CloudKitContract.Field.patientID) == %@ AND \(CloudKitContract.Field.recordingDate) >= %@ AND \(CloudKitContract.Field.recordingDate) <= %@",
                 patient.patientID,
                 startDate as NSDate,
                 endDate as NSDate
             )
-            let query = CKQuery(recordType: "HealthDataRecord", predicate: predicate)
-            query.sortDescriptors = [NSSortDescriptor(key: "recordingDate", ascending: true)]
+            let query = CKQuery(recordType: CloudKitContract.RecordType.healthDataRecord, predicate: predicate)
+            query.sortDescriptors = [NSSortDescriptor(key: CloudKitContract.Field.recordingDate, ascending: true)]
 
             Logger.shared.info("[ProfessionalDataManager] 📥 Querying HealthDataRecord...")
             let (matchResults, _) = try await publicDatabase.records(matching: query)
@@ -530,8 +541,8 @@ class ProfessionalDataManager: ObservableObject {
                 switch result {
                 case .success(let record):
                     // Extract and decompress sensor data
-                    if let compressedData = record["sensorDataCompressed"] as? Data,
-                       let uncompressedSize = record["sensorDataUncompressedSize"] as? Int,
+                    if let compressedData = record[CloudKitContract.Field.sensorDataCompressed] as? Data,
+                       let uncompressedSize = record[CloudKitContract.Field.sensorDataUncompressedSize] as? Int,
                        let decompressedData = compressedData.decompressed(expectedSize: uncompressedSize) {
 
                         if let sessionData = try? JSONDecoder().decode(BruxismSessionData.self, from: decompressedData) {
@@ -703,7 +714,7 @@ class ProfessionalDataManager: ObservableObject {
 
         do {
             // Delete SharedPatientData records (professional's patient connections)
-            try await deleteRecords(ofType: "SharedPatientData", forProfessionalID: professionalID)
+            try await deleteRecords(ofType: CloudKitContract.RecordType.sharedPatientData, forProfessionalID: professionalID)
 
             // Clear local state
             patients = []
@@ -719,8 +730,11 @@ class ProfessionalDataManager: ObservableObject {
     }
 
     private func deleteRecords(ofType recordType: String, forProfessionalID professionalID: String) async throws {
-        // Note: CloudKit field name is "dentistID" for backwards compatibility
-        let predicate = NSPredicate(format: "dentistID == %@", professionalID)
+        let predicate = NSPredicate(
+            format: "\(CloudKitContract.Field.professionalID) == %@ OR \(CloudKitContract.Field.legacyDentistID) == %@",
+            professionalID,
+            professionalID
+        )
         let query = CKQuery(recordType: recordType, predicate: predicate)
 
         do {
