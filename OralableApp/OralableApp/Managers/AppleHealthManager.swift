@@ -128,7 +128,7 @@ final class AppleHealthManager: ObservableObject, AppleHealthBridging {
             date: sampleStart,
             oxygenSaturationPercent: sessionAveragePercent
         )
-        try await saveSpO2Samples([sample], endFallback: sampleEnd)
+        try await saveSpO2Samples([sample], sessionEnd: sampleEnd)
     }
 
     func syncHeartRateVariabilityStub(samples: [AppleHealthHRVSampleStub]) async throws {
@@ -159,7 +159,7 @@ final class AppleHealthManager: ObservableObject, AppleHealthBridging {
             try await saveHeartRateSamples(hrDown)
         }
         if !oxDown.isEmpty {
-            try await saveSpO2Samples(oxDown, endFallback: oxDown.last!.date.addingTimeInterval(1))
+            try await saveSpO2Samples(oxDown)
         }
         markSyncSuccess()
         Logger.shared.info("[AppleHealthManager] Wrote \(hrDown.count) HR and \(oxDown.count) SpO₂ samples to Health")
@@ -183,6 +183,17 @@ final class AppleHealthManager: ObservableObject, AppleHealthBridging {
         return out
     }
 
+    /// End date for one HealthKit SpO₂ sample.
+    /// A series uses a 1 s window so earlier readings do not run through the end of the export.
+    /// One session-mean sample may span `sessionEnd` when that end is later than the 1 s window.
+    static func spo2SampleEnd(start: Date, sampleCount: Int, sessionEnd: Date? = nil) -> Date {
+        let instantEnd = start.addingTimeInterval(1)
+        guard sampleCount == 1, let sessionEnd, sessionEnd > instantEnd else {
+            return instantEnd
+        }
+        return sessionEnd
+    }
+
     private func saveHeartRateSamples(_ samples: [AppleHealthHeartRateSample]) async throws {
         guard let hrType = HKObjectType.quantityType(forIdentifier: .heartRate) else {
             throw AppleHealthError.typeUnavailable
@@ -202,14 +213,14 @@ final class AppleHealthManager: ObservableObject, AppleHealthBridging {
         try await save(hk)
     }
 
-    private func saveSpO2Samples(_ samples: [AppleHealthSpO2SampleStub], endFallback: Date) async throws {
+    private func saveSpO2Samples(_ samples: [AppleHealthSpO2SampleStub], sessionEnd: Date? = nil) async throws {
         guard let spo2Type = HKObjectType.quantityType(forIdentifier: .oxygenSaturation) else {
             throw AppleHealthError.typeUnavailable
         }
         let hk: [HKQuantitySample] = samples.compactMap { s in
             let clamped = min(100, max(0, s.oxygenSaturationPercent))
             guard clamped > 0 else { return nil }
-            let end = max(s.date.addingTimeInterval(1), endFallback)
+            let end = Self.spo2SampleEnd(start: s.date, sampleCount: samples.count, sessionEnd: sessionEnd)
             return HKQuantitySample(
                 type: spo2Type,
                 quantity: HKQuantity(unit: HKUnit.percent(), doubleValue: clamped / 100.0),
