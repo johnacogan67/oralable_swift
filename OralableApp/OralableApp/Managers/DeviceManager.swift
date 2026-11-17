@@ -561,8 +561,11 @@ class DeviceManager: ObservableObject {
         let batch = await unifiedSensorDataBuffer.removeAllCopying()
         guard !batch.isEmpty else { return }
         do {
-            let name = "oralable_unified_flush_\(Int(Date().timeIntervalSince1970)).csv"
-            let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
+            let url = ResearchRawDataExport.memoryFlushFileURL(
+                prefix: "oralable_unified_flush",
+                directory: ApplicationSupportPaths.memoryFlushDirectory
+            )
+            let name = url.lastPathComponent
             try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
             Task { @MainActor in
                 MemoryFlushStatus.shared.recordFlushSuccess()

@@ -71,8 +71,11 @@ class SensorDataProcessor: ObservableObject {
         guard !sensorDataHistory.isEmpty else { return }
         let batch = sensorDataHistory
         do {
-            let name = "oralable_processor_flush_\(Int(Date().timeIntervalSince1970)).csv"
-            let url = ApplicationSupportPaths.memoryFlushDirectory.appendingPathComponent(name)
+            let url = ResearchRawDataExport.memoryFlushFileURL(
+                prefix: "oralable_processor_flush",
+                directory: ApplicationSupportPaths.memoryFlushDirectory
+            )
+            let name = url.lastPathComponent
             try ResearchRawDataExport.writeOralableRaw50HzCSV(samples: batch, to: url)
             Task { @MainActor in
                 MemoryFlushStatus.shared.recordFlushSuccess()

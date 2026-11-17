@@ -147,6 +147,26 @@ final class OvernightNightReportBuilderTests: XCTestCase {
         XCTAssertEqual(chips[2].level, .low) // ~0.57 /h
     }
 
+    func testMemoryFlushNamesDoNotCollideInTheSameSecond() {
+        let directory = FileManager.default.temporaryDirectory
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let first = ResearchRawDataExport.memoryFlushFileURL(
+            prefix: "oralable_unified_flush",
+            directory: directory,
+            at: date,
+            unique: "a"
+        )
+        let second = ResearchRawDataExport.memoryFlushFileURL(
+            prefix: "oralable_unified_flush",
+            directory: directory,
+            at: date,
+            unique: "b"
+        )
+        XCTAssertNotEqual(first.lastPathComponent, second.lastPathComponent)
+        XCTAssertTrue(first.lastPathComponent.contains("1700000000"))
+        XCTAssertTrue(second.lastPathComponent.contains("1700000000"))
+    }
+
     func testNightReportCSVWritesHeaderAndRow() throws {
         let t0 = Date(timeIntervalSince1970: 1_700_000_000)
         let samples = [

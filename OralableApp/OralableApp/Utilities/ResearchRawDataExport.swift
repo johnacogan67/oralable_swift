@@ -48,6 +48,18 @@ enum ResearchRawDataExport {
         try data.write(to: url, options: .atomic)
     }
 
+    /// Spill file for one RAM flush. The Unix second is not unique: the 90 s tick and a
+    /// background flush can both write in that second, and the second write used to replace the first.
+    static func memoryFlushFileURL(
+        prefix: String,
+        directory: URL,
+        at date: Date = Date(),
+        unique: String = UUID().uuidString
+    ) -> URL {
+        let name = "\(prefix)_\(Int(date.timeIntervalSince1970))_\(unique).csv"
+        return directory.appendingPathComponent(name)
+    }
+
     /// Merged night CSV from flush-rebuilt samples. Paper A handoff — not the ~3 min RAM dump.
     static func writeNightReportCSV(samples: [NightReportSample], nightDate: Date, to url: URL? = nil) throws -> URL {
         let df = DateFormatter()
