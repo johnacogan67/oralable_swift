@@ -65,6 +65,8 @@ final class SingleProtocolASessionController: ObservableObject {
     private var deskSince: Date?
     private var clockStarted = false
     private var lastCoupleWarn: CoupleState?
+    /// Bumped on each settle and on cancel / reset / link drop so a stale 2 s callback cannot start cues.
+    private var settleGeneration: UInt = 0
 
     func attach(deviceManager: DeviceManager) {
         self.deviceManager = deviceManager
@@ -142,6 +144,7 @@ final class SingleProtocolASessionController: ObservableObject {
     }
 
     func cancel() {
+        invalidatePendingCueStart()
         stopTimers()
         restoreLoggerThrottle()
         clockStarted = false
@@ -150,6 +153,7 @@ final class SingleProtocolASessionController: ObservableObject {
     }
 
     func resetToIdle() {
+        invalidatePendingCueStart()
         stopTimers()
         restoreLoggerThrottle()
         phase = .idle
@@ -235,7 +239,9 @@ final class SingleProtocolASessionController: ObservableObject {
 
     // MARK: - Cues
 
-    private func beginSettleThenCues() {
+    func beginSettleThenCues() {
+        invalidatePendingCueStart()
+        let generation = settleGeneration
         phase = .settling
         statusMessage = "Settling 2 s before cues…"
         savedThrottle = NRFConnectBLELogger.shared.throttleHighRateNotifications
@@ -244,12 +250,28 @@ final class SingleProtocolASessionController: ObservableObject {
         sessionStamp = DualProtocolAExport.makeSessionTimestamp()
         sessionOralPoints.removeAll()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            self?.beginCueRun()
+        let delay = ProtocolASettleGate.delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.beginCueRun(scheduledGeneration: generation)
         }
     }
 
-    private func beginCueRun() {
+    private func invalidatePendingCueStart() {
+        settleGeneration &+= 1
+    }
+
+    private func beginCueRun(scheduledGeneration: UInt) {
+        let settling: Bool
+        if case .settling = phase {
+            settling = true
+        } else {
+            settling = false
+        }
+        guard ProtocolASettleGate.shouldStartCues(
+            isSettling: settling,
+            scheduledGeneration: scheduledGeneration,
+            currentGeneration: settleGeneration
+        ) else { return }
         cueStartedAt = Date()
         clockStarted = true
         deskSince = nil
@@ -463,6 +485,7 @@ final class SingleProtocolASessionController: ObservableObject {
             return false
         }
         guard oralableConnected else {
+            invalidatePendingCueStart()
             stopTimers()
             restoreLoggerThrottle()
             clockStarted = false

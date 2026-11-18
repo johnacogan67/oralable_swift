@@ -54,3 +54,18 @@ enum DualProtocolACues {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 }
+
+/// Settle → cue-clock handoff. A delayed callback must not start cues after cancel,
+/// link drop, or a newer settle.
+enum ProtocolASettleGate {
+    /// Wall-clock pause between seat QC and the cue clock. Tests shorten this.
+    static var delay: TimeInterval = 2
+
+    static func shouldStartCues(
+        isSettling: Bool,
+        scheduledGeneration: UInt,
+        currentGeneration: UInt
+    ) -> Bool {
+        isSettling && scheduledGeneration == currentGeneration
+    }
+}

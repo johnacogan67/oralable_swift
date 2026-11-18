@@ -14,6 +14,20 @@ import Foundation
 import CoreBluetooth
 import OralableCore
 
+/// Status-characteristic battery versus the GATT gauge.
+enum OralableBatteryGauge {
+    /// A status percent of 0 is not a gauge. Keep the last known level.
+    static func level(afterStatusPercent pct: Int, previous: Int?) -> Int? {
+        if pct > 0 { return pct }
+        return previous
+    }
+
+    /// A 0% status reading overwrites a real GATT sample on the dashboard and in history.
+    static func shouldPublishStatusReading(_ pct: Int) -> Bool {
+        pct > 0
+    }
+}
+
 // MARK: - Data Parsing
 
 extension OralableDevice {
@@ -269,18 +283,20 @@ extension OralableDevice {
 
         firmwareDeviceStatus = status
         let pct = Int(status.batteryPercent)
-        batteryLevel = pct
+        // Status 0 is a placeholder on some notifies. Do not wipe the GATT gauge:
+        // primaryBatteryPercent() would then report 0 and refuse temple / overnight worn mode.
+        batteryLevel = OralableBatteryGauge.level(afterStatusPercent: pct, previous: batteryLevel)
 
-        // Publish so DeviceManagerAdapter → DashboardViewModel top-bar battery updates
-        // (status notify alone previously never emitted a .battery reading).
-        let reading = SensorReading(
-            sensorType: .battery,
-            value: Double(pct),
-            timestamp: Date(),
-            deviceId: peripheral?.identifier.uuidString
-        )
-        latestReadings[.battery] = reading
-        readingsBatchSubject.send([reading])
+        if OralableBatteryGauge.shouldPublishStatusReading(pct) {
+            let reading = SensorReading(
+                sensorType: .battery,
+                value: Double(pct),
+                timestamp: Date(),
+                deviceId: peripheral?.identifier.uuidString
+            )
+            latestReadings[.battery] = reading
+            readingsBatchSubject.send([reading])
+        }
 
         Logger.shared.info("[OralableDevice] 📟 Status: worn=\(status.worn) on_dock=\(status.onDock) charge_active=\(status.chargeActive) state=\(status.deviceState) bat=\(status.batteryPercent)%")
     }
