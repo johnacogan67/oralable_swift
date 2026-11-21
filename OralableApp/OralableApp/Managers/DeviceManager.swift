@@ -569,6 +569,7 @@ class DeviceManager: ObservableObject {
             }
             Logger.shared.info("[DeviceManager] Unified buffer auto-flush: \(batch.count) samples → Application Support/\(name)")
         } catch {
+            await unifiedSensorDataBuffer.append(contentsOf: batch)
             Logger.shared.warning("[DeviceManager] Unified buffer flush failed: \(error.localizedDescription)")
         }
     }

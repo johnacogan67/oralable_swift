@@ -78,10 +78,10 @@ class SensorDataProcessor: ObservableObject {
                 MemoryFlushStatus.shared.recordFlushSuccess()
             }
             Logger.shared.info("[SensorDataProcessor] Auto-flush: \(batch.count) rows → Application Support/\(name)")
+            clearHistory()
         } catch {
             Logger.shared.warning("[SensorDataProcessor] Auto-flush failed: \(error.localizedDescription)")
         }
-        clearHistory()
     }
     
     /// Clear the sensor data history
