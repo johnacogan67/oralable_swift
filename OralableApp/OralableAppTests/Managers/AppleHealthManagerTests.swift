@@ -4,11 +4,11 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class AppleHealthManagerTests: XCTestCase {
 
-    func testDownsampleKeepsOneSamplePerInterval() {
+    func testDownsampleKeepsOneSamplePerInterval() throws {
         let t0 = Date(timeIntervalSince1970: 1_700_000_000)
         var samples: [(Date, Double)] = []
         for i in 0..<20 {
@@ -16,8 +16,8 @@ final class AppleHealthManagerTests: XCTestCase {
         }
         let down = AppleHealthManager.downsample(samples, interval: 5)
         XCTAssertEqual(down.count, 4)
-        XCTAssertEqual(down.first?.1, 64, accuracy: 0.01) // last in first 5 s bucket (t=0..4)
-        XCTAssertEqual(down.last?.1, 79, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(down.first).1, 64, accuracy: 0.01) // last in first 5 s bucket (t=0..4)
+        XCTAssertEqual(try XCTUnwrap(down.last).1, 79, accuracy: 0.01)
     }
 
     func testDownsampleEmpty() {

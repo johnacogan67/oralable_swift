@@ -205,7 +205,7 @@ struct ProfileView: View {
                 ProfileInfoRow(
                     icon: "cpu",
                     label: "Device",
-                    value: "Oralable PPG"
+                    value: "MAM PPG"
                 )
                 
                 Divider()

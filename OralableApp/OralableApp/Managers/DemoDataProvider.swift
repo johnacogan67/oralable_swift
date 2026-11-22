@@ -41,7 +41,7 @@ class DemoDataProvider: ObservableObject {
     @Published var currentPPGGreen: Double = 0
 
     // MARK: - Device Info
-    let deviceName: String = "Oralable"
+    let deviceName: String = "MAM"
     let deviceID: String = "DEMO-ORALABLE-001"
 
     // Backward compatibility
@@ -70,7 +70,8 @@ class DemoDataProvider: ObservableObject {
     // MARK: - Load CSV
     private func loadCSV() {
         // Try the new CSV file first
-        guard let url = Bundle.main.url(forResource: "oralable_data_001333.e_1765745675", withExtension: "csv") else {
+        guard let url = Bundle.main.url(forResource: "mam_data_001333.e_1765745675", withExtension: "csv")
+                ?? Bundle.main.url(forResource: "oralable_data_001333.e_1765745675", withExtension: "csv") else {
             Logger.shared.error("[DemoDataProvider] CSV file not found in bundle - trying fallback name")
             // Try fallback name
             if let fallbackURL = Bundle.main.url(forResource: "oralable_demo_data", withExtension: "csv") {
@@ -121,7 +122,7 @@ class DemoDataProvider: ObservableObject {
             // Format: Timestamp,Device_Type,EMG,PPG_IR,PPG_Red,PPG_Green
             let row = [
                 "2025-01-01T00:00:00Z",
-                "Oralable",
+                "MAM",
                 "0",
                 String(Int(ppgIR)),
                 String(Int(ppgRed)),

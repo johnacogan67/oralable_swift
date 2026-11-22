@@ -50,6 +50,38 @@ enum OvernightNightReportBuilder {
         var wearHoursText: String {
             String(format: "%.1f h worn", wearSeconds / 3600.0)
         }
+
+        var heartSummaryLine: String {
+            OvernightNightReportBuilder.heartSummaryLine(from: samples)
+        }
+    }
+
+    /// Mean and minimum heart rate, plus the median window RMSSD.
+    nonisolated static func heartSummaryLine(from samples: [NightReportSample]) -> String {
+        let rates = samples.compactMap { sample -> Double? in
+            guard sample.heartRateBpm.isFinite, (40...200).contains(sample.heartRateBpm) else { return nil }
+            return sample.heartRateBpm
+        }
+        let variability = samples.compactMap { sample -> Double? in
+            guard sample.hrvMs.isFinite, sample.hrvMs > 0 else { return nil }
+            return sample.hrvMs
+        }.sorted()
+        let rateText: String
+        if rates.isEmpty {
+            rateText = "Heart rate mean/min: —"
+        } else {
+            let mean = rates.reduce(0, +) / Double(rates.count)
+            let minimum = rates.min() ?? mean
+            rateText = String(format: "Heart rate mean/min: %.0f/%.0f BPM", mean, minimum)
+        }
+        let hrvText: String
+        if variability.isEmpty {
+            hrvText = "RMSSD: —"
+        } else {
+            let median = variability[variability.count / 2]
+            hrvText = String(format: "RMSSD: %.0f ms", median)
+        }
+        return "\(rateText)   |   \(hrvText)"
     }
 
     static func resolveSessionWindow(

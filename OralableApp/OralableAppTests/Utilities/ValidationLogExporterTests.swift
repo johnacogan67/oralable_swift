@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 import OralableCore
 
 final class ValidationLogExporterTests: XCTestCase {

@@ -278,7 +278,7 @@ extension CSVImportManager {
         
         do {
             let tempDir = FileManager.default.temporaryDirectory
-            let templateURL = tempDir.appendingPathComponent("oralable_template.csv")
+            let templateURL = tempDir.appendingPathComponent("mam_template.csv")
             try csvContent.write(to: templateURL, atomically: true, encoding: .utf8)
             return templateURL
         } catch {

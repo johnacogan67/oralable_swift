@@ -157,7 +157,7 @@ class AppLoggingService: LoggingService, ObservableObject {
         }
         
         let tempDir = FileManager.default.temporaryDirectory
-        let fileName = "oralable_logs_\(formatDateForFilename(Date())).csv"
+        let fileName = "mam_logs_\(formatDateForFilename(Date())).csv"
         let fileURL = tempDir.appendingPathComponent(fileName)
         
         try logContent.write(to: fileURL, atomically: true, encoding: .utf8)
@@ -279,7 +279,7 @@ class MockLoggingService: LoggingService, ObservableObject {
         recentLogs = [
             LogEntry(timestamp: Date().addingTimeInterval(-300), level: .info, message: "App started", category: "App"),
             LogEntry(timestamp: Date().addingTimeInterval(-250), level: .debug, message: "Scanning for devices", category: "DeviceManager"),
-            LogEntry(timestamp: Date().addingTimeInterval(-200), level: .info, message: "Found Oralable device", category: "BLE"),
+            LogEntry(timestamp: Date().addingTimeInterval(-200), level: .info, message: "Found MAM", category: "BLE"),
             LogEntry(timestamp: Date().addingTimeInterval(-150), level: .info, message: "Connected successfully", category: "OralableDevice"),
             LogEntry(timestamp: Date().addingTimeInterval(-100), level: .debug, message: "Received PPG data: 20 samples", category: "OralableDevice"),
             LogEntry(timestamp: Date().addingTimeInterval(-50), level: .warning, message: "Low battery: 15%", category: "BatteryMonitor"),

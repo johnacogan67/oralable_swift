@@ -46,7 +46,7 @@ struct ImportedSensorData: Identifiable {
     /// Initialize from OralableCore.SensorData
     init(from sensorData: SensorData) {
         self.timestamp = sensorData.timestamp
-        self.deviceType = "Oralable"
+        self.deviceType = "MAM"
         self.emg = nil  // EMG not currently supported in SensorData
         self.ppgIR = Double(sensorData.ppg.ir)
         self.ppgRed = Double(sensorData.ppg.red)
@@ -168,7 +168,7 @@ struct CSVParser {
 
             let data = ImportedSensorData(
                 timestamp: parseTimestamp(values, columnMap),
-                deviceType: getString(values, columnMap, "Device_Type") ?? "Oralable",
+                deviceType: getString(values, columnMap, "Device_Type") ?? "MAM",
                 emg: getDouble(values, columnMap, "EMG"),
                 ppgIR: getDouble(values, columnMap, "PPG_IR"),
                 ppgRed: getDouble(values, columnMap, "PPG_Red"),

@@ -50,6 +50,16 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-OralableStoryCapture") {
+                    Section {
+                        Button("Open developer settings") {
+                            showDeveloperSettings = true
+                        }
+                    }
+                }
+                #endif
+
                 // Subscription Section - CONDITIONAL
                 if featureFlags.showSubscription {
                     Section {
@@ -130,7 +140,7 @@ struct SettingsView: View {
                     }
 
                     if featureFlags.devicePlacementMode == .offDockIdle {
-                        Text("Bench / idle is for off the case. On the Oralable case pick On Oralable case (or Automatic on 1.0.70+), then disconnect and reconnect. No phone: flash green = still charging, brief green pulse ~every 10 s = hold (~4.20 V). Status never shows red. While linked the MAM LED is off.")
+                        Text("Bench / idle is for off the case. On the MAM case pick On MAM case or Automatic, then disconnect and reconnect. No phone: flash green = still charging, brief green pulse ~every 10 s = hold (~4.20 V). Status never shows red. While linked the MAM LED is off.")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.warning)
                     }
@@ -145,12 +155,12 @@ struct SettingsView: View {
                 } header: {
                     Text("Device placement")
                 } footer: {
-                    Text("Beacon kits: Gen1 pcb00003, FW \(FirmwareGate.recommendedOralableSemanticVersion). Pad or tape on the temple — no headband, no ANR. Automatic dock is FW 1.0.70+. Sensors only while linked; green charge LEDs when the phone is away. Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on Oralable case first. Below ~5% the MAM turns PPG/ACC off; BLE and charge stay up.")
+                    Text("Beacon kits: Gen 2, PCB REV11, firmware \(FirmwareGate.recommendedOralableSemanticVersion). Pad or tape on the temple — no headband, no ANR. Sensors run only while the phone is linked. Green charge LEDs show when the phone is away. Worn on temple needs battery ≥ \(DeviceManager.wornPlacementMinimumBatteryPercent)% — charge on the MAM case first. Below about 5% the MAM turns PPG and the accelerometer off. Bluetooth and charge stay up.")
                 }
 
                 if featureFlags.vitalsPhaseEnabled {
                     Section {
-                        Text("Beacon clinic loaner: Gen1 Oralable. Heart rate and SpO₂ on the temple with pad or tape. One night. Charge on the Oralable case. No ANR. Protocol A Setup is optional research QC.")
+                        Text("Beacon clinic loaner: Gen 2 MAM. Heart rate and SpO₂ on the temple with pad or tape. One night. Charge on the MAM case. No ANR. Protocol A Setup is optional research QC.")
                             .font(designSystem.typography.bodySmall)
                             .foregroundColor(designSystem.colors.textSecondary)
                     } header: {
@@ -206,7 +216,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Health")
                 } footer: {
-                    Text("Enable sync to authorize Health. Heart rate and blood oxygen samples are saved from Temporalis export. Oralable night states are not written as Apple Sleep Stages.")
+                    Text("Enable sync to authorize Health. Heart rate and blood oxygen samples are saved from Temporalis export. MAM night states are not written as Apple Sleep Stages.")
                 }
 
                 Section {
@@ -282,12 +292,12 @@ struct SettingsView: View {
             .alert("Charge before temple mode", isPresented: $showLowBatteryForWornAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Battery is \(lowBatteryPercentForAlert)%. Place the clip on the Oralable magnetic case until at least \(DeviceManager.wornPlacementMinimumBatteryPercent)% before selecting Worn on temple — low battery causes immediate disconnects.")
+                Text("Battery is \(lowBatteryPercentForAlert)%. Place the clip on the MAM case until at least \(DeviceManager.wornPlacementMinimumBatteryPercent)% before selecting Worn on temple — low battery causes immediate disconnects.")
             }
             .alert("Placement saved", isPresented: $showPlacementDeferredAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Gen1 clips drop BLE if placement is pushed while connected. Your choice is saved — disconnect (or kill the session), set placement before you connect, then reconnect once. On the Oralable case use On Oralable case (or Automatic on FW 1.0.70+) before connecting.")
+                Text("The clip drops the link if placement is pushed while connected. Your choice is saved — disconnect, set placement, then reconnect once. On the MAM case, pick On MAM case or Automatic before connecting.")
             }
         }
     }

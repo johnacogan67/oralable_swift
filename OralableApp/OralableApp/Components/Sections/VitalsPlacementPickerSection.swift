@@ -2,7 +2,7 @@
 //  VitalsPlacementPickerSection.swift
 //  OralableApp
 //
-//  Pre-connect placement picker (Gen1 pcb00003 — set before BLE connect, not in Settings).
+//  Pre-connect placement picker. Set it before BLE connect, not during a live link.
 //
 
 import SwiftUI
@@ -37,7 +37,7 @@ struct VitalsPlacementPickerSection: View {
                 .font(compact ? designSystem.typography.headline : designSystem.typography.h3)
                 .foregroundColor(designSystem.colors.textPrimary)
 
-            Text("Pick this before you tap Connect. Gen1 cannot change placement safely during an active link.")
+            Text("Pick this before you tap Connect. Placement is applied on the next connection.")
                 .font(designSystem.typography.bodySmall)
                 .foregroundColor(designSystem.colors.textSecondary)
 
@@ -65,14 +65,14 @@ struct VitalsPlacementPickerSection: View {
                             : designSystem.colors.warning
                     )
             } else if featureFlags.devicePlacementMode == .auto {
-                Text("Automatic needs FW \(FirmwareGate.recommendedOralableSemanticVersion)+. If Connect fails dock detection, switch to On Oralable case.")
+                Text("Automatic needs FW \(FirmwareGate.recommendedOralableSemanticVersion)+. If Connect fails dock detection, switch to On MAM case.")
                     .font(designSystem.typography.captionSmall)
                     .foregroundColor(designSystem.colors.warning)
             }
 
             if featureFlags.devicePlacementMode == .onCharger {
                 Label(
-                    "Oralable case + USB-C only. No phone: flash green = still charging, brief green pulse ~every 10 s = hold. Status never shows red. While linked the MAM LED is off.",
+                    "MAM case + USB-C only. No phone: flash green = still charging, brief green pulse ~every 10 s = hold. Status never shows red. While linked the MAM LED is off.",
                     systemImage: "circle.fill"
                 )
                 .font(designSystem.typography.captionSmall)

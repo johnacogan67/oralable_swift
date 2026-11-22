@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 struct OralableAppTests {
 

@@ -28,7 +28,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Logo should be visible
-        let logo = app.images["OralableLogo"]
+        let logo = app.images["MAMMark"]
         if logo.waitForExistence(timeout: 5) {
             XCTAssertTrue(logo.exists, "App logo should be visible on onboarding")
         }
@@ -50,7 +50,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Tagline should be visible on first page
-        let tagline = app.staticTexts["Word of mouth"]
+        let tagline = app.staticTexts["Handle the truth"]
         if tagline.waitForExistence(timeout: 5) {
             XCTAssertTrue(tagline.exists, "Tagline should be displayed")
         }
@@ -166,7 +166,7 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         // Device requirement notice in footer
-        let deviceNotice = app.staticTexts["Requires Oralable device"]
+        let deviceNotice = app.staticTexts["Requires a MAM"]
         if deviceNotice.waitForExistence(timeout: 5) {
             XCTAssertTrue(deviceNotice.exists, "Device requirement notice should be displayed")
         }

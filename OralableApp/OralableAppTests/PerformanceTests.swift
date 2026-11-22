@@ -10,7 +10,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class PerformanceTests: XCTestCase {
@@ -267,19 +267,15 @@ final class PerformanceTests: XCTestCase {
         }
     }
 
-    func testDashboardViewModelUpdatePerformance() async {
-        // Benchmark DashboardViewModel reactive updates
-        let coordinator = RecordingStateCoordinator.shared
-
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+    func testAutomaticRecordingSessionReactiveUpdatePerformance() async {
+        // Benchmark AutomaticRecordingSession published updates (dashboard recording derives from these)
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
         var updateCount = 0
         let expectation = XCTestExpectation(description: "Updates processed")
 
-        coordinator.$isRecording
+        session.$isSessionActive
             .dropFirst()
             .sink { _ in
                 updateCount += 1
@@ -291,20 +287,16 @@ final class PerformanceTests: XCTestCase {
 
         let startTime = CFAbsoluteTimeGetCurrent()
 
-        // Rapid toggle updates
-        for _ in 0..<20 {
-            coordinator.toggleRecording()
+        // Rapid connect → endSession cycles (each cycle publishes isSessionActive true then false)
+        for _ in 0..<10 {
+            session.onDeviceConnected()
+            session.endSession()
         }
 
         await fulfillment(of: [expectation], timeout: 5.0)
 
         let duration = CFAbsoluteTimeGetCurrent() - startTime
-        XCTAssertLessThan(duration, 1.0, "ViewModel updates should process quickly")
-
-        // Cleanup
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        XCTAssertLessThan(duration, 1.0, "Session publisher updates should process quickly")
     }
 
     // MARK: - SettingsView Responsiveness Benchmarks
@@ -596,42 +588,42 @@ final class PerformanceTests: XCTestCase {
         worker.stop()
     }
 
-    // MARK: - Recording State Performance
+    // MARK: - Automatic Recording Session Performance
 
-    func testRecordingStateUpdatePerformance() async {
-        // Benchmark recording state updates
-        let coordinator = RecordingStateCoordinator.shared
-
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+    func testAutomaticRecordingSessionLifecyclePerformance() async {
+        // Benchmark connect / endSession lifecycle updates
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
         measure(metrics: [XCTClockMetric()]) {
             for _ in 0..<20 {
-                coordinator.startRecording()
-                coordinator.stopRecording()
+                session.onDeviceConnected()
+                session.endSession()
             }
         }
     }
 
-    func testSessionDurationCalculationPerformance() async {
-        // Benchmark duration calculation during recording
-        let coordinator = RecordingStateCoordinator.shared
+    func testAutomaticRecordingSessionDurationPerformance() async {
+        // Benchmark computed sessionDuration during an active session
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
-
-        coordinator.startRecording()
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused)
 
         measure(metrics: [XCTClockMetric()]) {
-            // Access duration multiple times
+            // Access computed duration multiple times (not a publisher)
             for _ in 0..<1000 {
-                _ = coordinator.sessionDuration
+                _ = session.sessionDuration
             }
         }
+    }
 
-        coordinator.stopRecording()
+    /// Isolated session: no CloudKit sync, caller must endSession in cleanup.
+    private func makeIsolatedAutomaticRecordingSession() -> AutomaticRecordingSession {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        return session
     }
 
     // MARK: - Helper Methods
@@ -801,15 +793,12 @@ extension PerformanceTests {
 extension PerformanceTests {
 
     func testMultiplePublisherCombinePerformance() async {
-        // Benchmark combining multiple publishers
-        let coordinator = RecordingStateCoordinator.shared
+        // Benchmark combining AutomaticRecordingSession with settings/flags publishers
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
+
         let settings = ThresholdSettings.shared
         let flags = FeatureFlags.shared
-
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
 
         let originalThreshold = settings.movementThreshold
         let originalFlag = flags.showHeartRateCard
@@ -817,9 +806,9 @@ extension PerformanceTests {
         var combinedUpdateCount = 0
         let expectation = XCTestExpectation(description: "Combined updates")
 
-        // Combine multiple publishers
+        // Combine real published properties (sessionDuration is computed, not published)
         Publishers.CombineLatest3(
-            coordinator.$isRecording,
+            session.$isSessionActive,
             settings.$movementThreshold,
             flags.$showHeartRateCard
         )
@@ -834,9 +823,10 @@ extension PerformanceTests {
 
         let startTime = CFAbsoluteTimeGetCurrent()
 
-        // Trigger updates from multiple sources
+        // Trigger updates from multiple sources (connect → end replaces toggle)
         for i in 0..<10 {
-            coordinator.toggleRecording()
+            session.onDeviceConnected()
+            session.endSession()
             settings.movementThreshold = originalThreshold + Double(i)
             flags.showHeartRateCard.toggle()
         }
@@ -847,9 +837,6 @@ extension PerformanceTests {
         XCTAssertLessThan(duration, 2.0, "Combined publisher updates should be fast")
 
         // Cleanup
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
         settings.movementThreshold = originalThreshold
         flags.showHeartRateCard = originalFlag
     }

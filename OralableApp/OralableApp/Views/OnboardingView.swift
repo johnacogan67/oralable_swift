@@ -5,7 +5,7 @@
 //  Welcome and onboarding flow for new users.
 //
 //  Pages:
-//  - Welcome: App introduction with tagline "Word of mouth"
+//  - Welcome: App introduction with tagline "Handle the truth"
 //  - Features: Key capabilities overview
 //  - Sign In: Apple ID authentication
 //
@@ -29,16 +29,16 @@ struct OnboardingView: View {
     private let onboardingPages = [
         OnboardingPage(
             icon: nil,
-            tagline: "Word of mouth",
+            tagline: "Handle the truth",
             title: "One night on the temple",
-            description: "Charge on the Oralable case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis.",
+            description: "Charge on the MAM case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis.",
             color: .black
         ),
         OnboardingPage(
             icon: "heart.fill",
             tagline: nil,
             title: "Integrate with Apple Health",
-            description: "When you allow it, Oralable can save heart rate and blood oxygen samples to Apple Health.",
+            description: "When you allow it, MAM Diagnostics can save heart rate and blood oxygen samples to Apple Health.",
             color: .black
         ),
         OnboardingPage(
@@ -60,11 +60,12 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Logo
-            Image("OralableLogo")
+            Image("MAMMark")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: designSystem.cornerRadius.xl))
+                .frame(width: 240, height: 86)
+                .accessibilityLabel("MAM")
+                .accessibilityIdentifier("MAMMark")
                 .padding(.top, designSystem.spacing.xxl + designSystem.spacing.buttonPadding)
                 .padding(.bottom, designSystem.spacing.xl + designSystem.spacing.sm)
 
@@ -99,7 +100,7 @@ struct OnboardingView: View {
 
             // Footer
             VStack(spacing: designSystem.spacing.sm) {
-                Text("Requires Oralable device")
+                Text("Requires a MAM")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textTertiary)
 

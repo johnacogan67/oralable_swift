@@ -452,7 +452,7 @@ class ShareViewModel: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
-        return "Oralable_Export_\(dateString).\(selectedFormat.fileExtension)"
+        return "MAM_Export_\(dateString).\(selectedFormat.fileExtension)"
     }
     
     var estimatedFileSize: String {

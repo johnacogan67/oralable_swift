@@ -18,6 +18,25 @@ struct OralableApp: App {
     @StateObject private var firstLaunchManager = FirstLaunchManager()
 
     init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OralableStoryCapture") {
+            let defaults = UserDefaults.standard
+            defaults.set(true, forKey: "isAuthenticated")
+            defaults.set("guest", forKey: "userID")
+            defaults.set("Guest", forKey: "userFullName")
+            defaults.set("Guest", forKey: "userGivenName")
+            defaults.set(true, forKey: "hasLaunchedBefore")
+            defaults.set(true, forKey: "oralable.hasPairedOralablePrimary")
+            defaults.set(true, forKey: "oralable.hasCompletedFirstFit")
+            defaults.set(false, forKey: "feature.setup.requireProtocolASetup.v2")
+            defaults.set(true, forKey: "feature.demo.enabled")
+            defaults.set(true, forKey: "feature.pilot.vitalsPhaseEnabled")
+            defaults.set(true, forKey: "feature.dashboard.showOvernightHypnogram")
+            defaults.set(true, forKey: "feature.dashboard.showHeartRate")
+            defaults.set(true, forKey: "feature.dashboard.showSpO2")
+            defaults.removeObject(forKey: "rememberedOralableDevices")
+        }
+        #endif
         let authenticationManager = AuthenticationManager()
         let sensorDataStore = SensorDataStore()
         let sessionHistoryStore = SessionHistoryStore()
@@ -75,6 +94,12 @@ struct OralableApp: App {
         _sharedDataManager = StateObject(wrappedValue: sharedDataManager)
         _designSystem = StateObject(wrappedValue: designSystem)
         _dependencies = StateObject(wrappedValue: dependencies)
+
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OralableStoryCapture") {
+            FeatureFlags.shared.devicePlacementMode = .worn
+        }
+        #endif
     }
 
     @Environment(\.scenePhase) private var scenePhase

@@ -15,9 +15,9 @@ enum FirmwareGate {
     /// Alias for UI copy and existing call sites.
     static let minimumOralableSemanticVersion = minRequiredVersion
 
-    /// Latest Gen1 target. A Gen2 2.0.x candidate clears the numeric minimum only;
-    /// it still requires separately recorded hardware compatibility evidence.
-    static let recommendedOralableSemanticVersion = "1.0.85"
+    /// Gen 2 candidate the patient app expects. A 2.0.x string still needs the
+    /// compatibility record in GEN2_COMPATIBILITY_GATE.md. This constant is not that approval.
+    static let recommendedOralableSemanticVersion = "2.0.6"
 
     /// Firmware with explicit user device mode opcode (`00B` 0x09).
     static let minimumPlacementModeVersion = "1.0.62"
@@ -37,7 +37,7 @@ enum FirmwareGate {
         return !compare(reported, isLessThan: minimumChrstsStatActivityVersion)
     }
 
-    /// Soft upgrade hint: connect allowed, but below recommended Gen1 build.
+    /// Soft upgrade hint: connect allowed, but below the Gen 2 candidate.
     static func isBelowRecommendedOralableVersion(_ reported: String?) -> Bool {
         guard let reported, !reported.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false

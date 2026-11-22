@@ -54,7 +54,7 @@ struct SingleProtocolASetupView: View {
             Text("Setup — single MAM")
                 .font(designSystem.typography.bodySmall)
                 .fontWeight(.semibold)
-            Text("Seat Oralable on anterior temporalis (temple). PPG toward skin. This is a ~6 minute training protocol — wellness only, not a medical diagnosis.")
+            Text("Seat the MAM on anterior temporalis (temple). PPG toward skin. This is a ~6 minute training protocol — wellness only, not a medical diagnosis.")
                 .font(designSystem.typography.caption)
                 .foregroundColor(designSystem.colors.textSecondary)
             Text("Keep BLE linked the whole session. FW 1.0.71+ stops sensors if the link drops.")
@@ -232,7 +232,7 @@ struct SingleProtocolASetupView: View {
             startTime: artifacts.sessionStart,
             status: .completed,
             deviceID: device?.id.uuidString,
-            deviceName: device?.name ?? "Oralable",
+            deviceName: device?.name ?? "MAM",
             deviceType: .oralable
         )
         session.endTime = artifacts.sessionEnd

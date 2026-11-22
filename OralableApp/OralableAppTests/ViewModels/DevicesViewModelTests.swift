@@ -8,7 +8,7 @@
 
 import XCTest
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class DevicesViewModelTests: XCTestCase {

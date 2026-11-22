@@ -86,13 +86,14 @@ class SessionDataLoader {
     }
     
     /// Get the most recent ShareView export file
-    /// - Parameter forEvents: If true, looks for event files (oralable_events_*), otherwise data files (oralable_data_*)
+    /// - Parameter forEvents: If true, looks for event files (mam_events_*), otherwise data files (mam_data_*)
     /// - Returns: ExportFileInfo for the most recent export, or nil
     func getMostRecentExportFile(forEvents: Bool = false) -> ExportFileInfo? {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
-        // Select file prefix based on type
-        let filePrefix = forEvents ? "oralable_events_" : "oralable_data_"
+        let prefixes = forEvents
+            ? ["mam_events_", "oralable_events_"]
+            : ["mam_data_", "oralable_data_"]
 
         do {
             var files: [URL] = []
@@ -103,7 +104,7 @@ class SessionDataLoader {
             ))
 
             // Also look in the automatic recorder’s events folder:
-            // Documents/OralableEvents/oralable_events_YYYY-MM-DD.csv
+            // Documents/OralableEvents/mam_events_YYYY-MM-DD.csv
             if forEvents {
                 let eventsDir = documentsPath.appendingPathComponent("OralableEvents", isDirectory: true)
                 if FileManager.default.fileExists(atPath: eventsDir.path) {
@@ -117,7 +118,7 @@ class SessionDataLoader {
 
             // Find CSV files that match the export pattern
             let csvFiles = files.filter { url in
-                url.pathExtension == "csv" && url.lastPathComponent.hasPrefix(filePrefix)
+                url.pathExtension == "csv" && prefixes.contains { url.lastPathComponent.hasPrefix($0) }
             }
 
             // Get file info and sort by creation date
@@ -157,7 +158,9 @@ class SessionDataLoader {
             )
             
             let csvFiles = files.filter { url in
-                url.pathExtension == "csv" && url.lastPathComponent.hasPrefix("oralable_data_")
+                url.pathExtension == "csv" &&
+                    (url.lastPathComponent.hasPrefix("mam_data_") ||
+                     url.lastPathComponent.hasPrefix("oralable_data_"))
             }
             
             let fileInfos: [ExportFileInfo] = csvFiles.compactMap { url in
@@ -280,11 +283,11 @@ class SessionDataLoader {
         case "EMG Activity":
             targetDeviceType = "ANR M40"
         case "IR Activity", "Muscle Activity":
-            targetDeviceType = "Oralable"
+            targetDeviceType = "MAM"
         case "Movement":
             targetDeviceType = nil  // Both devices have accelerometer (but ANR doesn't send it)
         case "Temperature":
-            targetDeviceType = "Oralable"  // Only Oralable has temperature
+            targetDeviceType = "MAM"
         default:
             targetDeviceType = nil
         }
@@ -332,10 +335,8 @@ class SessionDataLoader {
                 continue
             }
 
-            // Get device type (may not exist in older exports)
-            let deviceType = getString(columns, columnMap, "Device_Type") ?? "Oralable"
+            let deviceType = getString(columns, columnMap, "Device_Type") ?? "MAM"
 
-            // Filter by device type if specified
             if let target = targetDeviceType, deviceType != target {
                 continue
             }

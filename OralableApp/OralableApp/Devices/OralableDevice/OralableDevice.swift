@@ -272,7 +272,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     func startDataStream() async throws {
         guard isConnected else {
-            throw DeviceError.notConnected("Oralable device not connected")
+            throw DeviceError.notConnected("MAM not connected")
         }
         try await enableNotifications()
         try await enableAccelerometerNotifications()
@@ -297,7 +297,7 @@ class OralableDevice: NSObject, BLEDeviceProtocol {
 
     func requestReading(for sensorType: SensorType) async throws -> SensorReading? {
         guard isConnected else {
-            throw DeviceError.notConnected("Oralable device not connected")
+            throw DeviceError.notConnected("MAM not connected")
         }
         return latestReadings[sensorType]
     }

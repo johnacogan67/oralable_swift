@@ -128,6 +128,7 @@ extension DeviceManager {
                         try await oralableDevice.readDeviceId()
                     }
                     Logger.shared.info("[DeviceManager][BLETrace \(traceId)] Device ID: \(deviceId)")
+                    noteMAMDeviceId(deviceId)
                 } catch {
                     Logger.shared.warning("[DeviceManager][BLETrace \(traceId)] ⚠️ Device ID read skipped: \(error.localizedDescription)")
                 }
@@ -324,7 +325,7 @@ extension DeviceManager {
     var shouldKeepBackgroundReconnect: Bool {
         guard FeatureFlags.shared.vitalsPhaseEnabled else { return false }
         return persistenceManager.getRememberedDevices().contains {
-            $0.name.lowercased().contains("oralable")
+            DeviceType.isMAMClipName($0.name)
         }
     }
 
@@ -359,7 +360,9 @@ extension DeviceManager {
                 discoveredDevices[index].connectionState = .connecting
             }
 
-            // Start playback (connection happens after delay in simulateConnect)
+            // Scan marks the demo device discovered after a delay. A connect tap can
+            // land first; playback must still start, and the row must read Ready.
+            DemoDataProvider.shared.isDiscovered = true
             DemoDataProvider.shared.simulateConnect()
 
             // Wait for connection to complete
@@ -374,6 +377,9 @@ extension DeviceManager {
                 // Add to connected devices
                 if !connectedDevices.contains(where: { $0.type == .demo }) {
                     connectedDevices.append(connectedDemo)
+                }
+                if let demoId = connectedDemo.peripheralIdentifier {
+                    updateDeviceReadiness(demoId, to: .ready)
                 }
 
                 // Remove from discovered
@@ -409,6 +415,16 @@ extension DeviceManager {
         }
 
         if peripheral.state == .connecting {
+            if connectAttemptStartedAt[peripheralId] == nil {
+                connectAttemptStartedAt[peripheralId] = Date()
+            }
+            let age = Date().timeIntervalSince(connectAttemptStartedAt[peripheralId] ?? Date())
+            if age < 10 {
+                Logger.shared.info(
+                    "[DeviceManager] Connect already in progress for \(deviceInfo.name) (\(Int(age))s) — leaving it"
+                )
+                return
+            }
             Logger.shared.warning(
                 "[DeviceManager] Stale CoreBluetooth connecting state for \(deviceInfo.name) — cancelling and retrying"
             )
@@ -436,6 +452,7 @@ extension DeviceManager {
         }
 
         // Connect via BLE manager
+        connectAttemptStartedAt[peripheralId] = Date()
         bleService?.connect(to: peripheral)
     }
 

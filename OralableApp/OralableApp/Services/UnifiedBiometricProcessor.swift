@@ -76,6 +76,9 @@ struct BiometricResult {
     /// Session cumulative SASHB ((90 − SpO2)·dt when SpO2 < 90).
     let cumulativeSASHB: Double
 
+    /// RMSSD from the peak window, in milliseconds. Nil when the window has too few beats.
+    let hrvMs: Double?
+
     /// Empty result for when processing cannot produce valid output
     static let empty = BiometricResult(
         heartRate: 0,
@@ -91,7 +94,8 @@ struct BiometricResult {
         processingMethod: .realtime,
         tfiPercent: 50,
         isAirwayRescue: false,
-        cumulativeSASHB: 0
+        cumulativeSASHB: 0,
+        hrvMs: nil
     )
 }
 
@@ -491,7 +495,8 @@ actor UnifiedBiometricProcessor {
                 processingMethod: processingMethod,
                 tfiPercent: tfiNow,
                 isAirwayRescue: false,
-                cumulativeSASHB: cumulativeSASHB
+                cumulativeSASHB: cumulativeSASHB,
+                hrvMs: nil
             )
         }
 
@@ -501,9 +506,10 @@ actor UnifiedBiometricProcessor {
         var heartRate = 0
         var heartRateQuality = 0.0
         var heartRateSource = HRSource.unavailable
+        var hrvMs: Double? = nil
 
         if activity != .motion {
-            (heartRate, heartRateQuality, heartRateSource) = calculateHeartRate()
+            (heartRate, heartRateQuality, heartRateSource, hrvMs) = calculateHeartRate()
         }
 
         // Mac Protocol A: SpO2 whenever window full (no PI/motion gate; no stabilizer).
@@ -544,7 +550,8 @@ actor UnifiedBiometricProcessor {
             processingMethod: processingMethod,
             tfiPercent: tfiNow,
             isAirwayRescue: isAirwayRescue,
-            cumulativeSASHB: cumulativeSASHB
+            cumulativeSASHB: cumulativeSASHB,
+            hrvMs: hrvMs
         )
     }
 
@@ -708,10 +715,10 @@ actor UnifiedBiometricProcessor {
 
     // MARK: - Private: Heart Rate Calculation
 
-    private func calculateHeartRate() -> (bpm: Int, quality: Double, source: HRSource) {
+    private func calculateHeartRate() -> (bpm: Int, quality: Double, source: HRSource, hrvMs: Double?) {
         // Try IR channel first (primary peak detection)
         let irSignal = irBuffer.all
-        if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(irSignal) {
+        if let (peakBpm, peakQuality, hrvMs) = calculateHeartRateFromSignal(irSignal) {
             if peakQuality >= config.minHRQuality {
                 // Mac parity: peak path only unless FFT cross-validation explicitly enabled.
                 if useFFTCrossValidation {
@@ -720,16 +727,16 @@ actor UnifiedBiometricProcessor {
                         if shouldEmitHeartRateDiagnosticLog() {
                             Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override — peak=\(peakBpm) fft=\(fftBpm), using FFT")
                         }
-                        return (fftBpm, peakQuality * 0.8, .fft)
+                        return (fftBpm, peakQuality * 0.8, .fft, hrvMs)
                     }
                 }
-                return (peakBpm, peakQuality, .ir)
+                return (peakBpm, peakQuality, .ir, hrvMs)
             }
         }
 
         // Try Green channel (backup peak detection)
         let greenSignal = greenBuffer.all
-        if let (peakBpm, peakQuality) = calculateHeartRateFromSignal(greenSignal) {
+        if let (peakBpm, peakQuality, hrvMs) = calculateHeartRateFromSignal(greenSignal) {
             if peakQuality >= config.minHRQuality {
                 if useFFTCrossValidation {
                     let (fftBpm, _) = calculateHeartRateFFT(from: greenSignal, sampleRate: config.sampleRate)
@@ -737,10 +744,10 @@ actor UnifiedBiometricProcessor {
                         if shouldEmitHeartRateDiagnosticLog() {
                             Logger.shared.debug("[BiometricProcessor] HR: FFT cross-validation override (green) — peak=\(peakBpm) fft=\(fftBpm), using FFT")
                         }
-                        return (fftBpm, peakQuality * 0.8, .fft)
+                        return (fftBpm, peakQuality * 0.8, .fft, hrvMs)
                     }
                 }
-                return (peakBpm, peakQuality, .green)
+                return (peakBpm, peakQuality, .green, hrvMs)
             }
         }
 
@@ -750,7 +757,7 @@ actor UnifiedBiometricProcessor {
             if shouldEmitHeartRateDiagnosticLog() {
                 Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on IR — bpm=\(fftBpmIR) quality=\(String(format: "%.2f", fftQualityIR))")
             }
-            return (fftBpmIR, fftQualityIR, .fft)
+            return (fftBpmIR, fftQualityIR, .fft, nil)
         }
 
         // FFT fallback on Green channel
@@ -759,10 +766,10 @@ actor UnifiedBiometricProcessor {
             if shouldEmitHeartRateDiagnosticLog() {
                 Logger.shared.debug("[BiometricProcessor] HR: FFT fallback on Green — bpm=\(fftBpmGreen) quality=\(String(format: "%.2f", fftQualityGreen))")
             }
-            return (fftBpmGreen, fftQualityGreen, .fft)
+            return (fftBpmGreen, fftQualityGreen, .fft, nil)
         }
 
-        return (0, 0, .unavailable)
+        return (0, 0, .unavailable, nil)
     }
 
     private func shouldEmitHeartRateDiagnosticLog() -> Bool {
@@ -778,7 +785,7 @@ actor UnifiedBiometricProcessor {
         return false
     }
 
-    private func calculateHeartRateFromSignal(_ signal: [Double]) -> (bpm: Int, quality: Double)? {
+    private func calculateHeartRateFromSignal(_ signal: [Double]) -> (bpm: Int, quality: Double, hrvMs: Double?)? {
         guard signal.count >= config.hrWindowSize else { return nil }
         return PPGProcessor.heartRateFromBandpassedSignal(
             signal,

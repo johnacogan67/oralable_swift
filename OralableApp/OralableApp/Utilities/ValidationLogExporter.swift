@@ -10,8 +10,8 @@ import OralableCore
 
 enum ValidationLogExporter {
 
-    /// Filename for Ed/Pedro handoff (`Oralable_PILOT_YYYYMMDD_HHmmss.csv`).
-    static func pilotFilename(prefix: String = "Oralable_PILOT") -> String {
+    /// Filename for Ed/Pedro handoff (`MAM_PILOT_YYYYMMDD_HHmmss.csv`).
+    static func pilotFilename(prefix: String = "MAM_PILOT") -> String {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
         df.dateFormat = "yyyyMMdd_HHmmss"

@@ -25,7 +25,7 @@ struct TrialSetupDashboardView: View {
                         .foregroundColor(designSystem.colors.textPrimary)
 
                     Text(
-                        "You’re in a limited trial view. Connect your Oralable REV10 headset to unlock live PPG, Temporalis fit, calibration, overnight capture, and exports. Tap below when you’re ready to pair."
+                        "You’re in a limited trial view. Connect your MAM to unlock live PPG, Temporalis fit, calibration, overnight capture, and exports. Tap below when you’re ready to pair."
                     )
                     .font(designSystem.typography.body)
                     .foregroundColor(designSystem.colors.textSecondary)
@@ -36,7 +36,7 @@ struct TrialSetupDashboardView: View {
                     Button {
                         firstLaunchManager.exitTrialSetupMode()
                     } label: {
-                        Label("Connect Oralable Node", systemImage: "link.circle.fill")
+                        Label("Connect MAM", systemImage: "link.circle.fill")
                             .font(designSystem.typography.labelMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -48,7 +48,7 @@ struct TrialSetupDashboardView: View {
                 .padding(designSystem.spacing.lg)
             }
             .background(designSystem.colors.backgroundSecondary)
-            .navigationTitle("Oralable")
+            .navigationTitle("MAM")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

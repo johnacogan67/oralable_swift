@@ -62,6 +62,8 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
     @Published var heartRate: Int = 0
     @Published var spO2: Int = 0
     @Published var heartRateQuality: Double = 0.0
+    /// Latest window RMSSD, milliseconds. Stamped onto the next sample batch.
+    @Published var heartRateVariabilityMs: Double?
     @Published var spO2Quality: Double = 0.0
     @Published var temperature: Double = 0.0
     @Published var batteryLevel: Double = 0.0
@@ -147,6 +149,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                             from: flat,
                             heartRate: self.heartRate,
                             heartRateQuality: self.heartRateQuality,
+                            hrvMs: self.heartRateVariabilityMs,
+                            spo2: self.spO2,
+                            spo2Quality: self.spO2Quality,
                             temperature: self.temperature,
                             batteryLevel: self.batteryLevel
                         )
@@ -185,6 +190,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                         if result.heartRate > 0 {
                             self.heartRate = result.heartRate
                             self.heartRateQuality = result.heartRateQuality
+                            self.heartRateVariabilityMs = result.hrvMs
                         }
                         if result.spo2 > 0 {
                             self.spO2 = Int(result.spo2.rounded())
@@ -470,6 +476,9 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
         from readings: [SensorReading],
         heartRate: Int,
         heartRateQuality: Double,
+        hrvMs: Double?,
+        spo2: Int,
+        spo2Quality: Double,
         temperature: Double,
         batteryLevel: Double
     ) -> [SensorData] {
@@ -494,7 +503,10 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                   irv > 100 else { return }
 
             let hrData: HeartRateData? = heartRate > 0
-                ? HeartRateData(bpm: Double(heartRate), quality: heartRateQuality, timestamp: ts)
+                ? HeartRateData(bpm: Double(heartRate), quality: heartRateQuality, timestamp: ts, hrvMs: hrvMs)
+                : nil
+            let spo2Data: SpO2Data? = spo2 > 0
+                ? SpO2Data(percentage: Double(spo2), quality: spo2Quality, timestamp: ts)
                 : nil
 
             let row = SensorData(
@@ -509,7 +521,7 @@ final class DeviceManagerAdapter: ObservableObject, BLEManagerProtocol {
                 temperature: TemperatureData(celsius: temperature, timestamp: ts),
                 battery: BatteryData(percentage: Int(batteryLevel), timestamp: ts),
                 heartRate: hrData,
-                spo2: nil,
+                spo2: spo2Data,
                 deviceType: .oralable
             )
             out.append(row)

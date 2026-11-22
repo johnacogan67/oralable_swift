@@ -36,15 +36,15 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Oralable uses Bluetooth to connect to your Oralable device for real-time health monitoring.</string>
+	<string>MAM Diagnostics uses Bluetooth to connect to your MAM.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Oralable needs Bluetooth to connect to your Oralable device for real-time health monitoring of PPG, heart rate, and accelerometer data.</string>
+	<string>MAM Diagnostics needs Bluetooth to connect to your MAM for heart rate, blood oxygen, and motion.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Oralable uses the camera as a mirror to guide Temporalis sensor placement on your temple before sleep studies.</string>
+	<string>MAM Diagnostics uses the camera as a mirror to guide temple placement.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Oralable reads heart rate and oxygen saturation from Health when you choose to sync.</string>
+	<string>MAM Diagnostics reads heart rate and oxygen saturation from Health when you choose to sync.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Oralable writes heart rate and blood oxygen from your Oralable recordings to the Health app when you enable sync or export. Night states are not written as sleep stages.</string>
+	<string>MAM Diagnostics writes heart rate and blood oxygen from your MAM recordings to the Health app when you enable sync or export. Night states are not written as sleep stages.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>bluetooth-le</string>

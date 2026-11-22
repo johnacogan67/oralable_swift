@@ -61,14 +61,14 @@
 			containerPortal = 26CAF2562E781EFB003FE378 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 26CAF25D2E781EFB003FE378;
-			remoteInfo = OralableApp;
+			remoteInfo = MAMDiagnostics;
 		};
 		26CAF27A2E781EFE003FE378 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 26CAF2562E781EFB003FE378 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 26CAF25D2E781EFB003FE378;
-			remoteInfo = OralableApp;
+			remoteInfo = MAMDiagnostics;
 		};
 		26D6C3FD2ECD181B00C60C3D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -93,7 +93,7 @@
 		26917C3D2EED577900B25687 /* demo_participant_session_2.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = demo_participant_session_2.csv; path = OralableForProfessionals/Resources/DemoData/demo_participant_session_2.csv; sourceTree = "<group>"; };
 		26917C3E2EED577900B25687 /* demo_participant_session_1.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = demo_participant_session_1.csv; path = OralableForProfessionals/Resources/DemoData/demo_participant_session_1.csv; sourceTree = "<group>"; };
 		26917C3F2EED577900B25687 /* demo_participant_session_3.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = demo_participant_session_3.csv; path = OralableForProfessionals/Resources/DemoData/demo_participant_session_3.csv; sourceTree = "<group>"; };
-		26CAF25E2E781EFB003FE378 /* OralableApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OralableApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		26CAF25E2E781EFB003FE378 /* MAMDiagnostics.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MAMDiagnostics.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		26CAF26F2E781EFE003FE378 /* OralableAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OralableAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		26CAF2792E781EFE003FE378 /* OralableAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OralableAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		26D6C3EC2ECD181900C60C3D /* OralableForProfessionals.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OralableForProfessionals.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -135,12 +135,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		26FE17DA2EE6DC4200026648 /* Exceptions for "OralableApp" folder in "OralableApp" target */ = {
+		26FE17DA2EE6DC4200026648 /* Exceptions for "OralableApp" folder in "MAMDiagnostics" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 26CAF25D2E781EFB003FE378 /* OralableApp */;
+			target = 26CAF25D2E781EFB003FE378 /* MAMDiagnostics */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -163,7 +163,7 @@
 		26B2FED92EB999C100E0F7B1 /* OralableApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				26FE17DA2EE6DC4200026648 /* Exceptions for "OralableApp" folder in "OralableApp" target */,
+				26FE17DA2EE6DC4200026648 /* Exceptions for "OralableApp" folder in "MAMDiagnostics" target */,
 			);
 			path = OralableApp;
 			sourceTree = "<group>";
@@ -256,7 +256,7 @@
 		26CAF25F2E781EFB003FE378 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				26CAF25E2E781EFB003FE378 /* OralableApp.app */,
+				26CAF25E2E781EFB003FE378 /* MAMDiagnostics.app */,
 				26CAF26F2E781EFE003FE378 /* OralableAppTests.xctest */,
 				26CAF2792E781EFE003FE378 /* OralableAppUITests.xctest */,
 				26D6C3EC2ECD181900C60C3D /* OralableForProfessionals.app */,
@@ -368,9 +368,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		26CAF25D2E781EFB003FE378 /* OralableApp */ = {
+		26CAF25D2E781EFB003FE378 /* MAMDiagnostics */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 26CAF2822E781EFE003FE378 /* Build configuration list for PBXNativeTarget "OralableApp" */;
+			buildConfigurationList = 26CAF2822E781EFE003FE378 /* Build configuration list for PBXNativeTarget "MAMDiagnostics" */;
 			buildPhases = (
 				26CAF25A2E781EFB003FE378 /* Sources */,
 				26CAF25B2E781EFB003FE378 /* Frameworks */,
@@ -383,15 +383,15 @@
 			fileSystemSynchronizedGroups = (
 				26B2FED92EB999C100E0F7B1 /* OralableApp */,
 			);
-			name = OralableApp;
+			name = MAMDiagnostics;
 			packageProductDependencies = (
 				26A0F47B2EBAE8C00054C5FC /* AsyncAlgorithms */,
 				26785D362ED6C96A004BA1A3 /* Algorithms */,
 				26FE17BC2EE6D77F00026648 /* AsyncBluetooth */,
 				260RALC022EFF000000000002 /* OralableCore */,
 			);
-			productName = OralableApp;
-			productReference = 26CAF25E2E781EFB003FE378 /* OralableApp.app */;
+			productName = MAMDiagnostics;
+			productReference = 26CAF25E2E781EFB003FE378 /* MAMDiagnostics.app */;
 			productType = "com.apple.product-type.application";
 		};
 		26CAF26E2E781EFE003FE378 /* OralableAppTests */ = {
@@ -564,7 +564,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				26CAF25D2E781EFB003FE378 /* OralableApp */,
+				26CAF25D2E781EFB003FE378 /* MAMDiagnostics */,
 				26CAF26E2E781EFE003FE378 /* OralableAppTests */,
 				26CAF2782E781EFE003FE378 /* OralableAppUITests */,
 				26D6C3EB2ECD181900C60C3D /* OralableForProfessionals */,
@@ -703,12 +703,12 @@
 /* Begin PBXTargetDependency section */
 		26CAF2712E781EFE003FE378 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 26CAF25D2E781EFB003FE378 /* OralableApp */;
+			target = 26CAF25D2E781EFB003FE378 /* MAMDiagnostics */;
 			targetProxy = 26CAF2702E781EFE003FE378 /* PBXContainerItemProxy */;
 		};
 		26CAF27B2E781EFE003FE378 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 26CAF25D2E781EFB003FE378 /* OralableApp */;
+			target = 26CAF25D2E781EFB003FE378 /* MAMDiagnostics */;
 			targetProxy = 26CAF27A2E781EFE003FE378 /* PBXContainerItemProxy */;
 		};
 		26D6C3FE2ECD181B00C60C3D /* PBXTargetDependency */ = {
@@ -739,8 +739,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "MAM Diagnostics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MAM Diagnostics needs Bluetooth to connect to your MAM.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MAM Diagnostics needs Bluetooth to connect to your MAM.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "armv7 bluetooth-le";
@@ -774,8 +774,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "MAM Diagnostics";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Oralable needs Bluetooth to connect to your TGM device for monitoring sensor data";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "MAM Diagnostics needs Bluetooth to connect to your MAM.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "MAM Diagnostics needs Bluetooth to connect to your MAM.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "armv7 bluetooth-le";
@@ -930,7 +930,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MAMDiagnostics.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MAMDiagnostics";
 			};
 			name = Debug;
 		};
@@ -949,7 +949,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MAMDiagnostics.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MAMDiagnostics";
 			};
 			name = Release;
 		};
@@ -966,7 +966,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = OralableApp;
+				TEST_TARGET_NAME = MAMDiagnostics;
 			};
 			name = Debug;
 		};
@@ -983,7 +983,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = OralableApp;
+				TEST_TARGET_NAME = MAMDiagnostics;
 			};
 			name = Release;
 		};
@@ -1175,7 +1175,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		26CAF2822E781EFE003FE378 /* Build configuration list for PBXNativeTarget "OralableApp" */ = {
+		26CAF2822E781EFE003FE378 /* Build configuration list for PBXNativeTarget "MAMDiagnostics" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				26CAF2832E781EFE003FE378 /* Debug */,

@@ -5,7 +5,7 @@
 
 import XCTest
 import OralableCore
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class SimulatedWornNightTests: XCTestCase {
 

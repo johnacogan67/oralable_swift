@@ -348,7 +348,7 @@ class CSVService: CSVExporting, CSVImporting {
         
         // Write to temporary file
         let tempDir = FileManager.default.temporaryDirectory
-        let fileName = "oralable_export_\(DateFormatter().string(from: Date())).csv"
+        let fileName = "mam_export_\(DateFormatter().string(from: Date())).csv"
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: ":", with: "-")
         let fileURL = tempDir.appendingPathComponent(fileName)

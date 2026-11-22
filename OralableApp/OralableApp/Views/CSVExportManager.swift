@@ -19,7 +19,7 @@
 //  - Documents directory for History view access
 //
 //  Filename Format:
-//  oralable_data_{userID}_{timestamp}.csv
+//  mam_data_{userID}_{timestamp}.csv
 //
 
 import Foundation
@@ -87,7 +87,7 @@ class CSVExportManager: ObservableObject {
             userIdentifier = "guest"
         }
 
-        let filename = "oralable_data_\(userIdentifier)_\(timestamp).csv"
+        let filename = "mam_data_\(userIdentifier)_\(timestamp).csv"
         
         // Use the cache directory for temporary files that need to be shared
         // This is accessible by the share sheet and gets cleaned up automatically
@@ -150,7 +150,7 @@ class CSVExportManager: ObservableObject {
             userIdentifier = "guest"
         }
 
-        let filename = "oralable_events_\(userIdentifier)_\(timestamp).csv"
+        let filename = "mam_events_\(userIdentifier)_\(timestamp).csv"
 
         // Use the cache directory for temporary files
         let fileManager = FileManager.default

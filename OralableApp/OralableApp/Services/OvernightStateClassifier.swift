@@ -36,6 +36,10 @@ struct NightReportSample: Sendable, Equatable {
     var spo2: Double
     /// Skin temperature °C; `.nan` when missing (Mac overnight parity — no temp gate).
     var temperature: Double = .nan
+    /// Stamped beats per minute. `.nan` when the row has no rate.
+    var heartRateBpm: Double = .nan
+    /// Window RMSSD in milliseconds. `.nan` when the window had too few beats.
+    var hrvMs: Double = .nan
 }
 
 struct OvernightBout: Sendable, Equatable {
@@ -573,7 +577,9 @@ extension NightReportSample {
             accelY: Double(sensor.accelerometer.y),
             accelZ: Double(sensor.accelerometer.z),
             spo2: sensor.spo2?.percentage ?? .nan,
-            temperature: temp.isFinite && temp > 0 ? temp : .nan
+            temperature: temp.isFinite && temp > 0 ? temp : .nan,
+            heartRateBpm: sensor.heartRate?.bpm ?? .nan,
+            hrvMs: sensor.heartRate?.hrvMs ?? .nan
         )
     }
 }

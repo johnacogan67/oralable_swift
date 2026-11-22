@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class FirmwareGateGen2Tests: XCTestCase {
     func testGen2RequiresCompatibilityEvidence() {
@@ -15,8 +15,10 @@ final class FirmwareGateGen2Tests: XCTestCase {
         XCTAssertFalse(FirmwareGate.requiresGen2CompatibilityEvidence("not-a-version"))
     }
 
-    func testGen2RemainsOutsideGen1UpgradeRecommendation() {
-        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("2.0.0"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.0"))
+    func testGen2CandidateIsTheRecommendedString() {
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("2.0.6"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("2.0.0"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.6-gen2-nrfconnect"))
+        XCTAssertTrue(FirmwareGate.requiresGen2CompatibilityEvidence("2.0.6-gen2-nrfconnect"))
     }
 }

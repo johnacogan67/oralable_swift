@@ -17,7 +17,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 class DevicesViewModelTests: XCTestCase {
     

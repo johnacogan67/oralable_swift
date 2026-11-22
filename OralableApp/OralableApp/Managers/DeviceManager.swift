@@ -122,6 +122,10 @@ class DeviceManager: ObservableObject {
     /// Connection state
     @Published var isScanning: Bool = false
     @Published var isConnecting: Bool = false
+    /// When `central.connect` was last issued. A `.connecting` state younger than 10 s is left alone.
+    var connectAttemptStartedAt: [UUID: Date] = [:]
+    /// Launch and foreground both call auto-reconnect. One run at a time.
+    var autoReconnectInFlight = false
     
     /// Errors
     @Published var lastError: DeviceError?
@@ -653,6 +657,20 @@ class DeviceManager: ObservableObject {
         liveFirmwareVersion() ?? lastKnownMAMFirmwareVersion
     }
 
+    /// Decimal Nordic FICR id from `3A0FF005`, including the last id read on this phone.
+    func primaryMAMDeviceId() -> String? {
+        if let id = (primaryBLEDevice as? OralableDevice)?.deviceIdValue {
+            return String(id)
+        }
+        let stored = UserDefaults.standard.string(forKey: LastKnownMAMKeys.deviceId)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (stored?.isEmpty == false) ? stored : nil
+    }
+
+    func noteMAMDeviceId(_ id: UInt64) {
+        UserDefaults.standard.set(String(id), forKey: LastKnownMAMKeys.deviceId)
+    }
+
     /// True when the displayed firmware came from a previous (possibly brief) connect.
     var firmwareVersionIsFromLastConnection: Bool {
         liveFirmwareVersion() == nil && lastKnownMAMFirmwareVersion != nil
@@ -661,6 +679,7 @@ class DeviceManager: ObservableObject {
     private enum LastKnownMAMKeys {
         static let firmware = "oralable.lastKnownMAMFirmwareVersion"
         static let connectedAt = "oralable.lastKnownMAMConnectedAt"
+        static let deviceId = "oralable.lastKnownMAMDeviceId"
     }
 
     private func loadLastKnownMAMFirmware() {
@@ -821,7 +840,7 @@ class DeviceManager: ObservableObject {
     func preferredOralableReconnectTarget() -> DeviceInfo? {
         let remembered = persistenceManager.getRememberedDevices()
         let oralableRemembered = remembered.filter {
-            $0.name.lowercased().contains("oralable")
+            DeviceType.isMAMClipName($0.name)
         }
 
         if let primaryId = primaryDevice?.peripheralIdentifier?.uuidString,
@@ -915,6 +934,11 @@ class DeviceManager: ObservableObject {
             return
         }
 
+        if autoReconnectInFlight {
+            Logger.shared.info("[DeviceManager] Auto-reconnect already running — skipping")
+            return
+        }
+        autoReconnectInFlight = true
         Logger.shared.info("[DeviceManager] Scheduling auto-reconnect to \(rememberedDevices.count) remembered device(s)")
 
         // Use whenReady to defer scanning until Bluetooth is powered on
@@ -922,11 +946,12 @@ class DeviceManager: ObservableObject {
             guard let self = self else { return }
 
             Task { @MainActor in
+                defer { self.autoReconnectInFlight = false }
                 Logger.shared.info("[DeviceManager] ✅ Bluetooth ready - starting auto-reconnect")
 
                 let targets = rememberedDevices.filter { remembered in
                     if FeatureFlags.shared.vitalsPhaseEnabled {
-                        return remembered.name.lowercased().contains("oralable")
+                        return DeviceType.isMAMClipName(remembered.name)
                     }
                     return true
                 }

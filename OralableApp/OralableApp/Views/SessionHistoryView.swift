@@ -23,7 +23,7 @@ enum HistoryFilter: String, CaseIterable {
     var deviceSource: String {
         switch self {
         case .emg: return "ANR M40"
-        case .ir, .movement, .temperature: return "Oralable"
+        case .ir, .movement, .temperature: return "MAM"
         }
     }
 
@@ -61,9 +61,9 @@ enum HistoryFilter: String, CaseIterable {
     var emptyMessage: String {
         switch self {
         case .emg: return "Connect an ANR M40 device and start recording to capture EMG data."
-        case .ir: return "Connect an Oralable device and start recording to capture IR/PPG data."
-        case .movement: return "Connect an Oralable device and start recording to capture movement data."
-        case .temperature: return "Connect an Oralable device and start recording to capture temperature data."
+        case .ir: return "Connect a MAM and start recording to capture IR/PPG data."
+        case .movement: return "Connect a MAM and start recording to capture movement data."
+        case .temperature: return "Connect a MAM and start recording to capture temperature data."
         }
     }
 

@@ -8,7 +8,7 @@
 
 import Foundation
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Mock Historical Data Manager for unit testing
 /// Allows tests to simulate historical data behavior without actual data processing

@@ -125,9 +125,9 @@ final class DualProtocolASessionController: ObservableObject {
     func start() {
         guard phase == .idle || isRetryableFailure else { return }
         phase = .connecting
-        statusMessage = "Connect Oralable and ANR, then Start."
+        statusMessage = "Connect the MAM and ANR, then Start."
         guard oralableConnected, anrConnected else {
-            phase = .failed("Both Oralable and ANR must be connected before Dual Protocol A.")
+            phase = .failed("Both MAM and ANR must be connected before Dual Protocol A.")
             return
         }
         armWornAndStream()
@@ -602,7 +602,7 @@ final class DualProtocolASessionController: ObservableObject {
     }
 
     static let linkDropMessage =
-        "Oralable or ANR dropped. FW 1.0.71+ stops Oralable sensors when BLE drops — restart the session."
+        "MAM or ANR dropped. FW 1.0.71+ stops MAM sensors when BLE drops — restart the session."
 
     private var isRetryableFailure: Bool {
         if case .failed = phase { return true }

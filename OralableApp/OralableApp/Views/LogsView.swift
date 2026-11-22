@@ -175,7 +175,7 @@ struct LogsView: View {
             "[\(log.timestamp.formatted())] [\(log.level.rawValue)] \(log.category): \(log.message)"
         }.joined(separator: "\n")
         
-        let fileName = "oralable_logs_\(Date().timeIntervalSince1970).txt"
+        let fileName = "mam_logs_\(Date().timeIntervalSince1970).txt"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         
         do {
@@ -328,7 +328,7 @@ class LogsManager: ObservableObject {
             LogEntry(
                 timestamp: Date(),
                 level: .info,
-                message: "Connected to Oralable device",
+                message: "Connected to MAM",
                 category: "BLE",
                 details: nil
             ),

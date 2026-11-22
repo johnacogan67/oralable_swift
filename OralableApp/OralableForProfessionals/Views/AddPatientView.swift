@@ -169,7 +169,7 @@ struct AddPatientView: View {
                 Text("Enter Share Code")
                     .font(.title2.bold())
 
-                Text("Ask your participant to generate a 6-digit share code in their Oralable app")
+                Text("Ask your participant to generate a 6-digit share code in MAM Diagnostics")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -238,7 +238,7 @@ struct AddPatientView: View {
                 Text("Import CSV Data")
                     .font(.title2.bold())
 
-                Text("Import historical data from a CSV file exported from the Oralable app")
+                Text("Import historical data from a CSV file exported from MAM Diagnostics")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -446,8 +446,9 @@ struct AddPatientView: View {
             // Auto-fill name from filename - extract Apple ID
             if participantName.isEmpty {
                 let filename = url.deletingPathExtension().lastPathComponent
-                if filename.hasPrefix("oralable_data_") {
-                    let suffix = String(filename.dropFirst("oralable_data_".count))
+                let dataPrefixes = ["mam_data_", "oralable_data_"]
+                if let prefix = dataPrefixes.first(where: { filename.hasPrefix($0) }) {
+                    let suffix = String(filename.dropFirst(prefix.count))
                     let components = suffix.components(separatedBy: "_")
 
                     if components.count >= 1 {

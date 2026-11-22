@@ -42,7 +42,7 @@ enum SubscriptionTier: String, Codable {
         switch self {
         case .basic:
             return [
-                "Connect to Oralable device",
+                "Connect to MAM",
                 "View real-time sensor data",
                 "Daily/weekly summaries",
                 "Basic data export",

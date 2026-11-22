@@ -68,7 +68,7 @@ struct MainDashboardView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
 
-                    Text("Oralable connected: \(rev10PrimaryConnected ? "Yes" : "No")")
+                    Text("MAM connected: \(rev10PrimaryConnected ? "Yes" : "No")")
                         .font(designSystem.typography.bodySmall)
                         .foregroundColor(designSystem.colors.textSecondary)
 
@@ -93,7 +93,7 @@ struct MainDashboardView: View {
                     .opacity(rev10PrimaryConnected ? 1 : 0.45)
 
                     if !rev10PrimaryConnected {
-                        Text("Connect your Oralable as the primary device to run the fit guide.")
+                        Text("Connect your MAM as the primary device to run the fit guide.")
                             .font(designSystem.typography.caption)
                             .foregroundColor(designSystem.colors.textSecondary)
                     }

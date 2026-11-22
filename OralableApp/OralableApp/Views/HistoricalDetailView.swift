@@ -59,7 +59,7 @@ class DataSharingService: ObservableObject {
             csvContent += "\(row)\n"
         }
 
-        return saveToFile(content: csvContent, filename: "oralable_\(metricType.rawValue)_\(timeRange.rawValue).csv")
+        return saveToFile(content: csvContent, filename: "mam_\(metricType.rawValue)_\(timeRange.rawValue).csv")
     }
 
     private func createJSONFile(_ data: [SensorData], metricType: MetricType, timeRange: TimeRange) -> URL? {
@@ -74,7 +74,7 @@ class DataSharingService: ObservableObject {
         do {
             let jsonData = try JSONEncoder().encode(exportData)
             let jsonString = String(data: jsonData, encoding: .utf8) ?? ""
-            return saveToFile(content: jsonString, filename: "oralable_\(metricType.rawValue)_\(timeRange.rawValue).json")
+            return saveToFile(content: jsonString, filename: "mam_\(metricType.rawValue)_\(timeRange.rawValue).json")
         } catch {
             Logger.shared.error("[HistoricalDetailView] creating JSON: \(error)")
             return nil

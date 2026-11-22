@@ -17,12 +17,13 @@ enum ResearchRawDataExport {
         var lines: [String] = []
         lines.reserveCapacity(samples.count + 1)
         let overrideFlag = isManualOverride ? "1" : "0"
-        lines.append("device_type,iso8601_timestamp,red,ir,ambient_ir_raw,green,accel_x,accel_y,accel_z,temp_celsius,battery_percent,heart_rate_bpm,spo2_percent,is_manual_override")
+        lines.append("device_type,iso8601_timestamp,red,ir,ambient_ir_raw,green,accel_x,accel_y,accel_z,temp_celsius,battery_percent,heart_rate_bpm,spo2_percent,is_manual_override,hrv_ms")
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
             let ts = fmt.string(from: s.timestamp)
             let hr = s.heartRate.map { String(format: "%.1f", $0.bpm) } ?? ""
+            let hrv = s.heartRate?.hrvMs.map { String(format: "%.1f", $0) } ?? ""
             let ox = s.spo2.map { String(format: "%.0f", $0.percentage) } ?? ""
             let row = [
                 s.deviceType.rawValue,
@@ -38,7 +39,8 @@ enum ResearchRawDataExport {
                 "\(s.battery.percentage)",
                 hr,
                 ox,
-                overrideFlag
+                overrideFlag,
+                hrv
             ].joined(separator: ",")
             lines.append(row)
         }
@@ -55,15 +57,17 @@ enum ResearchRawDataExport {
         df.timeZone = TimeZone.current
         df.dateFormat = "yyyyMMdd"
         let dest = url ?? FileManager.default.temporaryDirectory
-            .appendingPathComponent("Oralable_NIGHT_\(df.string(from: nightDate)).csv")
+            .appendingPathComponent("MAM_NIGHT_\(df.string(from: nightDate)).csv")
         var lines: [String] = []
         lines.reserveCapacity(samples.count + 1)
-        lines.append("device_type,iso8601_timestamp,ir,accel_x,accel_y,accel_z,spo2_percent,temp_celsius")
+        lines.append("device_type,iso8601_timestamp,ir,accel_x,accel_y,accel_z,spo2_percent,temp_celsius,heart_rate_bpm,hrv_ms")
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
             let spo2 = s.spo2.isFinite ? String(format: "%.0f", s.spo2) : ""
             let temp = s.temperature.isFinite ? String(format: "%.3f", s.temperature) : ""
+            let hr = s.heartRateBpm.isFinite ? String(format: "%.1f", s.heartRateBpm) : ""
+            let hrv = s.hrvMs.isFinite ? String(format: "%.1f", s.hrvMs) : ""
             lines.append(
                 [
                     "oralable",
@@ -73,7 +77,9 @@ enum ResearchRawDataExport {
                     "\(s.accelY)",
                     "\(s.accelZ)",
                     spo2,
-                    temp
+                    temp,
+                    hr,
+                    hrv
                 ].joined(separator: ",")
             )
         }

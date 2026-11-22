@@ -22,7 +22,7 @@ struct LoginView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Sign In to Oralable")
+            MAMNameText(prefix: "Sign In to ")
                 .font(.title2)
                 .bold()
 

@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 class HeartRateCalculatorTests: XCTestCase {
 

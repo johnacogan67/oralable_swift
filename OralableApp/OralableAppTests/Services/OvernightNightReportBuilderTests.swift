@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class OvernightNightReportBuilderTests: XCTestCase {
 
@@ -156,7 +156,7 @@ final class OvernightNightReportBuilderTests: XCTestCase {
         let text = try String(contentsOf: url, encoding: .utf8)
         XCTAssertTrue(text.contains("iso8601_timestamp"))
         XCTAssertTrue(text.contains("200000.0") || text.contains("200000"))
-        XCTAssertTrue(url.lastPathComponent.hasPrefix("Oralable_NIGHT_"))
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("MAM_NIGHT_"))
         XCTAssertGreaterThan(text.split(whereSeparator: \.isNewline).count, 1)
     }
 

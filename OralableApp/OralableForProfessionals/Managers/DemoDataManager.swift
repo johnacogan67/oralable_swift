@@ -153,7 +153,7 @@ class DemoDataManager: ObservableObject {
 
             let point = SerializableSensorData(
                 timestamp: timestamp,
-                deviceType: "Oralable",
+                deviceType: "MAM",
                 ppgRed: ppgRed,
                 ppgIR: ppgIR,
                 ppgGreen: ppgGreen,

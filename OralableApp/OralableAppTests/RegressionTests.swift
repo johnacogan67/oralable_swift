@@ -10,7 +10,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class RegressionTests: XCTestCase {
@@ -314,69 +314,67 @@ final class RegressionTests: XCTestCase {
         flags.showHeartRateCard = originalValue
     }
 
-    // MARK: - RecordingStateCoordinator Regression Tests
+    // MARK: - AutomaticRecordingSession Regression Tests
 
-    func testRecordingStateCoordinatorStartStopCycle() async {
+    func testAutomaticRecordingSessionConnectEndCycle() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        // When - device connects (starts fresh session)
+        session.onDeviceConnected()
 
-        // When - start recording
-        coordinator.startRecording()
+        // Then - dashboard recording requires active AND not paused
+        XCTAssertTrue(session.isSessionActive, "Should be active after connect")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused after connect")
+        XCTAssertNotNil(session.sessionStartTime, "Should have session start time")
+
+        // When - end session explicitly
+        session.endSession()
 
         // Then
-        XCTAssertTrue(coordinator.isRecording, "Should be recording after start")
-        XCTAssertNotNil(coordinator.sessionStartTime, "Should have session start time")
-
-        // When - stop recording
-        coordinator.stopRecording()
-
-        // Then
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after stop")
-        XCTAssertNil(coordinator.sessionStartTime, "Session start time should be nil")
+        XCTAssertFalse(session.isSessionActive, "Should not be active after endSession")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused after endSession")
+        XCTAssertNil(session.sessionStartTime, "Session start time should be nil")
     }
 
-    func testRecordingStateCoordinatorToggle() async {
+    func testAutomaticRecordingSessionConnectDisconnectReconnect() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        // When - connect starts session
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should be recording after connect")
 
-        // When - toggle on
-        coordinator.toggleRecording()
-        XCTAssertTrue(coordinator.isRecording, "Should be recording after first toggle")
+        // When - disconnect pauses (does not end)
+        session.onDeviceDisconnected()
+        XCTAssertTrue(session.isSessionActive, "Disconnect pauses; session stays active")
+        XCTAssertTrue(session.isSessionPaused, "Should be paused after disconnect")
+        XCTAssertNotNil(session.sessionStartTime, "Pause must not clear sessionStartTime")
 
-        // When - toggle off
-        coordinator.toggleRecording()
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after second toggle")
+        // When - reconnect within resume window
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should resume recording after reconnect")
     }
 
-    func testRecordingDurationUpdates() async {
+    func testAutomaticRecordingSessionDurationUpdates() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
-
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
         // When
-        coordinator.startRecording()
+        session.onDeviceConnected()
 
-        // Wait for duration to update
+        // Wait then assert computed duration (not a publisher)
         try? await Task.sleep(nanoseconds: 1_100_000_000) // 1.1 seconds
 
         // Then
-        XCTAssertGreaterThan(coordinator.sessionDuration, 0, "Duration should be greater than 0")
-
-        // Cleanup
-        coordinator.stopRecording()
+        XCTAssertGreaterThan(session.sessionDuration, 0, "Duration should be greater than 0")
+        XCTAssertFalse(session.formattedDuration.isEmpty, "formattedDuration should be non-empty")
     }
 
     // MARK: - StoreKit Subscription Flows Regression Tests
@@ -659,11 +657,18 @@ extension RegressionTests {
         // Verify BLEServiceEvent cases exist by creating mock events
         let mockPeripheral = MockPeripheralFactory.create(identifier: UUID(), name: "Test")
 
-        // Test deviceDiscovered
-        let discoveredEvent = BLEServiceEvent.deviceDiscovered(peripheral: mockPeripheral, name: "Test", rssi: -50)
-        if case .deviceDiscovered(_, let name, let rssi) = discoveredEvent {
+        // Test deviceDiscovered (peripheral, name, rssi, advertisementData)
+        let advertisementData: [String: Any] = [CBAdvertisementDataLocalNameKey: "Test"]
+        let discoveredEvent = BLEServiceEvent.deviceDiscovered(
+            peripheral: mockPeripheral,
+            name: "Test",
+            rssi: -50,
+            advertisementData: advertisementData
+        )
+        if case .deviceDiscovered(_, let name, let rssi, let adData) = discoveredEvent {
             XCTAssertEqual(name, "Test")
             XCTAssertEqual(rssi, -50)
+            XCTAssertEqual(adData[CBAdvertisementDataLocalNameKey] as? String, "Test")
         } else {
             XCTFail("Should be deviceDiscovered event")
         }

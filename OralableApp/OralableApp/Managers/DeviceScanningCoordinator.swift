@@ -171,8 +171,8 @@ extension DeviceManager {
         let serviceStrings = Self.advertisedServiceUUIDStrings(from: advertisementData)
 
         // Check for Oralable device - STRICT matching
-        if lowercaseName.contains("oralable") {
-            Logger.shared.info("[DeviceManager] ✅ Detected Oralable device: \(name)")
+        if DeviceType.isMAMClipName(name) {
+            Logger.shared.info("[DeviceManager] ✅ Detected MAM: \(name)")
             return .oralable
         }
 
@@ -239,7 +239,7 @@ extension DeviceManager {
         if FeatureFlags.shared.vitalsPhaseEnabled {
             let rememberedOralableIds = Set(
                 persistenceManager.getRememberedDevices().compactMap { remembered -> UUID? in
-                    guard remembered.name.lowercased().contains("oralable"),
+                    guard DeviceType.isMAMClipName(remembered.name),
                           let uuid = UUID(uuidString: remembered.id) else { return nil }
                     return uuid
                 }

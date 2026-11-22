@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 import struct OralableCore.BLEDataParser
 import enum OralableCore.BLEConstants
 
@@ -14,7 +14,7 @@ final class NRFConnectCompatibilityTests: XCTestCase {
 
     func testFirmwareGateRequires163() {
         XCTAssertEqual(FirmwareGate.minimumOralableSemanticVersion, "1.0.63")
-        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "1.0.85")
+        XCTAssertEqual(FirmwareGate.recommendedOralableSemanticVersion, "2.0.6")
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.63-nrfconnect"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.64"))
         XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("1.0.65-nrfconnect"))
@@ -30,11 +30,13 @@ final class NRFConnectCompatibilityTests: XCTestCase {
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.73"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.82"))
         XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.84"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.85"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("1.0.85"))
         XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("1.0.62"))
-        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("2.0.0"))
-        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.0"))
-        XCTAssertTrue(FirmwareGate.supportsAutomaticDockDetect("2.0.0"))
+        XCTAssertFalse(FirmwareGate.isOralableVersionOutdated("2.0.6"))
+        XCTAssertTrue(FirmwareGate.isBelowRecommendedOralableVersion("2.0.0"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.6"))
+        XCTAssertFalse(FirmwareGate.isBelowRecommendedOralableVersion("2.0.6-gen2-nrfconnect"))
+        XCTAssertTrue(FirmwareGate.supportsAutomaticDockDetect("2.0.6"))
     }
 
     func testTGMBaselineCharacteristicUUIDs() {

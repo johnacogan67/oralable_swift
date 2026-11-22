@@ -18,7 +18,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 import OralableCore
 
 // MARK: - Share Code Generation Tests
@@ -391,21 +391,21 @@ final class SharedDataModelTests: XCTestCase {
     func testSharedPatientDataInitialization() {
         // Given
         let patientID = "patient_123"
-        let dentistID = "dentist_456"
+        let professionalID = "dentist_456"
         let shareCode = "123456"
 
         // When
         let data = SharedPatientData(
             patientID: patientID,
-            dentistID: dentistID,
+            professionalID: professionalID,
             shareCode: shareCode
         )
 
         // Then
         XCTAssertEqual(data.patientID, patientID)
-        XCTAssertEqual(data.dentistID, dentistID)
+        XCTAssertEqual(data.professionalID, professionalID)
         XCTAssertEqual(data.shareCode, shareCode)
-        XCTAssertEqual(data.permissions, .readOnly, "Default permission should be readOnly")
+        XCTAssertEqual(data.permissions, SharePermission.readOnly, "Default permission should be readOnly")
         XCTAssertTrue(data.isActive, "New share should be active")
         XCTAssertNil(data.expiryDate, "Default expiry should be nil")
         XCTAssertNotNil(data.id, "Should have a valid UUID")
@@ -415,13 +415,13 @@ final class SharedDataModelTests: XCTestCase {
         // When
         let data = SharedPatientData(
             patientID: "patient_1",
-            dentistID: "dentist_1",
+            professionalID: "dentist_1",
             shareCode: "654321",
-            permissions: .readWrite
+            permissions: SharePermission.readWrite
         )
 
         // Then
-        XCTAssertEqual(data.permissions, .readWrite)
+        XCTAssertEqual(data.permissions, SharePermission.readWrite)
     }
 
     func testSharedPatientDataWithExpiryDate() {
@@ -431,7 +431,7 @@ final class SharedDataModelTests: XCTestCase {
         // When
         let data = SharedPatientData(
             patientID: "patient_1",
-            dentistID: "dentist_1",
+            professionalID: "dentist_1",
             shareCode: "111222",
             expiryDate: expiryDate
         )
@@ -446,7 +446,7 @@ final class SharedDataModelTests: XCTestCase {
         let beforeCreation = Date()
         let data = SharedPatientData(
             patientID: "patient_1",
-            dentistID: "dentist_1",
+            professionalID: "dentist_1",
             shareCode: "333444"
         )
         let afterCreation = Date()
@@ -458,8 +458,8 @@ final class SharedDataModelTests: XCTestCase {
 
     func testSharedPatientDataUniqueIDs() {
         // When
-        let data1 = SharedPatientData(patientID: "p1", dentistID: "d1", shareCode: "111111")
-        let data2 = SharedPatientData(patientID: "p1", dentistID: "d1", shareCode: "111111")
+        let data1 = SharedPatientData(patientID: "p1", professionalID: "d1", shareCode: "111111")
+        let data2 = SharedPatientData(patientID: "p1", professionalID: "d1", shareCode: "111111")
 
         // Then
         XCTAssertNotEqual(data1.id, data2.id, "Each instance should have a unique UUID")
@@ -574,7 +574,7 @@ final class SharedDataModelTests: XCTestCase {
         let sessionDuration: TimeInterval = 3600.0
 
         // When
-        let record = HealthDataRecord(
+        let record = MAMDiagnostics.HealthDataRecord(
             recordID: recordID,
             recordingDate: recordingDate,
             dataType: dataType,
@@ -592,7 +592,7 @@ final class SharedDataModelTests: XCTestCase {
 
     func testHealthDataRecordCodable() throws {
         // Given
-        let original = HealthDataRecord(
+        let original = MAMDiagnostics.HealthDataRecord(
             recordID: "test-record-123",
             recordingDate: Date(timeIntervalSince1970: 1704067200), // Fixed date for deterministic test
             dataType: "bruxism_session",
@@ -602,7 +602,7 @@ final class SharedDataModelTests: XCTestCase {
 
         // When
         let encoded = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(HealthDataRecord.self, from: encoded)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.HealthDataRecord.self, from: encoded)
 
         // Then
         XCTAssertEqual(decoded.recordID, original.recordID)
@@ -623,7 +623,7 @@ final class SharedDataModelTests: XCTestCase {
         let sensorData = createMockSensorData(count: 10)
 
         // When
-        let sessionData = BruxismSessionData(sensorData: sensorData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: sensorData)
 
         // Then
         XCTAssertEqual(sessionData.recordingCount, 10)
@@ -636,7 +636,7 @@ final class SharedDataModelTests: XCTestCase {
         let sensorData = createMockSensorData(count: 5) // timestamps spaced 5 seconds apart
 
         // When
-        let sessionData = BruxismSessionData(sensorData: sensorData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: sensorData)
 
         // Then
         XCTAssertEqual(
@@ -656,7 +656,7 @@ final class SharedDataModelTests: XCTestCase {
         let emptySensorData: [SensorData] = []
 
         // When
-        let sessionData = BruxismSessionData(sensorData: emptySensorData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: emptySensorData)
 
         // Then
         XCTAssertEqual(sessionData.recordingCount, 0)
@@ -666,11 +666,11 @@ final class SharedDataModelTests: XCTestCase {
     func testBruxismSessionDataCodable() throws {
         // Given
         let sensorData = createMockSensorData(count: 3)
-        let original = BruxismSessionData(sensorData: sensorData)
+        let original = MAMDiagnostics.BruxismSessionData(sensorData: sensorData)
 
         // When
         let encoded = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: encoded)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: encoded)
 
         // Then
         XCTAssertEqual(decoded.recordingCount, original.recordingCount)
@@ -690,7 +690,7 @@ final class SharedDataModelTests: XCTestCase {
     func testBruxismSessionDataCompressionRoundtrip() throws {
         // Given - encode BruxismSessionData to JSON, compress, decompress, decode
         let sensorData = createMockSensorData(count: 20)
-        let original = BruxismSessionData(sensorData: sensorData)
+        let original = MAMDiagnostics.BruxismSessionData(sensorData: sensorData)
 
         let jsonData = try JSONEncoder().encode(original)
         let originalSize = jsonData.count
@@ -706,7 +706,7 @@ final class SharedDataModelTests: XCTestCase {
             return
         }
 
-        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: decompressed)
 
         // Then
         XCTAssertEqual(decoded.recordingCount, original.recordingCount)
@@ -752,10 +752,10 @@ final class SharedDataModelTests: XCTestCase {
         )
 
         // When
-        let serializable = SerializableSensorData(from: sensorData)
+        let serializable = MAMDiagnostics.SerializableSensorData(from: sensorData)
 
         // Then
-        XCTAssertEqual(serializable.deviceType, "Oralable")
+        XCTAssertEqual(serializable.deviceType, "MAM")
         XCTAssertEqual(serializable.ppgRed, 150000)
         XCTAssertEqual(serializable.ppgIR, 200000)
         XCTAssertEqual(serializable.ppgGreen, 180000)
@@ -791,7 +791,7 @@ final class SharedDataModelTests: XCTestCase {
         )
 
         // When
-        let serializable = SerializableSensorData(from: sensorData)
+        let serializable = MAMDiagnostics.SerializableSensorData(from: sensorData)
 
         // Then
         XCTAssertEqual(serializable.deviceType, "ANR M40")
@@ -821,7 +821,7 @@ final class SharedDataModelTests: XCTestCase {
         )
 
         // When
-        let serializable = SerializableSensorData(from: sensorData)
+        let serializable = MAMDiagnostics.SerializableSensorData(from: sensorData)
 
         // Then
         XCTAssertNil(serializable.emg, "ANR device with zero IR should not have EMG data")
@@ -830,11 +830,11 @@ final class SharedDataModelTests: XCTestCase {
     func testSerializableSensorDataCodable() throws {
         // Given
         let sensorData = createMockSensorData(count: 1).first!
-        let original = SerializableSensorData(from: sensorData)
+        let original = MAMDiagnostics.SerializableSensorData(from: sensorData)
 
         // When
         let encoded = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(SerializableSensorData.self, from: encoded)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.SerializableSensorData.self, from: encoded)
 
         // Then
         XCTAssertEqual(decoded.ppgRed, original.ppgRed)
@@ -868,7 +868,7 @@ final class SharedDataModelTests: XCTestCase {
         )
 
         // When
-        let serializable = SerializableSensorData(from: sensorData)
+        let serializable = MAMDiagnostics.SerializableSensorData(from: sensorData)
 
         // Then
         XCTAssertEqual(
@@ -1134,7 +1134,7 @@ final class SerializationIntegrationTests: XCTestCase {
         let rawData = createMockSensorData(count: 50)
 
         // When - convert to BruxismSessionData -> encode -> compress -> decompress -> decode
-        let sessionData = BruxismSessionData(sensorData: rawData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: rawData)
         let jsonData = try JSONEncoder().encode(sessionData)
         let originalSize = jsonData.count
 
@@ -1148,14 +1148,14 @@ final class SerializationIntegrationTests: XCTestCase {
             return
         }
 
-        let restored = try JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+        let restored = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: decompressed)
 
         // Then - verify data integrity
         XCTAssertEqual(restored.recordingCount, rawData.count)
         XCTAssertEqual(restored.sensorReadings.count, rawData.count)
 
         // Verify first and last readings
-        let firstOriginal = SerializableSensorData(from: rawData.first!)
+        let firstOriginal = MAMDiagnostics.SerializableSensorData(from: rawData.first!)
         let firstRestored = restored.sensorReadings.first!
 
         XCTAssertEqual(firstRestored.ppgRed, firstOriginal.ppgRed)
@@ -1163,7 +1163,7 @@ final class SerializationIntegrationTests: XCTestCase {
         XCTAssertEqual(firstRestored.accelX, firstOriginal.accelX)
         XCTAssertEqual(firstRestored.batteryPercentage, firstOriginal.batteryPercentage)
 
-        let lastOriginal = SerializableSensorData(from: rawData.last!)
+        let lastOriginal = MAMDiagnostics.SerializableSensorData(from: rawData.last!)
         let lastRestored = restored.sensorReadings.last!
 
         XCTAssertEqual(lastRestored.ppgRed, lastOriginal.ppgRed)
@@ -1176,7 +1176,7 @@ final class SerializationIntegrationTests: XCTestCase {
         let rawData = createMockSensorData(count: 500)
 
         // When
-        let sessionData = BruxismSessionData(sensorData: rawData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: rawData)
         let jsonData = try JSONEncoder().encode(sessionData)
         let originalSize = jsonData.count
 
@@ -1195,7 +1195,7 @@ final class SerializationIntegrationTests: XCTestCase {
             return
         }
 
-        let restored = try JSONDecoder().decode(BruxismSessionData.self, from: decompressed)
+        let restored = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: decompressed)
         XCTAssertEqual(restored.recordingCount, 500)
     }
 
@@ -1206,14 +1206,14 @@ final class SerializationIntegrationTests: XCTestCase {
         let combinedData = oralableData + anrData
 
         // When
-        let sessionData = BruxismSessionData(sensorData: combinedData)
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: combinedData)
         let jsonData = try JSONEncoder().encode(sessionData)
-        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: jsonData)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: jsonData)
 
         // Then
         XCTAssertEqual(decoded.recordingCount, 10)
 
-        let oralableReadings = decoded.sensorReadings.filter { $0.deviceType == "Oralable" }
+        let oralableReadings = decoded.sensorReadings.filter { $0.deviceType == "MAM" }
         let anrReadings = decoded.sensorReadings.filter { $0.deviceType == "ANR M40" }
 
         XCTAssertEqual(oralableReadings.count, 5, "Should have 5 Oralable readings")
@@ -1234,9 +1234,9 @@ final class SerializationIntegrationTests: XCTestCase {
         )
 
         // When
-        let sessionData = BruxismSessionData(sensorData: [sensorData])
+        let sessionData = MAMDiagnostics.BruxismSessionData(sensorData: [sensorData])
         let jsonData = try JSONEncoder().encode(sessionData)
-        let decoded = try JSONDecoder().decode(BruxismSessionData.self, from: jsonData)
+        let decoded = try JSONDecoder().decode(MAMDiagnostics.BruxismSessionData.self, from: jsonData)
 
         // Then
         let reading = decoded.sensorReadings.first!

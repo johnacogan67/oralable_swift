@@ -54,7 +54,7 @@ struct DevicesView: View {
                                     if let target = deviceManager.preferredOralableReconnectTarget() {
                                         try? await deviceManager.connect(to: target)
                                     } else if let remembered = persistenceManager.getRememberedDevices().first(where: {
-                                        $0.name.lowercased().contains("oralable")
+                                        DeviceType.isMAMClipName($0.name)
                                     }) {
                                         try? await deviceManager.connectToRememberedDevice(id: remembered.id)
                                     }
@@ -144,19 +144,19 @@ struct DevicesView: View {
             } else {
                 ForEach(rememberedDevices) { device in
                     DeviceRow(
-                        name: device.name,
+                        name: DeviceType.patientDisplayName(device.name),
                         readinessState: getDeviceReadiness(id: device.id),
                         onTap: {
                             let readiness = getDeviceReadiness(id: device.id)
                             if readiness == .ready {
-                                selectedDevice = DeviceRowItem(id: device.id, name: device.name, isConnected: true)
+                                selectedDevice = DeviceRowItem(id: device.id, name: DeviceType.patientDisplayName(device.name), isConnected: true)
                                 showingDeviceDetail = true
                             } else {
                                 connectToDevice(id: device.id)
                             }
                         },
                         onInfoTap: {
-                            selectedDevice = DeviceRowItem(id: device.id, name: device.name, isConnected: isDeviceConnected(id: device.id))
+                            selectedDevice = DeviceRowItem(id: device.id, name: DeviceType.patientDisplayName(device.name), isConnected: isDeviceConnected(id: device.id))
                             showingDeviceDetail = true
                         }
                     )
@@ -166,7 +166,7 @@ struct DevicesView: View {
             Text("My Devices")
         } footer: {
             if FeatureFlags.shared.vitalsPhaseEnabled {
-                Text("Beacon: Gen1 Oralable only. ANR stays lab.")
+                Text("Beacon: Gen 2 MAM only. ANR stays in the lab.")
             }
         }
     }
@@ -206,7 +206,7 @@ struct DevicesView: View {
             } else {
                 ForEach(discoveredDevices, id: \.peripheralIdentifier) { device in
                     DeviceRow(
-                        name: device.name,
+                        name: DeviceType.patientDisplayName(device.name),
                         readinessState: getDeviceReadiness(id: device.peripheralIdentifier?.uuidString ?? ""),
                         onTap: {
                             connectToNewDevice(device)
@@ -279,7 +279,7 @@ struct DevicesView: View {
                             Logger.shared.debug("[DevicesView] ANR shows failed but has EMG data - treating as Ready")
                             return .ready
                         }
-                    } else if deviceName.contains("oralable") {
+                    } else if DeviceType.isMAMClipName(device.name) {
                         // Oralable device - check if we have PPG data
                         if deviceManagerAdapter.ppgIRValue > 0 {
                             Logger.shared.debug("[DevicesView] Oralable shows failed but has PPG data - treating as Ready")

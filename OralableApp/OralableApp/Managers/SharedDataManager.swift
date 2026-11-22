@@ -738,7 +738,7 @@ struct SerializableSensorData: Codable {
     let timestamp: Date
 
     // Device identification
-    let deviceType: String  // "Oralable" or "ANR M40"
+    let deviceType: String  // "MAM" or "ANR M40"
 
     // PPG data (from Oralable device)
     let ppgRed: Int32
@@ -770,7 +770,7 @@ struct SerializableSensorData: Codable {
         self.timestamp = sensorData.timestamp
 
         // Device type
-        self.deviceType = sensorData.deviceType == .anr ? "ANR M40" : "Oralable"
+        self.deviceType = sensorData.deviceType == .anr ? "ANR M40" : "MAM"
 
         // PPG data (only valid for Oralable device)
         self.ppgRed = sensorData.ppg.red

@@ -112,9 +112,9 @@ final class SingleProtocolASessionController: ObservableObject {
     func start() {
         guard phase == .idle || isRetryableFailure else { return }
         phase = .connecting
-        statusMessage = "Connect Oralable (MAM), seat on temple, then Start."
+        statusMessage = "Connect the MAM, seat on temple, then Start."
         guard oralableConnected else {
-            phase = .failed("Oralable must be connected before Protocol A Setup.")
+            phase = .failed("MAM must be connected before Protocol A Setup.")
             return
         }
         armWornAndStream()
@@ -475,7 +475,7 @@ final class SingleProtocolASessionController: ObservableObject {
     }
 
     static let linkDropMessage =
-        "Oralable dropped. FW 1.0.71+ stops sensors when BLE drops — restart Protocol A Setup."
+        "MAM dropped. FW 1.0.71+ stops sensors when BLE drops — restart Protocol A Setup."
 
     private var isRetryableFailure: Bool {
         if case .failed = phase { return true }

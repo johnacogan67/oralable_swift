@@ -35,7 +35,7 @@ struct SetupSuccessView: View {
                         .font(designSystem.typography.h2)
                         .foregroundColor(colors.primaryBlack)
                     Text(
-                        "Your Oralable REV10 Node is paired, fitted, and calibrated for the Temporalis muscle."
+                        "Your MAM is paired, fitted, and calibrated for the Temporalis muscle."
                     )
                     .font(designSystem.typography.body)
                     .foregroundColor(colors.primaryBlack.opacity(0.55))

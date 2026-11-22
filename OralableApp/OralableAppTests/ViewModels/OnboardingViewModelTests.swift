@@ -7,7 +7,7 @@
 
 import XCTest
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class OnboardingViewModelTests: XCTestCase {
@@ -42,7 +42,7 @@ final class OnboardingViewModelTests: XCTestCase {
     func testFirstPageShowsWelcomeContent() {
         // First page should introduce the app
         let firstPageTitle = "One night on the temple"
-        let firstPageDescription = "Charge on the Oralable case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis."
+        let firstPageDescription = "Charge on the MAM case. Pad or tape on the temple for one night. Heart rate and blood oxygen. Wellness — not a diagnosis."
 
         XCTAssertFalse(firstPageTitle.isEmpty, "First page should have a title")
         XCTAssertFalse(firstPageDescription.isEmpty, "First page should have a description")
@@ -52,7 +52,7 @@ final class OnboardingViewModelTests: XCTestCase {
     func testOnboardingIncludesHealthIntegrationPage() {
         // One page should cover Apple Health integration
         let healthPageTitle = "Integrate with Apple Health"
-        let healthDescription = "When you allow it, Oralable can save heart rate and blood oxygen samples to Apple Health"
+        let healthDescription = "When you allow it, MAM Diagnostics can save heart rate and blood oxygen samples to Apple Health"
 
         XCTAssertFalse(healthPageTitle.isEmpty, "Health integration page should have a title")
         XCTAssertTrue(healthDescription.contains("Health"), "Description should mention Apple Health")
@@ -215,9 +215,9 @@ final class OnboardingViewModelTests: XCTestCase {
 
     func testDeviceRequirementNoticeDisplayed() {
         // Footer should mention device requirement
-        let deviceNotice = "Requires Oralable device"
+        let deviceNotice = "Requires a MAM"
 
-        XCTAssertTrue(deviceNotice.contains("Oralable device"), "Should mention Oralable device requirement")
+        XCTAssertTrue(deviceNotice.contains("MAM"), "Should mention the MAM")
     }
 
     // MARK: - Sign In Flow Tests

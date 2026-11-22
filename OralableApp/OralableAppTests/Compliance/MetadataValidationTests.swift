@@ -9,7 +9,7 @@
 
 import XCTest
 import Foundation
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Metadata validation tests for App Store readiness
 /// Verifies app store metadata, privacy manifest, and subscription configuration

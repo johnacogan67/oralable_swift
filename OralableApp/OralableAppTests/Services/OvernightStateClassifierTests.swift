@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class OvernightStateClassifierTests: XCTestCase {
 
@@ -119,6 +119,7 @@ final class OvernightStateClassifierTests: XCTestCase {
         XCTAssertEqual(samples[1].spo2, 91, accuracy: 0.1)
         XCTAssertEqual(samples[1].accelZ, 16_384, accuracy: 0.1)
         XCTAssertEqual(samples[0].temperature, 36.5, accuracy: 0.01)
+        XCTAssertEqual(samples[0].heartRateBpm, 72, accuracy: 0.1)
     }
 
     func testAmbientTemperatureExcludesWearAndSASHB() {

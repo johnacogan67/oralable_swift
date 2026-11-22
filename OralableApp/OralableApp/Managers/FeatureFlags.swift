@@ -122,7 +122,7 @@ class FeatureFlags: ObservableObject {
         var title: String {
             switch self {
             case .auto: return "Automatic"
-            case .onCharger: return "On Oralable case"
+            case .onCharger: return "On MAM case"
             case .offDockIdle: return "Off case (not worn)"
             case .worn: return "Worn on temple"
             }
@@ -131,9 +131,9 @@ class FeatureFlags: ObservableObject {
         var detail: String {
             switch self {
             case .auto:
-                return "FW 1.0.70+: STAT blink = on case / charging. Flash green = still below hold (~4.20 V / 80%). Brief green pulse ~every 10 s = hold. MAM LED is off while the phone is linked. Status never shows red. Pre-1.0.70: use manual modes."
+                return "STAT blink means on the case and charging. Flash green means still below hold (~4.20 V). A brief green pulse about every 10 s means hold. The MAM LED is off while the phone is linked. Status never shows red."
             case .onCharger:
-                return "Oralable case only. No phone: flash green while below hold (~4.20 V). Brief green pulse ~every 10 s when in hold. Status never shows red. While linked, the MAM LED is off and sensors stay off."
+                return "MAM case only. No phone: flash green while below hold (~4.20 V). Brief green pulse ~every 10 s when in hold. Status never shows red. While linked, the MAM LED is off and sensors stay off."
             case .offDockIdle:
                 return "On table or off case — status LED stays dark. While linked, the MAM LED is off."
             case .worn:

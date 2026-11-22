@@ -8,7 +8,7 @@
 
 import Foundation
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Mock Recording Session Manager for unit testing
 /// Allows tests to simulate recording session behavior without actual file operations

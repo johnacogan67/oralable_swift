@@ -44,12 +44,12 @@ enum DeviceManagerFactory {
             }
         }
 
-        /// Beacon / vitals: Oralable Gen1 only. ANR and intraoral stay lab.
+        /// Beacon / vitals: Oralable Gen 2 only. ANR and intraoral stay lab.
         static var beaconDiscoveryProducts: [Product] { [.temporalisHeadband] }
 
         var cardTitle: String {
             switch self {
-            case .temporalisHeadband: return "Oralable MAM"
+            case .temporalisHeadband: return "MAM"
             case .anrMuscleSense: return "ANR Muscle Sense"
             case .intraoralBand: return "Intraoral (coming soon)"
             }
@@ -57,7 +57,7 @@ enum DeviceManagerFactory {
 
         var subtitle: String {
             switch self {
-            case .temporalisHeadband: return "Gen1 temple clip · one night · HR and SpO₂"
+            case .temporalisHeadband: return "Gen 2 temple clip · one night · HR and SpO₂"
             case .anrMuscleSense: return "Lab EMG only — not Beacon"
             case .intraoralBand: return "Modular placeholder"
             }

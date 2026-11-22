@@ -7,7 +7,7 @@
 
 import XCTest
 import OralableCore
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class DualProtocolACuesTests: XCTestCase {
 
@@ -52,7 +52,7 @@ final class DualProtocolACuesTests: XCTestCase {
 
     func testLinkDropMessageMentionsSenseStop() {
         XCTAssertTrue(DualProtocolASessionController.linkDropMessage.contains("1.0.71"))
-        XCTAssertTrue(DualProtocolASessionController.linkDropMessage.contains("stops Oralable sensors"))
+        XCTAssertTrue(DualProtocolASessionController.linkDropMessage.contains("stops MAM sensors"))
     }
 
     func testPreflightDurationsAndGate() {

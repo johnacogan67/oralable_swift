@@ -8,7 +8,7 @@
 
 import XCTest
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class BLEErrorTests: XCTestCase {
 

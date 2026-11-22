@@ -21,7 +21,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class BLESubscriptionLeakTests: XCTestCase {
@@ -245,7 +245,6 @@ final class BLESubscriptionLeakTests: XCTestCase {
 
         // When - nil out the ViewModel while keeping the adapter alive
         // This simulates the adapter continuing to publish after the VM is gone
-        objects?.vm = nil  // Cannot do this directly since it's in a tuple
 
         // Release the entire objects tuple - but keep adapter reference
         // to publish more data after VM is gone

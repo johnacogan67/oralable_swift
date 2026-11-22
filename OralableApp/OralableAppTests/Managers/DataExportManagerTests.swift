@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 final class DataExportManagerTests: XCTestCase {
 
@@ -131,7 +131,7 @@ final class DataExportManagerTests: XCTestCase {
 
         // Then
         let filename = exportURL.lastPathComponent
-        XCTAssertTrue(filename.hasPrefix("oralable_data_"), "Filename should start with oralable_data_")
+        XCTAssertTrue(filename.hasPrefix("mam_data_"), "Filename should start with mam_data_")
         XCTAssertTrue(filename.hasSuffix(".csv"), "Filename should have .csv extension")
     }
 

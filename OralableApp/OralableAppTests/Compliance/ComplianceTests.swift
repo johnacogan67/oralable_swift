@@ -9,7 +9,7 @@
 
 import XCTest
 import Foundation
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Compliance tests to ensure the app meets App Store guidelines
 /// and does not make unauthorized medical/diagnostic claims

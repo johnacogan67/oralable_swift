@@ -52,7 +52,7 @@ class LogExportManager {
             csvContent.append(row)
         }
         
-        return saveToFile(content: csvContent, filename: "oralable_logs_\(Int(Date().timeIntervalSince1970)).csv")
+        return saveToFile(content: csvContent, filename: "mam_logs_\(Int(Date().timeIntervalSince1970)).csv")
     }
     
     private func createDefaultSensorData() -> SensorData {
@@ -83,7 +83,7 @@ class LogExportManager {
             encoder.dateEncodingStrategy = .iso8601
             
             let jsonData = try encoder.encode(exportData)
-            let filename = "oralable_logs_\(Int(Date().timeIntervalSince1970)).json"
+            let filename = "mam_logs_\(Int(Date().timeIntervalSince1970)).json"
 
 
             return saveToFile(content: String(data: jsonData, encoding: .utf8) ?? "", filename: filename)

@@ -23,14 +23,14 @@ struct DeviceDiscoveryView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: designSystem.spacing.md) {
-                    Text("Add Oralable")
+                    Text("Add MAM")
                         .font(designSystem.typography.h3)
                         .foregroundColor(designSystem.colors.textPrimary)
                         .padding(.horizontal, 4)
 
                     Text(
                         featureFlags.vitalsPhaseEnabled
-                            ? "Gen1 temple clip. Charge on the Oralable case, then scan. One night, pad or tape on the temple — no ANR, no headband."
+                            ? "Gen 2 temple clip. Charge on the MAM case, then scan. One night, pad or tape on the temple — no ANR, no headband."
                             : "Choose your sensor, then scan. We’ll connect using the right protocol for that product line."
                     )
                         .font(designSystem.typography.bodySmall)
@@ -163,7 +163,7 @@ struct DeviceDiscoveryView: View {
                 } else {
                     if product.coreDeviceType == .oralable,
                        FirmwareGate.isBelowRecommendedOralableVersion(found.firmwareVersion) {
-                        Text("Firmware \(found.firmwareVersion ?? "?") works, but \(FirmwareGate.recommendedOralableSemanticVersion)+ senses only while linked and uses green charge LEDs. Manual placement still OK.")
+                        Text("Firmware \(found.firmwareVersion ?? "?") is older than \(FirmwareGate.recommendedOralableSemanticVersion). Charge and connect are allowed. This build expects \(FirmwareGate.recommendedOralableSemanticVersion).")
                             .font(designSystem.typography.captionSmall)
                             .foregroundColor(designSystem.colors.warning)
                             .fixedSize(horizontal: false, vertical: true)

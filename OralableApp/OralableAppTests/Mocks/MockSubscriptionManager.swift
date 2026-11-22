@@ -8,7 +8,7 @@
 import Foundation
 import StoreKit
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class MockSubscriptionManager: SubscriptionManagerProtocol, ObservableObject {

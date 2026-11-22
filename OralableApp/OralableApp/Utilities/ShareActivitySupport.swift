@@ -46,7 +46,7 @@ enum ShareActivityItems {
     /// Copy into tmp with a unique name so LaunchServices / file-provider does not treat the path as an iCloud/Caches document.
     static func makeSecureShareCopy(of url: URL) throws -> URL {
         let base = FileManager.default.temporaryDirectory
-        let dest = base.appendingPathComponent("oralable_share_\(UUID().uuidString)_\(url.lastPathComponent)")
+        let dest = base.appendingPathComponent("mam_share_\(UUID().uuidString)_\(url.lastPathComponent)")
         if FileManager.default.fileExists(atPath: dest.path) {
             try FileManager.default.removeItem(at: dest)
         }

@@ -153,7 +153,7 @@ private struct ActivityView: UIViewControllerRepresentable {
     let item: ClinicianExportItem
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let name = "oralable_clinical_handshake_\(item.code).json"
+        let name = "mam_clinical_handshake_\(item.code).json"
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         try? item.data.write(to: tmp, options: .atomic)
         let (prepared, tempURLs) = ShareActivityItems.preparingForShare([tmp])

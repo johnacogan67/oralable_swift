@@ -174,7 +174,7 @@ struct DashboardView: View {
                                         .font(designSystem.typography.bodySmall)
                                         .fontWeight(.semibold)
                                         .foregroundColor(designSystem.colors.textPrimary)
-                                    Text("Research · Oralable + ANR · ~6 min cues")
+                                    Text("Research · MAM + ANR · ~6 min cues")
                                         .font(designSystem.typography.caption)
                                         .foregroundColor(designSystem.colors.textSecondary)
                                 }
@@ -244,7 +244,7 @@ struct DashboardView: View {
                             icon: "waveform.path.ecg",
                             title: "PPG Sensor",
                             value: viewModel.oralableConnected ? String(format: "%.0f", max(0, viewModel.ppgIRValue)) : "N/A",
-                            unit: viewModel.oralableConnected ? "Oralable IR" : "Not Connected",
+                            unit: viewModel.oralableConnected ? "MAM IR" : "Not Connected",
                             color: .purple,
                             sparklineData: viewModel.ppgHistory,
                             showChevron: true
@@ -519,7 +519,7 @@ struct DashboardView: View {
                         .fill(viewModel.oralableConnected ? designSystem.colors.success : designSystem.colors.gray400)
                         .frame(width: 10, height: 10)
 
-                    Text("Oralable")
+                    MAMNameText()
                         .font(designSystem.typography.bodySmall)
 
                     Spacer()
@@ -529,7 +529,7 @@ struct DashboardView: View {
                         .foregroundColor(viewModel.oralableConnected ? designSystem.colors.success : designSystem.colors.textSecondary)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Oralable device, \(viewModel.oralableConnected ? "Ready" : "Not Connected")")
+                .accessibilityLabel("MAM, \(viewModel.oralableConnected ? "Ready" : "Not Connected")")
             }
 
             // ANR M40 Device - only show if previously paired (not in demo mode)

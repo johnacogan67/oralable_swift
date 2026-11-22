@@ -9,7 +9,7 @@
 import Foundation
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Mock CBPeripheral for testing
 class MockCBPeripheral: CBPeripheral {

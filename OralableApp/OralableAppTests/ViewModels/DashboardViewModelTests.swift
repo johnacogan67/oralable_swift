@@ -13,7 +13,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
@@ -454,7 +454,7 @@ final class DashboardViewModelTests: XCTestCase {
 
         // Then
         XCTAssertEqual(sut.muscleActivityLabel, "Muscle Activity")
-        XCTAssertEqual(sut.signalSourceLabel, "Oralable IR")
+        XCTAssertEqual(sut.signalSourceLabel, "MAM IR")
         XCTAssertEqual(sut.muscleActivityIcon, "waveform.path.ecg")
     }
 
@@ -1077,59 +1077,58 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(veryLow.confidenceDescription, "Very Low")
     }
 
-    // MARK: - 29. RecordingStateCoordinator Tests (Legacy - still exists in codebase)
+    // MARK: - 29. AutomaticRecordingSession Tests
 
-    func testRecordingStateCoordinatorExists() {
-        let coordinator = RecordingStateCoordinator.shared
-        XCTAssertNotNil(coordinator, "RecordingStateCoordinator.shared should exist")
+    func testAutomaticRecordingSessionCanBeCreated() {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
+        XCTAssertNotNil(session, "AutomaticRecordingSession should be creatable")
     }
 
-    func testRecordingStateCoordinatorInitialState() {
-        let coordinator = RecordingStateCoordinator.shared
+    func testAutomaticRecordingSessionInitialState() {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
-        // Stop any existing recording first
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
-
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording initially")
-        XCTAssertNil(coordinator.sessionStartTime, "Session start time should be nil when not recording")
+        XCTAssertFalse(session.isSessionActive, "Should not be active initially")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused initially")
+        XCTAssertNil(session.sessionStartTime, "Session start time should be nil when not recording")
     }
 
-    func testRecordingStateCoordinatorStartStop() {
-        let coordinator = RecordingStateCoordinator.shared
+    func testAutomaticRecordingSessionConnectAndEnd() {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        // Connect starts a fresh session (dashboard recording = active && !paused)
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should be recording after connect")
+        XCTAssertNotNil(session.sessionStartTime, "Should have session start time")
 
-        // Start recording
-        coordinator.startRecording()
-        XCTAssertTrue(coordinator.isRecording, "Should be recording after start")
-        XCTAssertNotNil(coordinator.sessionStartTime, "Should have session start time")
-
-        // Stop recording
-        coordinator.stopRecording()
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after stop")
-        XCTAssertNil(coordinator.sessionStartTime, "Session start time should be nil after stop")
+        // endSession resets fully
+        session.endSession()
+        XCTAssertFalse(session.isSessionActive, "Should not be active after endSession")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused after endSession")
+        XCTAssertNil(session.sessionStartTime, "Session start time should be nil after endSession")
     }
 
-    func testRecordingStateCoordinatorToggle() {
-        let coordinator = RecordingStateCoordinator.shared
+    func testAutomaticRecordingSessionConnectDisconnectReconnect() {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        // connect → disconnect (pause) → reconnect (resume) replaces legacy toggle
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should be recording after connect")
 
-        // Toggle on
-        coordinator.toggleRecording()
-        XCTAssertTrue(coordinator.isRecording, "Should be recording after toggle")
+        session.onDeviceDisconnected()
+        XCTAssertTrue(session.isSessionActive, "Disconnect pauses; active stays true")
+        XCTAssertTrue(session.isSessionPaused, "Should be paused after disconnect")
+        XCTAssertNotNil(session.sessionStartTime, "Pause must not clear sessionStartTime")
 
-        // Toggle off
-        coordinator.toggleRecording()
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after second toggle")
+        session.onDeviceConnected()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should resume after reconnect")
     }
 
     // MARK: - 30. Publisher Subscription Verification Tests

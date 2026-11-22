@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "26CAF25D2E781EFB003FE378"
-               BuildableName = "OralableApp.app"
-               BlueprintName = "OralableApp"
+               BuildableName = "MAMDiagnostics.app"
+               BlueprintName = "MAMDiagnostics"
                ReferencedContainer = "container:OralableApp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -69,8 +69,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "26CAF25D2E781EFB003FE378"
-            BuildableName = "OralableApp.app"
-            BlueprintName = "OralableApp"
+            BuildableName = "MAMDiagnostics.app"
+            BlueprintName = "MAMDiagnostics"
             ReferencedContainer = "container:OralableApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -93,8 +93,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "26CAF25D2E781EFB003FE378"
-            BuildableName = "OralableApp.app"
-            BlueprintName = "OralableApp"
+            BuildableName = "MAMDiagnostics.app"
+            BlueprintName = "MAMDiagnostics"
             ReferencedContainer = "container:OralableApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

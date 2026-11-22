@@ -24,11 +24,18 @@ struct VitalsDeviceStatusCard: View {
     }
 
     private var operationalState: DeviceOperationalState {
-        firmwareStatus?.operationalState(
+        if let firmwareStatus {
+            return firmwareStatus.operationalState(
+                userPlacementMode: placementMode.rawValue,
+                heartRateQuality: heartRateQuality,
+                spo2Quality: spo2Quality
+            )
+        }
+        return .withoutFirmware(
             userPlacementMode: placementMode.rawValue,
             heartRateQuality: heartRateQuality,
             spo2Quality: spo2Quality
-        ) ?? .benchIdle
+        )
     }
 
     private var statusLED: DeviceStatusLEDRepresentation? {
@@ -82,6 +89,15 @@ struct VitalsDeviceStatusCard: View {
                     )
                     flagChip("Worn", active: status.worn)
                 }
+            }
+
+            Text("App \(Bundle.main.mamAppVersionStamp)")
+                .font(designSystem.typography.captionSmall)
+                .foregroundColor(designSystem.colors.textTertiary)
+            if let deviceId = deviceManager.primaryMAMDeviceId() {
+                Text("Device ID \(deviceId)")
+                    .font(designSystem.typography.captionSmall)
+                    .foregroundColor(designSystem.colors.textTertiary)
             }
 
             if let fw = deviceManager.primaryFirmwareVersion() {
@@ -215,6 +231,7 @@ struct VitalsDeviceStatusCard: View {
         if q >= 0.7 { return "Good signal" }
         if q >= 0.4 { return "Fair signal" }
         if q > 0 { return "Poor signal" }
+        if FeatureFlags.shared.demoModeEnabled { return "Demo" }
         return "Searching…"
     }
 

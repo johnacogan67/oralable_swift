@@ -88,14 +88,14 @@ struct FirstLaunchOnboardingView: View {
 
     private var vitalsSetupContent: some View {
         VStack(alignment: .leading, spacing: designSystem.spacing.lg) {
-            Text("Connect your Oralable")
+            Text("Connect your MAM")
                 .font(designSystem.typography.h2)
                 .foregroundColor(designSystem.colors.textPrimary)
 
             Text(
                 featureFlags.requireProtocolASetup
-                    ? "Connect Oralable, then complete Protocol A Setup (~6 min research QC) before the dashboard. Wellness only."
-                    : "Connect the Gen1 Oralable. Charge on the Oralable case. Pad or tape on the temple — no headband, no ANR. Set Worn on temple. Heart rate and SpO₂ while the phone is nearby. One night, then Share the night pack. Protocol A Setup is optional research QC."
+                    ? "Connect the MAM, then complete Protocol A Setup (~6 min research QC) before the dashboard. Wellness only."
+                    : "Connect the Gen 2 MAM. Charge on the MAM case. Pad or tape on the temple — no headband, no ANR. Set Worn on temple. Heart rate and SpO₂ while the phone is nearby. One night, then Share the night pack. Protocol A Setup is optional research QC."
             )
                 .font(designSystem.typography.body)
                 .foregroundColor(designSystem.colors.textSecondary)
@@ -120,7 +120,7 @@ struct FirstLaunchOnboardingView: View {
                 showDeviceDiscoverySheet = true
             } label: {
                 Label(
-                    firstLaunchManager.hasPairedOralablePrimary ? "Connect again" : "Connect Oralable",
+                    firstLaunchManager.hasPairedOralablePrimary ? "Connect again" : "Connect MAM",
                     systemImage: "link.circle.fill"
                 )
                 .font(designSystem.typography.labelMedium)
@@ -140,8 +140,8 @@ struct FirstLaunchOnboardingView: View {
         VStack(alignment: .leading, spacing: designSystem.spacing.sm) {
             Text("Placement modes")
                 .font(designSystem.typography.headline)
-            bullet("Automatic — FW 1.0.70+ (STAT blink = on Oralable case)")
-            bullet("On Oralable case — no phone: flash green = still charging, brief green pulse ~every 10 s = hold (never red)")
+            bullet("Automatic — STAT blink means the clip is on the MAM case")
+            bullet("On MAM case — no phone: flash green = still charging, brief green pulse ~every 10 s = hold (never red)")
             bullet("Off case (not worn) — status LED off on the table")
             bullet("Worn on temple — pad or tape; HR / SpO₂ while the phone is linked; MAM status LED off")
         }
@@ -170,7 +170,7 @@ struct FirstLaunchOnboardingView: View {
                     Button {
                         showDeviceDiscoverySheet = true
                     } label: {
-                        Label("Connect Oralable Node", systemImage: "link.circle.fill")
+                        Label("Connect MAM", systemImage: "link.circle.fill")
                             .font(designSystem.typography.labelMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -329,8 +329,8 @@ struct FirstLaunchOnboardingView: View {
             VStack(alignment: .leading, spacing: designSystem.spacing.xs) {
                 bullet("Temporalis fit + quick IR-DC calibration (about 90 seconds) is required once per REV10 headset before overnight capture.")
                 bullet("Automatic recording runs while connected; hourly memory flush writes CSV to Application Support for data safety.")
-                bullet("TFI (Temporalis Fatigue Index) and SASHB (hypoxic burden) roll into the clinical PDF and professional handshake export.")
-                bullet("Trial coordination uses the 6-character clinician sync code on the PDF header with Share → Professional.")
+                bullet("The morning night pack is a Clinical Temporalis PDF plus the flushed night CSV. It carries wear, heart rate, RMSSD, SpO₂, oxygen burden, fatigue index, and the state hypnogram.")
+                bullet("Write the firmware string, app build, and device id from the dashboard onto the case-report form. The clinic share code stays off.")
             }
             .font(designSystem.typography.bodySmall)
             .foregroundColor(designSystem.colors.textSecondary)

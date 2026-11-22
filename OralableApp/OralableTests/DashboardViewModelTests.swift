@@ -16,7 +16,7 @@
 
 import XCTest
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 class DashboardViewModelTests: XCTestCase {
     

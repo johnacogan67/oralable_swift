@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OralableCore
 
 class DevicePersistenceManager {
     static let shared = DevicePersistenceManager()
@@ -57,7 +58,7 @@ class DevicePersistenceManager {
     /// Check if any Oralable device has been previously paired
     func hasOralableDevicePaired() -> Bool {
         return getRememberedDevices().contains { device in
-            device.name.lowercased().contains("oralable")
+            DeviceType.isMAMClipName(device.name)
         }
     }
 
@@ -73,7 +74,7 @@ class DevicePersistenceManager {
         return getRememberedDevices().first { device in
             switch type {
             case .oralable:
-                return device.name.lowercased().contains("oralable")
+                return DeviceType.isMAMClipName(device.name)
             case .anr:
                 return device.name.lowercased().contains("anr") || device.name.lowercased().contains("m40")
             case .demo:

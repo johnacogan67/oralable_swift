@@ -61,7 +61,7 @@ struct DeveloperSettingsView: View {
                 Toggle("Vitals phase (HR + SpO₂)", isOn: $featureFlags.vitalsPhaseEnabled)
                 Toggle("Require Protocol A Setup", isOn: $featureFlags.requireProtocolASetup)
                 if featureFlags.vitalsPhaseEnabled {
-                    Text("Dual Protocol A is off in vitals / Beacon builds (Oralable-only). Turn off Vitals phase to enable Dual for lab use.")
+                    Text("Dual Protocol A is off in vitals / Beacon builds (MAM only). Turn off Vitals phase to enable Dual for lab use.")
                         .font(designSystem.typography.caption)
                         .foregroundColor(designSystem.colors.textSecondary)
                 } else {
@@ -94,10 +94,10 @@ struct DeveloperSettingsView: View {
             }
 
             Section("Research EDF+") {
-                Text("Oralable-only EDF from live history (no EMG). For Dual A with ANR EMG, use Dual Protocol A Share.")
+                Text("MAM-only EDF from live history (no EMG). For Dual A with ANR EMG, use Dual Protocol A Share.")
                     .font(designSystem.typography.caption)
                     .foregroundColor(designSystem.colors.textSecondary)
-                Button("Export Oralable-only session.edf") {
+                Button("Export MAM-only session.edf") {
                     exportOralableOnlyEDF()
                 }
                 if !edfStatus.isEmpty {
@@ -112,7 +112,7 @@ struct DeveloperSettingsView: View {
                 }
             }
 
-            Section("Bench recovery (Gen1)") {
+            Section("Bench recovery") {
                 Stepper(value: Binding(
                     get: { Int(featureFlags.debugRebootIntervalMinutes) },
                     set: { featureFlags.debugRebootIntervalMinutes = UInt16(max(0, $0)) }
@@ -163,7 +163,7 @@ struct DeveloperSettingsView: View {
                 }
             }
 
-            Section("Firmware (Oralable)") {
+            Section("Firmware (MAM)") {
                 Text(lastFwConfigStatus ?? "Not configured yet")
                     .font(designSystem.typography.bodySmall)
                     .foregroundColor(designSystem.colors.textSecondary)
@@ -244,7 +244,7 @@ struct DeveloperSettingsView: View {
 
     private func applyFirmwareSettings() async {
         guard let oralable = dependencies.deviceManager.primaryBLEDevice as? OralableDevice else {
-            lastFwConfigStatus = "No primary Oralable device connected"
+            lastFwConfigStatus = "No primary MAM connected"
             return
         }
         do {
@@ -266,7 +266,7 @@ struct DeveloperSettingsView: View {
 
     private func requestConnParamUpdate() async {
         guard let oralable = dependencies.deviceManager.primaryBLEDevice as? OralableDevice else {
-            lastFwConfigStatus = "No primary Oralable device connected"
+            lastFwConfigStatus = "No primary MAM connected"
             return
         }
         do {
@@ -306,7 +306,7 @@ struct DeveloperSettingsView: View {
 
     private func dumpFirmwareDiagnostics() async {
         guard let oralable = dependencies.deviceManager.primaryBLEDevice as? OralableDevice else {
-            lastFwConfigStatus = "No primary Oralable device connected"
+            lastFwConfigStatus = "No primary MAM connected"
             return
         }
         do {

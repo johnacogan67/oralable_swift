@@ -9,7 +9,7 @@
 
 import XCTest
 import Combine
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class DashboardIntegrationTests: XCTestCase {
@@ -30,120 +30,98 @@ final class DashboardIntegrationTests: XCTestCase {
         try await super.tearDown()
     }
 
-    // MARK: - RecordingStateCoordinator Integration Tests
+    // MARK: - AutomaticRecordingSession Integration Tests
 
-    func testRecordingStateCoordinatorPublishesUpdates() async {
+    /// Isolated session: no CloudKit sync; caller must endSession in cleanup.
+    private func makeIsolatedAutomaticRecordingSession() -> AutomaticRecordingSession {
+        let session = AutomaticRecordingSession()
+        session.syncOnDisconnect = false
+        return session
+    }
+
+    func testAutomaticRecordingSessionPublishesUpdates() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        let expectation = XCTestExpectation(description: "Session became active")
 
-        let expectation = XCTestExpectation(description: "Recording state updated")
-
-        coordinator.$isRecording
+        session.$isSessionActive
             .dropFirst()
-            .sink { isRecording in
-                if isRecording {
+            .sink { isActive in
+                if isActive {
                     expectation.fulfill()
                 }
             }
             .store(in: &cancellables)
 
         // When
-        coordinator.startRecording()
+        session.onDeviceConnected()
 
         // Then
         await fulfillment(of: [expectation], timeout: 2.0)
-        XCTAssertTrue(coordinator.isRecording)
-
-        // Cleanup
-        coordinator.stopRecording()
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused)
     }
 
-    func testRecordingDurationUpdatesOverTime() async {
-        // Given
-        let coordinator = RecordingStateCoordinator.shared
-
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
-
-        let expectation = XCTestExpectation(description: "Duration updated")
-
-        coordinator.$sessionDuration
-            .dropFirst()
-            .sink { duration in
-                if duration > 0 {
-                    expectation.fulfill()
-                }
-            }
-            .store(in: &cancellables)
+    func testAutomaticRecordingSessionDurationUpdatesOverTime() async {
+        // Given — sessionDuration is computed, not @Published; poll after a known start
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
         // When
-        coordinator.startRecording()
+        session.onDeviceConnected()
+        try? await Task.sleep(nanoseconds: 1_100_000_000) // 1.1 seconds
 
-        // Then - wait for duration to update
-        await fulfillment(of: [expectation], timeout: 3.0)
-        XCTAssertGreaterThan(coordinator.sessionDuration, 0)
-
-        // Cleanup
-        coordinator.stopRecording()
+        // Then
+        XCTAssertGreaterThan(session.sessionDuration, 0)
+        XCTAssertFalse(session.formattedDuration.isEmpty)
     }
 
-    func testRecordingStopResetsState() async {
+    func testAutomaticRecordingSessionEndResetsState() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
-        // Ensure recording is started
-        if !coordinator.isRecording {
-            coordinator.startRecording()
-        }
-
+        session.onDeviceConnected()
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        let stopExpectation = XCTestExpectation(description: "Recording stopped")
+        let stopExpectation = XCTestExpectation(description: "Session ended")
 
-        coordinator.$isRecording
-            .sink { isRecording in
-                if !isRecording {
+        session.$isSessionActive
+            .sink { isActive in
+                if !isActive {
                     stopExpectation.fulfill()
                 }
             }
             .store(in: &cancellables)
 
-        // When
-        coordinator.stopRecording()
+        // When — endSession (not disconnect/pause) fully resets
+        session.endSession()
 
         // Then
         await fulfillment(of: [stopExpectation], timeout: 2.0)
-        XCTAssertFalse(coordinator.isRecording)
-        XCTAssertNil(coordinator.sessionStartTime)
+        XCTAssertFalse(session.isSessionActive)
+        XCTAssertFalse(session.isSessionPaused)
+        XCTAssertNil(session.sessionStartTime)
     }
 
-    func testRecordingToggle() async {
+    func testAutomaticRecordingSessionConnectThenEnd() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
-
-        // When - toggle on
-        coordinator.toggleRecording()
+        // When - connect starts recording
+        session.onDeviceConnected()
 
         // Then
-        XCTAssertTrue(coordinator.isRecording, "Should be recording after toggle")
+        XCTAssertTrue(session.isSessionActive && !session.isSessionPaused, "Should be recording after connect")
 
-        // When - toggle off
-        coordinator.toggleRecording()
+        // When - endSession stops recording (replaces legacy toggle off)
+        session.endSession()
 
         // Then
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after second toggle")
+        XCTAssertFalse(session.isSessionActive, "Should not be active after endSession")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused after endSession")
     }
 
     // MARK: - ThresholdSettings Integration Tests
@@ -239,7 +217,9 @@ final class DashboardIntegrationTests: XCTestCase {
 
     func testMultiplePublishersCanUpdateConcurrently() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
+
         let settings = ThresholdSettings.shared
         let flags = FeatureFlags.shared
 
@@ -247,22 +227,17 @@ final class DashboardIntegrationTests: XCTestCase {
         let originalThreshold = settings.movementThreshold
         let originalDemo = flags.demoModeEnabled
 
-        // Ensure coordinator is stopped
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
-
-        var coordinatorUpdated = false
+        var sessionUpdated = false
         var settingsUpdated = false
         var flagsUpdated = false
 
         let allUpdatedExpectation = XCTestExpectation(description: "All updated")
 
-        coordinator.$isRecording
+        session.$isSessionActive
             .dropFirst()
             .sink { _ in
-                coordinatorUpdated = true
-                if coordinatorUpdated && settingsUpdated && flagsUpdated {
+                sessionUpdated = true
+                if sessionUpdated && settingsUpdated && flagsUpdated {
                     allUpdatedExpectation.fulfill()
                 }
             }
@@ -272,7 +247,7 @@ final class DashboardIntegrationTests: XCTestCase {
             .dropFirst()
             .sink { _ in
                 settingsUpdated = true
-                if coordinatorUpdated && settingsUpdated && flagsUpdated {
+                if sessionUpdated && settingsUpdated && flagsUpdated {
                     allUpdatedExpectation.fulfill()
                 }
             }
@@ -282,28 +257,25 @@ final class DashboardIntegrationTests: XCTestCase {
             .dropFirst()
             .sink { _ in
                 flagsUpdated = true
-                if coordinatorUpdated && settingsUpdated && flagsUpdated {
+                if sessionUpdated && settingsUpdated && flagsUpdated {
                     allUpdatedExpectation.fulfill()
                 }
             }
             .store(in: &cancellables)
 
         // When - update all concurrently
-        coordinator.startRecording()
+        session.onDeviceConnected()
         settings.movementThreshold = originalThreshold + 50
         flags.demoModeEnabled = !originalDemo
 
         // Then
         await fulfillment(of: [allUpdatedExpectation], timeout: 3.0)
 
-        XCTAssertTrue(coordinatorUpdated, "Coordinator should be updated")
+        XCTAssertTrue(sessionUpdated, "Session should be updated")
         XCTAssertTrue(settingsUpdated, "Settings should be updated")
         XCTAssertTrue(flagsUpdated, "Flags should be updated")
 
         // Cleanup - restore original values
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
         settings.movementThreshold = originalThreshold
         flags.demoModeEnabled = originalDemo
     }
@@ -367,51 +339,44 @@ final class DashboardIntegrationTests: XCTestCase {
 
     // MARK: - Session Duration Format Tests
 
-    func testSessionDurationFormatting() async {
+    func testAutomaticRecordingSessionDurationFormatting() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
-
-        // Ensure clean state
-        if coordinator.isRecording {
-            coordinator.stopRecording()
-        }
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
         // When
-        coordinator.startRecording()
+        session.onDeviceConnected()
 
-        // Wait for some duration
+        // Wait for some duration then read computed properties
         try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
 
         // Then
-        let duration = coordinator.sessionDuration
+        let duration = session.sessionDuration
         XCTAssertGreaterThan(duration, 0, "Duration should be greater than 0")
 
-        // Format check
-        let minutes = Int(duration / 60)
-        let seconds = Int(duration) % 60
-        let formatted = String(format: "%02d:%02d", minutes, seconds)
-        XCTAssertFalse(formatted.isEmpty, "Formatted duration should not be empty")
-
-        // Cleanup
-        coordinator.stopRecording()
+        let formatted = session.formattedDuration
+        XCTAssertFalse(formatted.isEmpty, "formattedDuration should not be empty")
+        XCTAssertTrue(formatted.contains(":"), "formattedDuration should include a colon separator")
     }
 
     // MARK: - State Reset Tests
 
-    func testRecordingStateResetsCleanly() async {
+    func testAutomaticRecordingSessionResetsCleanly() async {
         // Given
-        let coordinator = RecordingStateCoordinator.shared
+        let session = makeIsolatedAutomaticRecordingSession()
+        defer { session.endSession() }
 
-        // Start a recording
-        coordinator.startRecording()
+        // Start a session
+        session.onDeviceConnected()
         try? await Task.sleep(nanoseconds: 500_000_000)
 
         // When
-        coordinator.stopRecording()
+        session.endSession()
 
         // Then
-        XCTAssertFalse(coordinator.isRecording, "Should not be recording after stop")
-        XCTAssertNil(coordinator.sessionStartTime, "Session start time should be nil")
+        XCTAssertFalse(session.isSessionActive, "Should not be active after endSession")
+        XCTAssertFalse(session.isSessionPaused, "Should not be paused after endSession")
+        XCTAssertNil(session.sessionStartTime, "Session start time should be nil")
     }
 
     // MARK: - SensorDataProcessor Integration Tests

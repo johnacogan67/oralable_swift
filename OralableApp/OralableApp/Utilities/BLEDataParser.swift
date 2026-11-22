@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import OralableCore
 
 /// Framework-agnostic utilities for parsing raw BLE data packets
 /// Converts raw byte data from Oralable devices into typed model objects
@@ -204,8 +205,7 @@ public struct BLEDataParser {
         // Validate range (2500-4500 mV typical for LiPo)
         guard millivolts >= 2500 && millivolts <= 4500 else { return nil }
 
-        // Oralable remapped gauge (FW >= 1.0.68): 3.61V = 0%, 4.35V = 100%
-        let percentage = Int(min(100, max(0, (millivolts - 3610) * 100 / 740)))
+        let percentage = BatteryConversion.voltageToPercentageInt(millivolts: millivolts)
 
         return BatteryData(
             percentage: percentage,

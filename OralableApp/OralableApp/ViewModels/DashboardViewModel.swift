@@ -204,7 +204,7 @@ class DashboardViewModel: ObservableObject {
         case .anr:
             return "ANR M40 EMG"
         case .oralable:
-            return "Oralable IR"
+            return "MAM IR"
         default:
             return ""
         }
@@ -361,7 +361,9 @@ class DashboardViewModel: ObservableObject {
                 self.isConnected = !devices.isEmpty
 
                 // Track each device type separately for dual-device UI
-                self.oralableConnected = devices.contains { $0.type == .oralable }
+                self.oralableConnected = devices.contains {
+                    $0.type == .oralable || (FeatureFlags.shared.demoModeEnabled && $0.type == .demo)
+                }
                 self.anrConnected = devices.contains { $0.type == .anr }
 
                 // Track connected device type for UI differentiation (primary device)
@@ -381,7 +383,7 @@ class DashboardViewModel: ObservableObject {
                 // Hysteresis to avoid warning flicker
                 if let rssi = newRSSI {
                     if rssi <= -85 {
-                        self.bleLinkWarning = "Weak Bluetooth signal (\(rssi) dBm). Move phone closer to Oralable to avoid disconnects and missed events."
+                        self.bleLinkWarning = "Weak Bluetooth signal (\(rssi) dBm). Move phone closer to the MAM to avoid disconnects and missed events."
                     } else if rssi >= -80 {
                         self.bleLinkWarning = nil
                     }
@@ -437,7 +439,13 @@ class DashboardViewModel: ObservableObject {
         deviceManagerAdapter.batteryLevelPublisher
             .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] level in
-                self?.batteryLevel = level
+                guard let self else { return }
+                if let statusPct = self.deviceManager.primaryFirmwareDeviceStatus.map({ Int($0.batteryPercent) }),
+                   statusPct > 0 {
+                    self.batteryLevel = Double(statusPct)
+                    return
+                }
+                self.batteryLevel = level
             }
             .store(in: &cancellables)
 
@@ -894,6 +902,8 @@ class DashboardViewModel: ObservableObject {
         isConnected = true
         connectedDeviceType = .demo
         deviceName = demoDataProvider.deviceName
+        heartRate = demoDataProvider.currentHeartRate
+        spO2 = Int(demoDataProvider.currentSpO2)
 
         Logger.shared.info("[DashboardViewModel] Demo mode started - device connected")
     }

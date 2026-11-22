@@ -41,6 +41,14 @@ struct ClinicalReportPayload {
     var nightAnalysis: OvernightNightAnalysis? = nil
     /// Developer script. Not a recorded night.
     var isSimulated: Bool = false
+    /// Marketing version and build, for the case-report form.
+    var appVersion: String = ""
+    /// GATT firmware string read from the MAM.
+    var firmwareVersion: String = ""
+    /// Nordic FICR device id, decimal.
+    var deviceId: String = ""
+    /// Heart-rate mean/min and RMSSD. Empty omits the line.
+    var heartSummary: String = ""
 }
 
 enum ClinicalReportGenerator {
@@ -130,8 +138,8 @@ enum ClinicalReportGenerator {
             // PAGE 1 — summary + KPIs + bout hypnogram
             ctx.beginPage()
             var y = drawHeader(
-                banner: "CONFIDENTIAL RESEARCH DATA: McGill/Beacon Clinical Trial",
-                title: "Oralable MAM: Overnight Temporalis Report",
+                banner: "Beacon feasibility. Wellness measurement. Not a clinical trial. Not an apnea index.",
+                title: "MAM: Overnight Temporalis Report",
                 payload: payload,
                 studyDateFormatter: studyDateFormatter
             )
@@ -159,6 +167,7 @@ enum ClinicalReportGenerator {
                     "Tonic: \(fmt1(k.tonicMin)) min (longest \(fmt1(k.longestTonicS)) s)   |   Phasic: \(fmt1(k.phasicMin)) min (\(k.phasicBoutCount) bouts)",
                     "Rescue: \(k.rescueCount) events (\(fmt1(k.rescueTotalS)) s)   |   Recovery med/max: \(fmt1(k.recoveryMedianS))/\(fmt1(k.recoveryMaxS)) s",
                     "SASHB: \(fmt1(k.sashb)) %·s   |   SpO₂ μ/min: \(fmt1(k.spo2Mean))/\(fmt1(k.spo2Min))%",
+                    payload.heartSummary,
                     "Smoking-gun r (hourly): \(payload.spO2ClenchCorrelation.map { fmt($0) } ?? "insufficient data")"
                 ]
                 if payload.isSimulated {
@@ -170,6 +179,7 @@ enum ClinicalReportGenerator {
                     "Wear: \(fmt1(hourlyKPIs.wearHours)) h   |   TFI: \(fmt1(payload.tfiPercent > 0 ? payload.tfiPercent : hourlyKPIs.meanTFI))%",
                     "Tonic: \(fmt1(hourlyKPIs.tonicMin)) min   |   Phasic: \(fmt1(hourlyKPIs.phasicMin)) min",
                     "Rescue: \(hourlyKPIs.rescueEvents) events (\(fmt1(hourlyKPIs.rescueMin)) min)   |   SASHB: \(fmt1(hourlyKPIs.sashbTotal)) %·s",
+                    payload.heartSummary,
                     "Smoking-gun r (hourly SASHB vs rescue): \(payload.spO2ClenchCorrelation.map { fmt($0) } ?? "insufficient data")",
                     "(Bout-level analysis unavailable — showing hourly rollups only)"
                 ]
@@ -178,7 +188,7 @@ enum ClinicalReportGenerator {
                 }
                 kpiLines = lines
             }
-            for line in kpiLines {
+            for line in kpiLines where !line.isEmpty {
                 line.draw(at: CGPoint(x: 48, y: y), withAttributes: body)
                 y += 16
             }
@@ -262,12 +272,16 @@ enum ClinicalReportGenerator {
         y += 26
 
         let studyStr = studyDateFormatter.string(from: payload.dateOfStudy)
-        let sync = payload.clinicianSyncCode.isEmpty ? "—" : payload.clinicianSyncCode.uppercased()
-        let headerLines: [(String, String)] = [
+        var headerLines: [(String, String)] = [
             ("Patient Name", payload.patientName.isEmpty ? "—" : payload.patientName),
             ("Date of Study", studyStr),
-            ("Clinician Sync Code", sync)
+            ("App", payload.appVersion.isEmpty ? "—" : payload.appVersion),
+            ("Firmware", payload.firmwareVersion.isEmpty ? "—" : payload.firmwareVersion),
+            ("Device ID", payload.deviceId.isEmpty ? "—" : payload.deviceId)
         ]
+        if !payload.clinicianSyncCode.isEmpty {
+            headerLines.append(("Clinician Sync Code", payload.clinicianSyncCode.uppercased()))
+        }
         let headerBoxTop = y
         let headerHeight: CGFloat = CGFloat(headerLines.count * 22 + 20)
         let headerFrame = CGRect(x: 44, y: headerBoxTop, width: pageRect.width - 88, height: headerHeight)
@@ -638,8 +652,16 @@ enum ClinicalReportGenerator {
         guard let data = renderPDF(payload: payload) else {
             throw NSError(domain: "ClinicalReportGenerator", code: 1, userInfo: [NSLocalizedDescriptionKey: "PDF render failed"])
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Oralable_MAM_Clinical_Temporalis_Report.pdf")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("MAM_Clinical_Temporalis_Report.pdf")
         try data.write(to: url)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OralableStoryCapture") {
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let kept = docs.appendingPathComponent("story-clinical-temporalis.pdf")
+            try? FileManager.default.removeItem(at: kept)
+            try? FileManager.default.copyItem(at: url, to: kept)
+        }
+        #endif
         return url
     }
 
@@ -647,7 +669,7 @@ enum ClinicalReportGenerator {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
         df.dateFormat = "yyyyMMdd_HHmmss"
-        let name = "Oralable_Night_Events_\(df.string(from: Date())).csv"
+        let name = "MAM_Night_Events_\(df.string(from: Date())).csv"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         try OvernightStateClassifier.eventCSV(from: analysis).write(to: url, atomically: true, encoding: .utf8)
         return url

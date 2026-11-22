@@ -326,7 +326,6 @@ extension OralableDevice {
             let candidates = [Int(rawLE), Int(rawBE)]
             if percentage == nil, let mv = candidates.first(where: { $0 >= 2000 && $0 <= 5000 }) {
                 millivolts = Int32(mv)
-                // Oralable remapped gauge (FW >= 1.0.68): 3.61V = 0%, 4.35V = 100%
                 percentage = BatteryConversion.voltageToPercentageInt(millivolts: Int32(mv))
             } else if percentage == nil {
                 let now = Date()
@@ -348,31 +347,40 @@ extension OralableDevice {
 
         guard let percentage else { return }
 
+        // Status notify already carries the firmware gauge. Do not replace it
+        // with a second conversion when that percent is present.
+        let displayed: Int
+        if let status = firmwareDeviceStatus, status.batteryPercent > 0 {
+            displayed = Int(status.batteryPercent)
+        } else {
+            displayed = percentage
+        }
+
         if let mv = millivolts {
             batteryMillivolts = Int(mv)
             let chem = BatteryConversion.chemistryPercentageInt(millivolts: mv)
-            Logger.shared.info("[OralableDevice] 🔋 Battery: \(mv)mV gauge=\(percentage)% chem=\(chem)%")
+            Logger.shared.info("[OralableDevice] 🔋 Battery: \(mv)mV gauge=\(percentage)% show=\(displayed)% chem=\(chem)%")
             if percentage == 0 && chem > 0 {
-                Logger.shared.warning("[OralableDevice] ⚠️ Soft floor (gauge 0%): chem=\(chem)% — charge on Oralable case")
+                Logger.shared.warning("[OralableDevice] ⚠️ Soft floor (gauge 0%): chem=\(chem)% — charge on the MAM case")
             } else if BatteryConversion.isCritical(percentage: BatteryConversion.chemistryPercentage(millivolts: mv)) {
                 Logger.shared.warning("[OralableDevice] ⚠️ BATTERY CRITICAL: chem=\(chem)% (\(mv)mV)")
-            } else if BatteryConversion.needsCharging(percentage: Double(percentage)) {
-                Logger.shared.warning("[OralableDevice] ⚠️ Battery low: gauge=\(percentage)% chem=\(chem)%")
+            } else if BatteryConversion.needsCharging(percentage: Double(displayed)) {
+                Logger.shared.warning("[OralableDevice] ⚠️ Battery low: gauge=\(displayed)% chem=\(chem)%")
             }
         } else {
-            Logger.shared.info("[OralableDevice] 🔋 Battery: gauge=\(percentage)%")
-            if BatteryConversion.isCritical(percentage: Double(percentage)) {
-                Logger.shared.warning("[OralableDevice] ⚠️ BATTERY CRITICAL: \(percentage)%")
-            } else if BatteryConversion.needsCharging(percentage: Double(percentage)) {
-                Logger.shared.warning("[OralableDevice] ⚠️ Battery low: \(percentage)%")
+            Logger.shared.info("[OralableDevice] 🔋 Battery: gauge=\(percentage)% show=\(displayed)%")
+            if BatteryConversion.isCritical(percentage: Double(displayed)) {
+                Logger.shared.warning("[OralableDevice] ⚠️ BATTERY CRITICAL: \(displayed)%")
+            } else if BatteryConversion.needsCharging(percentage: Double(displayed)) {
+                Logger.shared.warning("[OralableDevice] ⚠️ Battery low: \(displayed)%")
             }
         }
 
-        batteryLevel = percentage
+        batteryLevel = displayed
 
         let reading = SensorReading(
             sensorType: .battery,
-            value: Double(percentage),
+            value: Double(displayed),
             timestamp: Date(),
             deviceId: peripheral?.identifier.uuidString
         )

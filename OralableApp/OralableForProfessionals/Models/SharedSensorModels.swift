@@ -25,7 +25,7 @@ struct SerializableSensorData: Codable {
 
     // Device identification (added Dec 9, 2025)
     // Optional for backwards compatibility with existing CloudKit data
-    let deviceType: String?  // "Oralable" or "ANR M40"
+    let deviceType: String?  // "MAM" or "ANR M40"
 
     // PPG data (from Oralable device)
     let ppgRed: Int32
@@ -68,7 +68,7 @@ struct SerializableSensorData: Codable {
         // If ppgIR > 0, it's from Oralable (PPG values are typically 1000+)
         // If ppgIR == 0 or very low, and we have valid battery/temp, it might be ANR
         if ppgIR > 1000 {
-            return "Oralable"
+            return "MAM"
         } else if emg != nil && emg! > 0 {
             return "ANR M40"
         } else if ppgIR > 0 && ppgIR < 1000 {
@@ -76,8 +76,7 @@ struct SerializableSensorData: Codable {
             return "ANR M40"
         }
 
-        // Default to Oralable if we can't determine
-        return "Oralable"
+        return "MAM"
     }
 
     /// Whether this is from an ANR M40 device
@@ -87,7 +86,7 @@ struct SerializableSensorData: Codable {
 
     /// Whether this is from an Oralable device
     var isOralableDevice: Bool {
-        inferredDeviceType == "Oralable"
+        inferredDeviceType == "MAM"
     }
 
     /// Get EMG value (from dedicated field or inferred from legacy data)

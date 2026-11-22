@@ -10,7 +10,7 @@
 import Foundation
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Mock BLE Service for unit testing
 /// Conforms to BLEService protocol and allows simulation of all BLE operations

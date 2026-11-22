@@ -128,7 +128,7 @@ enum DeviceError: LocalizedError {
         case .bluetoothUnavailable:
             return "This app requires Bluetooth. Please use a device with Bluetooth support."
         case .bluetoothUnauthorized:
-            return "Go to Settings > Privacy > Bluetooth and enable access for Oralable."
+            return "Go to Settings > Privacy > Bluetooth and enable access for MAM Diagnostics."
         case .characteristicNotFound, .serviceNotFound:
             return "This device may not be compatible. Try restarting both devices."
         case .dataCollectionFailed, .invalidData, .parsingError:
@@ -144,7 +144,7 @@ enum DeviceError: LocalizedError {
         case .authenticationRequired, .authenticationFailed:
             return "Sign in with your Apple ID to access this feature."
         case .firmwareUpdateRequired:
-            return "Update your Oralable to the latest firmware using Oralable’s researcher release channel, then try again."
+            return "Update the MAM to the latest firmware using the researcher release channel, then try again."
         case .operationNotSupported:
             return "This feature is not available for your device model."
         default:

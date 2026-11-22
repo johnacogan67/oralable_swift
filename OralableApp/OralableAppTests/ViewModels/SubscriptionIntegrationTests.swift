@@ -7,7 +7,7 @@
 
 import XCTest
 import StoreKit
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 class SubscriptionIntegrationTests: XCTestCase {
@@ -51,7 +51,7 @@ class SubscriptionIntegrationTests: XCTestCase {
         // Basic tier should have features
         let basicFeatures = SubscriptionTier.basic.features
         XCTAssertFalse(basicFeatures.isEmpty)
-        XCTAssertTrue(basicFeatures.contains { $0.contains("Connect to Oralable device") })
+        XCTAssertTrue(basicFeatures.contains { $0.contains("Connect to MAM") })
 
         // Premium tier should have more features
         let premiumFeatures = SubscriptionTier.premium.features

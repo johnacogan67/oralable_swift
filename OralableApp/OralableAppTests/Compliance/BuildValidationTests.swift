@@ -9,7 +9,7 @@
 
 import XCTest
 import Foundation
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 /// Build validation tests to ensure the app is ready for App Store submission
 /// Verifies Info.plist configuration, permissions, and build settings

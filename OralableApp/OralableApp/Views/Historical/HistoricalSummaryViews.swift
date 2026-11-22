@@ -102,11 +102,11 @@ extension HistoricalView {
         case .emg:
             return "No EMG data found in the export. Connect an ANR M40 device and export data."
         case .ir:
-            return "No IR data found in the export. Connect an Oralable device and export data."
+            return "No IR data found in the export. Connect a MAM and export data."
         case .move:
             return "No movement data found in the export."
         case .temp:
-            return "No temperature data found in the export. Temperature is only recorded by the Oralable device."
+            return "No temperature data found in the export. Temperature is only recorded by the MAM."
         }
     }
 

@@ -8,7 +8,7 @@
 //
 
 import XCTest
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class PilotLoggerTests: XCTestCase {

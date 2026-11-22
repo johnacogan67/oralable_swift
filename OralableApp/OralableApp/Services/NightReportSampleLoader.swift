@@ -72,6 +72,8 @@ enum NightReportSampleLoader {
         let ayIdx = map["accel_y"]
         let azIdx = map["accel_z"]
         let spo2Idx = map["spo2_percent"]
+        let hrIdx = map["heart_rate_bpm"]
+        let hrvIdx = map["hrv_ms"]
         let tempIdx = map["temp_c"]
             ?? map["temp_celsius"]
             ?? map["temperature"]
@@ -96,6 +98,8 @@ enum NightReportSampleLoader {
             let ay = ayIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
             let az = azIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? 0
             let spo2 = spo2Idx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan
+            let hr = hrIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan
+            let hrv = hrvIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan
             let tempRaw = tempIdx.flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
             let temperature = (tempRaw?.isFinite == true && (tempRaw ?? 0) > 0) ? tempRaw! : Double.nan
             out.append(
@@ -106,7 +110,9 @@ enum NightReportSampleLoader {
                     accelY: ay,
                     accelZ: az,
                     spo2: spo2,
-                    temperature: temperature
+                    temperature: temperature,
+                    heartRateBpm: hr,
+                    hrvMs: hrv
                 )
             )
         }
@@ -149,7 +155,9 @@ enum NightReportSampleLoader {
                     spo2: map["spo2_percent"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
                         ?? map["spo2"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil }
                         ?? .nan,
-                    temperature: temperature
+                    temperature: temperature,
+                    heartRateBpm: map["heart_rate_bpm"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan,
+                    hrvMs: map["hrv_ms"].flatMap { $0 < cols.count ? Double(cols[$0]) : nil } ?? .nan
                 )
             )
         }

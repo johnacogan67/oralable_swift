@@ -9,7 +9,7 @@
 import XCTest
 import Combine
 import CoreBluetooth
-@testable import OralableApp
+@testable import MAMDiagnostics
 
 @MainActor
 final class BLEBackgroundWorkerTests: XCTestCase {

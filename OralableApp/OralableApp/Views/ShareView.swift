@@ -56,7 +56,7 @@ struct ShareView: View {
     @State private var showCopiedFeedback = false
     @State private var showingFileExporter = false
     @State private var exportDocument: CSVDocument?
-    @State private var exportFilename = "oralable_export.csv"
+    @State private var exportFilename = "mam_export.csv"
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isSharing = false
@@ -252,7 +252,7 @@ struct ShareView: View {
             dependencies.sessionHistoryStore.protocolASetupShareURLs()
         }), !urls.isEmpty else {
             await MainActor.run {
-                errorMessage = "Protocol A Setup files are missing. Re-run Setup or check Files → Oralable → ProtocolASetup."
+                errorMessage = "Protocol A Setup files are missing. Re-run Setup or check Files → MAM Diagnostics → ProtocolASetup."
                 showError = true
             }
             return
@@ -314,7 +314,7 @@ struct ShareView: View {
         } header: {
             Text("Protocol B validation")
         } footer: {
-            Text("Tap Prepare before each structured session. Do not tap Scan on Devices during recording — it can erase the BLE log. If Share fails, use Save to Files. Exports also remain in the app Documents folder (Files → On My iPhone → Oralable).")
+            Text("Tap Prepare before each structured session. Do not tap Scan on Devices during recording — it can erase the BLE log. If Share fails, use Save to Files. Exports also remain in the app Documents folder (Files → On My iPhone → MAM Diagnostics).")
         }
     }
 
@@ -494,7 +494,8 @@ struct ShareView: View {
         let sessionStart = built.window.start
         let analysis = built.analysis
 
-        let sync = shareCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shareOn = featureFlags.showCloudKitShare || featureFlags.showShareWithProfessional
+        let sync = shareOn ? shareCode.trimmingCharacters(in: .whitespacesAndNewlines) : ""
         let payload = ClinicalReportPayload(
             patient: .loadFromUserDefaults(),
             patientName: dependencies.authenticationManager.displayName,
@@ -505,7 +506,11 @@ struct ShareView: View {
             generatedAt: Date(),
             hourlySegments: hourly,
             nightAnalysis: analysis,
-            isSimulated: built.isSimulated
+            isSimulated: built.isSimulated,
+            appVersion: Bundle.main.mamAppVersionStamp,
+            firmwareVersion: dependencies.deviceManager.primaryFirmwareVersion() ?? "",
+            deviceId: dependencies.deviceManager.primaryMAMDeviceId() ?? "",
+            heartSummary: built.heartSummaryLine
         )
         do {
             var calURL: URL?
@@ -726,7 +731,7 @@ struct ShareView: View {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
                 let timestamp = dateFormatter.string(from: Date())
-                let filename = "oralable_events_state_\(timestamp).csv"
+                let filename = "mam_events_state_\(timestamp).csv"
                 let fileURL = exportDirectory.appendingPathComponent(filename)
 
                 do {
@@ -820,7 +825,7 @@ struct ShareView: View {
             userIdentifier = "guest"
         }
 
-        let fileName = "oralable_data_\(userIdentifier)_\(Int(Date().timeIntervalSince1970)).csv"
+        let fileName = "mam_data_\(userIdentifier)_\(Int(Date().timeIntervalSince1970)).csv"
 
         // Save to Documents directory (for History view to find)
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -855,7 +860,7 @@ struct ShareView: View {
                     emgValue = data.ppg.ir
                     ppgIRValue = 0
                 case .oralable:
-                    deviceTypeName = "Oralable"
+                    deviceTypeName = "MAM"
                     emgValue = 0
                     ppgIRValue = data.ppg.ir
                 case .demo:
@@ -919,6 +924,14 @@ struct ShareView: View {
             }
             return nil
         }
+    }
+}
+
+extension Bundle {
+    var mamAppVersionStamp: String {
+        let short = infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(short) (\(build))"
     }
 }
 
