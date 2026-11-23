@@ -17,6 +17,17 @@ class SessionDataLoader {
     static let shared = SessionDataLoader()
     private init() {}
 
+    /// Night exports written before the MAM rename store the clip as `Oralable`.
+    static func exportDeviceType(_ stored: String, matches target: String) -> Bool {
+        if stored == target { return true }
+        return isClipExportLabel(stored) && isClipExportLabel(target)
+    }
+
+    static func isClipExportLabel(_ stored: String) -> Bool {
+        let name = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name == "MAM" || name.caseInsensitiveCompare("Oralable") == .orderedSame
+    }
+
     // MARK: - In-memory cache
     private struct CacheKey: Hashable {
         let path: String
@@ -236,7 +247,7 @@ class SessionDataLoader {
 
     /// Parse ShareView export CSV format with dynamic column detection
     /// Supports variable column formats based on FeatureFlags settings
-    private func parseShareViewExport(content: String, metricType: String) -> [HistoricalDataPoint] {
+    func parseShareViewExport(content: String, metricType: String) -> [HistoricalDataPoint] {
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
         guard lines.count > 1 else {
             Logger.shared.warning("[SessionDataLoader] Empty CSV file")
@@ -337,7 +348,8 @@ class SessionDataLoader {
 
             let deviceType = getString(columns, columnMap, "Device_Type") ?? "MAM"
 
-            if let target = targetDeviceType, deviceType != target {
+            if let target = targetDeviceType,
+               !Self.exportDeviceType(deviceType, matches: target) {
                 continue
             }
 

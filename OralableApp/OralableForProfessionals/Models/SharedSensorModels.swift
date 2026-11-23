@@ -84,9 +84,10 @@ struct SerializableSensorData: Codable {
         inferredDeviceType == "ANR M40"
     }
 
-    /// Whether this is from an Oralable device
+    /// Temple-clip sample. Shares written before the MAM rename store `Oralable`.
     var isOralableDevice: Bool {
-        inferredDeviceType == "MAM"
+        let name = inferredDeviceType.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name == "MAM" || name.caseInsensitiveCompare("Oralable") == .orderedSame
     }
 
     /// Get EMG value (from dedicated field or inferred from legacy data)
