@@ -99,6 +99,10 @@ final class OvernightStateClassifierTests: XCTestCase {
         let csv = OvernightStateClassifier.eventCSV(from: analysis)
         XCTAssertTrue(csv.contains("start_s,end_s,duration_s,type"))
         XCTAssertTrue(csv.contains("tonic") || csv.contains("phasic") || csv.contains("rescue"))
+        for line in csv.split(whereSeparator: \.isNewline) where !line.isEmpty {
+            let cols = line.split(separator: ",", omittingEmptySubsequences: false)
+            XCTAssertEqual(cols.count, 8)
+        }
     }
 
     func testResearchCSVRoundTrip() {
