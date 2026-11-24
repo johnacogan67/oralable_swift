@@ -10,6 +10,13 @@ import OralableCore
 
 enum ResearchRawDataExport {
 
+    /// Dot decimal, no grouping. `String(format:)` without a locale follows the phone
+    /// region, and `NightReportSampleLoader` splits on every comma. A French "36,500"
+    /// then shifts SpO₂ onto the heart-rate field (floor 85, false all-night SASHB).
+    static func csvNumber(_ value: Double, fractionDigits: Int) -> String {
+        String(format: "%.\(fractionDigits)f", locale: Locale(identifier: "en_US_POSIX"), value)
+    }
+
     /// One row per `SensorData` sample (deviceType, ISO8601 timestamp, PPG RGB raw, accel raw, optional HR/SpO2).
     /// `ambient_ir_raw` duplicates `ir` (REV10 IR-DC counts) for leakage / ambient-saturation analysis (e.g. McGill).
     /// `is_manual_override` is `1` when the fit gate was bypassed via research override for that export (otherwise `0`).
@@ -22,9 +29,9 @@ enum ResearchRawDataExport {
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
             let ts = fmt.string(from: s.timestamp)
-            let hr = s.heartRate.map { String(format: "%.1f", $0.bpm) } ?? ""
-            let hrv = s.heartRate?.hrvMs.map { String(format: "%.1f", $0) } ?? ""
-            let ox = s.spo2.map { String(format: "%.0f", $0.percentage) } ?? ""
+            let hr = s.heartRate.map { csvNumber($0.bpm, fractionDigits: 1) } ?? ""
+            let hrv = s.heartRate?.hrvMs.map { csvNumber($0, fractionDigits: 1) } ?? ""
+            let ox = s.spo2.map { csvNumber($0.percentage, fractionDigits: 0) } ?? ""
             let row = [
                 s.deviceType.rawValue,
                 ts,
@@ -35,7 +42,7 @@ enum ResearchRawDataExport {
                 "\(s.accelerometer.x)",
                 "\(s.accelerometer.y)",
                 "\(s.accelerometer.z)",
-                String(format: "%.3f", s.temperature.celsius),
+                csvNumber(s.temperature.celsius, fractionDigits: 3),
                 "\(s.battery.percentage)",
                 hr,
                 ox,
@@ -64,10 +71,10 @@ enum ResearchRawDataExport {
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for s in samples {
-            let spo2 = s.spo2.isFinite ? String(format: "%.0f", s.spo2) : ""
-            let temp = s.temperature.isFinite ? String(format: "%.3f", s.temperature) : ""
-            let hr = s.heartRateBpm.isFinite ? String(format: "%.1f", s.heartRateBpm) : ""
-            let hrv = s.hrvMs.isFinite ? String(format: "%.1f", s.hrvMs) : ""
+            let spo2 = s.spo2.isFinite ? csvNumber(s.spo2, fractionDigits: 0) : ""
+            let temp = s.temperature.isFinite ? csvNumber(s.temperature, fractionDigits: 3) : ""
+            let hr = s.heartRateBpm.isFinite ? csvNumber(s.heartRateBpm, fractionDigits: 1) : ""
+            let hrv = s.hrvMs.isFinite ? csvNumber(s.hrvMs, fractionDigits: 1) : ""
             lines.append(
                 [
                     "oralable",
