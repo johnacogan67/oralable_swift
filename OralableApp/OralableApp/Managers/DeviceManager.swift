@@ -941,8 +941,15 @@ class DeviceManager: ObservableObject {
         autoReconnectInFlight = true
         Logger.shared.info("[DeviceManager] Scheduling auto-reconnect to \(rememberedDevices.count) remembered device(s)")
 
-        // Use whenReady to defer scanning until Bluetooth is powered on
-        bleService?.whenReady { [weak self] in
+        // Use whenReady to defer scanning until Bluetooth is powered on.
+        // The in-flight flag stays set until that callback runs. A nil service
+        // would never run it, and every later retry would return here.
+        guard let bleService else {
+            autoReconnectInFlight = false
+            Logger.shared.warning("[DeviceManager] Auto-reconnect skipped — BLE service missing")
+            return
+        }
+        bleService.whenReady { [weak self] in
             guard let self = self else { return }
 
             Task { @MainActor in

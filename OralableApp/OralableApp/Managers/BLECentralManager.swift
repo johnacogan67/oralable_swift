@@ -57,13 +57,11 @@ final class BLECentralManager: NSObject, BLEService {
 
     private var connectedPeripherals = Set<UUID>()
     private var pendingConnections = Set<UUID>()
-    private let queue = DispatchQueue(label: "com.oralableapp.ble.central", qos: .userInitiated)
+    private let queue: DispatchQueue
+    private let readyGate: ReadyCallbackGate
 
     // Optional: filter by services if you want to narrow scanning
     private var serviceFilter: [CBUUID]?
-
-    // Pending operations to run when Bluetooth becomes ready
-    private var pendingOperations: [() -> Void] = []
 
     // Combine publisher for events
     private let eventSubject = PassthroughSubject<BLEServiceEvent, Never>()
@@ -77,6 +75,9 @@ final class BLECentralManager: NSObject, BLEService {
     // MARK: - Init
 
     override init() {
+        let bleQueue = DispatchQueue(label: "com.oralableapp.ble.central", qos: .userInitiated)
+        queue = bleQueue
+        readyGate = ReadyCallbackGate(queue: bleQueue)
         super.init()
         // EAGER: Initialize CBCentralManager immediately
         // This requests Bluetooth permission and starts receiving state updates
@@ -86,25 +87,10 @@ final class BLECentralManager: NSObject, BLEService {
 
     // MARK: - BLEService Protocol - Utility
 
-    /// Execute an operation when Bluetooth is ready, or queue it if not ready yet
+    /// Execute an operation when Bluetooth is ready, or queue it if not ready yet.
+    /// The callback runs on the CoreBluetooth queue, including when Bluetooth is already on.
     func whenReady(_ operation: @escaping () -> Void) {
-        if isReady {
-            operation()
-        } else {
-            pendingOperations.append(operation)
-            Logger.shared.info("[BLECentralManager] ⏳ Operation queued - waiting for Bluetooth to power on")
-        }
-    }
-
-    /// Execute all pending operations (called when Bluetooth becomes ready)
-    private func executePendingOperations() {
-        guard isReady else { return }
-        let operations = pendingOperations
-        pendingOperations.removeAll()
-        Logger.shared.info("[BLECentralManager] ✅ Executing \(operations.count) pending operation(s)")
-        for operation in operations {
-            operation()
-        }
+        readyGate.whenReady(operation)
     }
 
     /// Retrieve peripherals with the given identifiers
@@ -356,13 +342,14 @@ extension BLECentralManager: CBCentralManagerDelegate {
             Logger.shared.info("[BLECentralManager] 📶 Bluetooth state: \(self.stateDescription(previousState)) → \(self.stateDescription(central.state))")
         }
 
-        // Execute pending operations when Bluetooth becomes ready
         if state == .poweredOn && previousState != .poweredOn {
             Task { @MainActor in
                 Logger.shared.info("[BLECentralManager] ✅ Bluetooth powered on - ready for scanning/connecting")
             }
-            executePendingOperations()
         }
+        // Same serial queue as whenReady, so this cannot flush an empty list
+        // and then miss a callback that is appended afterwards.
+        readyGate.setReady(state == .poweredOn)
 
         // Emit event via publisher (new)
         eventSubject.send(.bluetoothStateChanged(state: central.state))
