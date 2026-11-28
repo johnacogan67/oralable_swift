@@ -106,6 +106,99 @@ struct PatientHealthSummary {
     }
 }
 
+// MARK: - Account-scoped CSV import storage
+
+/// CSV imports used to live in global UserDefaults keys. A second clinician
+/// signing into the same app then saw the first clinician's participants and traces.
+struct LocalProfessionalImportStore {
+    static let legacyParticipantsKey = "localImportedParticipants"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func participantsKey(for professionalID: String) -> String {
+        "localImportedParticipants.\(Self.scope(professionalID))"
+    }
+
+    func sensorKey(professionalID: String, participantID: String) -> String {
+        "importedData.\(Self.scope(professionalID)).\(Self.scope(participantID))"
+    }
+
+    static func legacySensorKey(participantID: String) -> String {
+        "importedData_\(participantID)"
+    }
+
+    func hasScopedParticipants(_ professionalID: String) -> Bool {
+        defaults.object(forKey: participantsKey(for: professionalID)) != nil
+    }
+
+    func loadParticipantsData(professionalID: String) -> Data? {
+        defaults.data(forKey: participantsKey(for: professionalID))
+    }
+
+    func saveParticipantsData(_ data: Data, professionalID: String) {
+        defaults.set(data, forKey: participantsKey(for: professionalID))
+    }
+
+    func legacyParticipantsData() -> Data? {
+        defaults.data(forKey: Self.legacyParticipantsKey)
+    }
+
+    /// Moves the old global list into this professional's keys, then deletes the global keys.
+    /// Does nothing when this professional already has a scoped list.
+    func adoptLegacyParticipants(professionalID: String, participantIDs: [String]) {
+        guard !hasScopedParticipants(professionalID) else { return }
+        guard let legacy = legacyParticipantsData() else { return }
+        saveParticipantsData(legacy, professionalID: professionalID)
+        defaults.removeObject(forKey: Self.legacyParticipantsKey)
+        for participantID in participantIDs {
+            let oldKey = Self.legacySensorKey(participantID: participantID)
+            if let blob = defaults.data(forKey: oldKey) {
+                defaults.set(blob, forKey: sensorKey(professionalID: professionalID, participantID: participantID))
+                defaults.removeObject(forKey: oldKey)
+            }
+        }
+    }
+
+    func loadSensorData(professionalID: String, participantID: String) -> Data? {
+        defaults.data(forKey: sensorKey(professionalID: professionalID, participantID: participantID))
+    }
+
+    func saveSensorData(_ data: Data, professionalID: String, participantID: String) {
+        defaults.set(data, forKey: sensorKey(professionalID: professionalID, participantID: participantID))
+    }
+
+    func removeSensorData(professionalID: String, participantID: String) {
+        defaults.removeObject(forKey: sensorKey(professionalID: professionalID, participantID: participantID))
+        defaults.removeObject(forKey: Self.legacySensorKey(participantID: participantID))
+    }
+
+    func removeAll(professionalID: String, participantIDs: [String]) {
+        for participantID in participantIDs {
+            removeSensorData(professionalID: professionalID, participantID: participantID)
+        }
+        defaults.removeObject(forKey: participantsKey(for: professionalID))
+    }
+
+    static func scope(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+        var out = ""
+        out.reserveCapacity(trimmed.count)
+        for scalar in trimmed.unicodeScalars {
+            if allowed.contains(scalar) {
+                out.unicodeScalars.append(scalar)
+            } else {
+                out.append("_")
+            }
+        }
+        return out.isEmpty ? "unknown" : out
+    }
+}
+
 // MARK: - Professional Data Manager
 
 @MainActor
@@ -123,6 +216,7 @@ class ProfessionalDataManager: ObservableObject {
 
     private let container: CKContainer
     private let publicDatabase: CKDatabase
+    private let importStore = LocalProfessionalImportStore()
 
     // Computed property that reads from Keychain (where ProfessionalAuthenticationManager stores it)
     private var professionalID: String? {
@@ -269,13 +363,10 @@ class ProfessionalDataManager: ObservableObject {
 
     func loadPatients() {
         guard let professionalID = professionalID else {
-            // Still load local participants even if not authenticated
-            let localParticipants = loadLocalParticipants()
-            if !localParticipants.isEmpty {
-                self.patients = localParticipants.sorted { $0.accessGrantedDate > $1.accessGrantedDate }
-            }
+            patients = []
             return
         }
+        let requestedID = professionalID
 
         Task {
             isLoading = true
@@ -323,6 +414,10 @@ class ProfessionalDataManager: ObservableObject {
                 loadedPatients.append(contentsOf: localParticipants)
 
                 await MainActor.run {
+                    guard self.professionalID == requestedID else {
+                        self.isLoading = false
+                        return
+                    }
                     self.patients = loadedPatients.sorted { $0.accessGrantedDate > $1.accessGrantedDate }
                     self.isLoading = false
                 }
@@ -335,6 +430,10 @@ class ProfessionalDataManager: ObservableObject {
                     Logger.shared.info("[ProfessionalDataManager] Record type doesn't exist yet - loading local participants only")
                     let localParticipants = loadLocalParticipants()
                     await MainActor.run {
+                        guard self.professionalID == requestedID else {
+                            self.isLoading = false
+                            return
+                        }
                         self.patients = localParticipants.sorted { $0.accessGrantedDate > $1.accessGrantedDate }
                         self.isLoading = false
                     }
@@ -343,6 +442,10 @@ class ProfessionalDataManager: ObservableObject {
                     // Still load local participants on error
                     let localParticipants = loadLocalParticipants()
                     await MainActor.run {
+                        guard self.professionalID == requestedID else {
+                            self.isLoading = false
+                            return
+                        }
                         self.patients = localParticipants.sorted { $0.accessGrantedDate > $1.accessGrantedDate }
                         self.errorMessage = "Failed to load participants: \(error.localizedDescription)"
                         self.isLoading = false
@@ -350,6 +453,19 @@ class ProfessionalDataManager: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Drops the on-screen list when the clinician signs out. Disk rows stay under that account.
+    func clearVisiblePatients() {
+        patients = []
+    }
+
+    /// Deletes this account's CSV imports. Leaves an unclaimed global list for the clinician who imported it.
+    func purgeScopedLocalImports() {
+        guard let professionalID = professionalID else { return }
+        let localIDs = loadScopedParticipantsOnly().map(\.patientID)
+        importStore.removeAll(professionalID: professionalID, participantIDs: localIDs)
+        patients.removeAll { $0.isLocalImport }
     }
 
     func removePatient(_ patient: ProfessionalPatient) async throws {
@@ -572,6 +688,9 @@ class ProfessionalDataManager: ObservableObject {
 
     /// Import a participant from CSV data (local storage, not CloudKit)
     func importParticipantFromCSV(name: String, data: [ImportedSensorData]) async throws {
+        guard professionalID != nil else {
+            throw ProfessionalDataError.notAuthenticated
+        }
         isLoading = true
         errorMessage = nil
 
@@ -612,9 +731,11 @@ class ProfessionalDataManager: ObservableObject {
     /// Fetch sensor data for a locally imported participant
     func fetchImportedSensorData(for patient: ProfessionalPatient) -> [SerializableSensorData] {
         guard patient.isLocalImport else { return [] }
+        guard let professionalID = professionalID else { return [] }
 
-        let key = "importedData_\(patient.patientID)"
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+        guard let data = importStore.loadSensorData(professionalID: professionalID, participantID: patient.patientID) else {
+            return []
+        }
 
         do {
             let importedData = try JSONDecoder().decode([ImportedSensorDataCodable].self, from: data)
@@ -627,25 +748,25 @@ class ProfessionalDataManager: ObservableObject {
 
     // MARK: - Local Storage
 
-    private let localParticipantsKey = "localImportedParticipants"
-
-    /// Save a locally imported participant to UserDefaults
+    /// Save a locally imported participant under the signed-in professional.
     private func saveLocalParticipant(_ participant: ProfessionalPatient) {
+        guard let professionalID = professionalID else { return }
         var localParticipants = loadLocalParticipants()
         localParticipants.removeAll { $0.id == participant.id }
         localParticipants.append(participant)
 
         if let data = try? JSONEncoder().encode(localParticipants) {
-            UserDefaults.standard.set(data, forKey: localParticipantsKey)
+            importStore.saveParticipantsData(data, professionalID: professionalID)
         }
     }
 
-    /// Load locally imported participants from UserDefaults
-    private func loadLocalParticipants() -> [ProfessionalPatient] {
-        guard let data = UserDefaults.standard.data(forKey: localParticipantsKey) else {
+    /// CSV imports already stored for this sign-in. Does not claim the old global list.
+    private func loadScopedParticipantsOnly() -> [ProfessionalPatient] {
+        guard let professionalID = professionalID,
+              importStore.hasScopedParticipants(professionalID),
+              let data = importStore.loadParticipantsData(professionalID: professionalID) else {
             return []
         }
-
         do {
             return try JSONDecoder().decode([ProfessionalPatient].self, from: data)
         } catch {
@@ -654,32 +775,50 @@ class ProfessionalDataManager: ObservableObject {
         }
     }
 
-    /// Save imported sensor data to UserDefaults
+    /// Load CSV imports for the signed-in professional only.
+    private func loadLocalParticipants() -> [ProfessionalPatient] {
+        guard let professionalID = professionalID else { return [] }
+
+        if importStore.hasScopedParticipants(professionalID) {
+            return loadScopedParticipantsOnly()
+        }
+
+        guard let legacy = importStore.legacyParticipantsData() else { return [] }
+        do {
+            let decoded = try JSONDecoder().decode([ProfessionalPatient].self, from: legacy)
+            importStore.adoptLegacyParticipants(
+                professionalID: professionalID,
+                participantIDs: decoded.map(\.patientID)
+            )
+            return decoded
+        } catch {
+            Logger.shared.error("[ProfessionalDataManager] Failed to decode legacy local participants: \(error)")
+            return []
+        }
+    }
+
+    /// Save imported sensor data under the signed-in professional.
     private func saveImportedSensorData(_ data: [ImportedSensorData], forParticipantID participantID: String) {
+        guard let professionalID = professionalID else { return }
         let codableData = data.map { ImportedSensorDataCodable(from: $0) }
-        let key = "importedData_\(participantID)"
 
         if let encoded = try? JSONEncoder().encode(codableData) {
-            UserDefaults.standard.set(encoded, forKey: key)
+            importStore.saveSensorData(encoded, professionalID: professionalID, participantID: participantID)
             Logger.shared.info("[ProfessionalDataManager] Saved \(data.count) data points for participant \(participantID)")
         }
     }
 
     /// Remove locally imported participant
     func removeLocalParticipant(_ patient: ProfessionalPatient) {
-        // Remove from local storage
+        guard let professionalID = professionalID else { return }
         var localParticipants = loadLocalParticipants()
         localParticipants.removeAll { $0.id == patient.id }
 
         if let data = try? JSONEncoder().encode(localParticipants) {
-            UserDefaults.standard.set(data, forKey: localParticipantsKey)
+            importStore.saveParticipantsData(data, professionalID: professionalID)
         }
+        importStore.removeSensorData(professionalID: professionalID, participantID: patient.patientID)
 
-        // Remove sensor data
-        let dataKey = "importedData_\(patient.patientID)"
-        UserDefaults.standard.removeObject(forKey: dataKey)
-
-        // Remove from patients list
         patients.removeAll { $0.id == patient.id }
 
         Logger.shared.info("[ProfessionalDataManager] Removed local participant: \(patient.displayName)")
@@ -716,7 +855,7 @@ class ProfessionalDataManager: ObservableObject {
             // Delete SharedPatientData records (professional's patient connections)
             try await deleteRecords(ofType: CloudKitContract.RecordType.sharedPatientData, forProfessionalID: professionalID)
 
-            // Clear local state
+            // Clear local state. CSV rows are removed in deleteAccount, which runs only after this succeeds.
             patients = []
 
             isLoading = false
