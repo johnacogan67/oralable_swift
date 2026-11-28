@@ -118,6 +118,9 @@ class ProfessionalAuthenticationManager: BaseAuthenticationManager {
     func deleteAccount() async {
         Logger.shared.info("[ProfessionalAuth] 🗑️ Starting account deletion process")
 
+        ProfessionalDataManager.shared.purgeScopedLocalImports()
+        ProfessionalDataManager.shared.clearVisiblePatients()
+
         // Clear all UserDefaults
         clearAllUserDefaults()
 

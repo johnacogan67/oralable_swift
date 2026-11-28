@@ -190,6 +190,7 @@ class BaseAuthenticationManager: NSObject, ObservableObject {
 
     /// Sign out the current user and clear all stored data
     func signOut() {
+        ProfessionalDataManager.shared.clearVisiblePatients()
         deleteAllAuthenticationData()
 
         DispatchQueue.main.async {

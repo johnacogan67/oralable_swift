@@ -27,6 +27,7 @@
 		26FE17BF2EE6D96A00026648 /* ProfessionalConfiguration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 26FE178E2EE6D0D200026648 /* ProfessionalConfiguration.storekit */; };
 		26FE17C02EE6D97500026648 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 26FE178D2EE6D0D200026648 /* Assets.xcassets */; };
 		26FE17C12EE6D99300026648 /* ProfessionalDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17742EE6D0D200026648 /* ProfessionalDataManager.swift */; };
+		26A11B022F00000100026648 /* LocalProfessionalImportStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A11B012F00000100026648 /* LocalProfessionalImportStoreTests.swift */; };
 		26FE17C22EE6D99300026648 /* ProfessionalAuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17732EE6D0D200026648 /* ProfessionalAuthenticationManager.swift */; };
 		26FE17C42EE6D99300026648 /* ProfessionalSubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17752EE6D0D200026648 /* ProfessionalSubscriptionManager.swift */; };
 		26FE17C52EE6D99300026648 /* BaseAuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26FE17712EE6D0D200026648 /* BaseAuthenticationManager.swift */; };
@@ -104,6 +105,7 @@
 		26FE17722EE6D0D200026648 /* ProfessionaltAppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionaltAppDependencies.swift; sourceTree = "<group>"; };
 		26FE17732EE6D0D200026648 /* ProfessionalAuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalAuthenticationManager.swift; sourceTree = "<group>"; };
 		26FE17742EE6D0D200026648 /* ProfessionalDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalDataManager.swift; sourceTree = "<group>"; };
+		26A11B012F00000100026648 /* LocalProfessionalImportStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalProfessionalImportStoreTests.swift; sourceTree = "<group>"; };
 		26FE17752EE6D0D200026648 /* ProfessionalSubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfessionalSubscriptionManager.swift; sourceTree = "<group>"; };
 		26FE17762EE6D0D200026648 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		26FE17772EE6D0D200026648 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
@@ -269,6 +271,7 @@
 		26FE16E52EE6CE7300026648 /* OralableForProfessionalsTests */ = {
 			isa = PBXGroup;
 			children = (
+				26A11B012F00000100026648 /* LocalProfessionalImportStoreTests.swift */,
 			);
 			path = OralableForProfessionalsTests;
 			sourceTree = "<group>";
@@ -686,6 +689,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				26A11B022F00000100026648 /* LocalProfessionalImportStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1092,7 +1096,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableForDentists.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableForDentists";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableForProfessionals.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableForProfessionals";
 			};
 			name = Debug;
 		};
@@ -1115,7 +1119,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableForDentists.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableForDentists";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OralableForProfessionals.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OralableForProfessionals";
 			};
 			name = Release;
 		};
